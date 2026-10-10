@@ -80,6 +80,11 @@ FORMAT_LABEL = {"premium": "Premium / VIP", "large": "Gran formato", "3d4d": "3D
 LANGUAGE_LABEL = {"spanish": "Español", "subtitled": "Subtitulada", "original": "Español", "other": "Otro"}
 PLATFORM_LABEL = {"rappi": "Rappi", "didi": "DiDi Food"}
 CINEMA_TYPE_LABEL = {"vip": "VIP", "traditional": "Tradicional"}
+# Ejes y tooltips de las gráficas de dulcería (views/dulceria.py, dashboard/components/dulceria/).
+CONCESSION_CHART_TEXT = {"price_axis": "Pesos", "product": "Producto", "chain": "Cadena", "median": "Mediana",
+                         "delta_pct": "Δ Cinépolis vs Cinemex %", "cinema": "Complejo", "price": "Precio", "cinema_type": "Tipo",
+                         # Un VIP y un tradicional del mismo centro comercial tienen el mismo nombre.
+                         "vip_cinema": "{name} VIP"}
 # Plazas (claves de scraper/plazas.py) y el alcance nacional (`plaza=None` en analytics). El título de la cartelera
 # nombra la plaza elegida; en nacional dice "nacional".
 PLAZA_LABEL = {"cdmx": "CDMX", "gdl": "Guadalajara", "mty": "Monterrey"}

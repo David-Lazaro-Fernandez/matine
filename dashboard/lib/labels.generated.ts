@@ -216,6 +216,18 @@ export const CINEMA_TYPE_LABEL = {
   "traditional": "Tradicional"
 } as const;
 
+export const CONCESSION_CHART_TEXT = {
+  "price_axis": "Pesos",
+  "product": "Producto",
+  "chain": "Cadena",
+  "median": "Mediana",
+  "delta_pct": "Δ Cinépolis vs Cinemex %",
+  "cinema": "Complejo",
+  "price": "Precio",
+  "cinema_type": "Tipo",
+  "vip_cinema": "{name} VIP"
+} as const;
+
 export const PLAZA_LABEL = {
   "cdmx": "CDMX",
   "gdl": "Guadalajara",

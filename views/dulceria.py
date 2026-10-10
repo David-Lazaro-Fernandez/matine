@@ -59,10 +59,10 @@ with seccion("dulceria"):
                 bars = alt.Chart(longc).mark_bar(height=11).encode(
                     y=alt.Y("label:N", sort=order, title=None, axis=alt.Axis(labelLimit=220, labelColor=GRAY_DARK, ticks=False, domain=False)),
                     yOffset=alt.YOffset("Cadena:N", sort=CHAIN_DOMAIN),
-                    x=alt.X("price:Q", title="Pesos", axis=alt.Axis(format="$,.0f")),
+                    x=alt.X("price:Q", title=CONCESSION_CHART_TEXT["price_axis"], axis=alt.Axis(format="$,.0f")),
                     color=alt.Color("Cadena:N", scale=alt.Scale(domain=CHAIN_DOMAIN, range=CHAIN_RANGE), legend=None),
-                    tooltip=[alt.Tooltip("label:N", title="Producto"), alt.Tooltip("Cadena:N"), alt.Tooltip("price:Q", title="Mediana", format="$,.0f"),
-                             alt.Tooltip("delta_pct:Q", title="Δ Cinépolis vs Cinemex %", format="+.0f")])
+                    tooltip=[alt.Tooltip("label:N", title=CONCESSION_CHART_TEXT["product"]), alt.Tooltip("Cadena:N", title=CONCESSION_CHART_TEXT["chain"]), alt.Tooltip("price:Q", title=CONCESSION_CHART_TEXT["median"], format="$,.0f"),
+                             alt.Tooltip("delta_pct:Q", title=CONCESSION_CHART_TEXT["delta_pct"], format="+.0f")])
                 chart(bars.properties(height=alt.Step(30)))
                 rows_ = []
                 for r in cmp_.itertuples():
@@ -80,13 +80,14 @@ with seccion("dulceria"):
                 pc = load("concession_product_by_cinema", product_name=prod, plaza=plaza)
                 if not pc.empty:
                     pc["vip"] = pc["cinema_type"].map(CINEMA_TYPE_LABEL)
+                    pc["cinema_name"] = [CONCESSION_CHART_TEXT["vip_cinema"].format(name=c) if t == "vip" else c for c, t in zip(pc.cinema_name, pc.cinema_type)]
                     med = float(B[prod].median_price)
                     barsc = alt.Chart(pc).mark_bar().encode(
                         y=alt.Y("cinema_name:N", sort=None, title=None, axis=alt.Axis(labelLimit=170, labelColor=GRAY_DARK, ticks=False, domain=False, labelFontSize=10)),
-                        x=alt.X("price:Q", title="Pesos", axis=alt.Axis(format="$,.0f")),
+                        x=alt.X("price:Q", title=CONCESSION_CHART_TEXT["price_axis"], axis=alt.Axis(format="$,.0f")),
                         color=alt.Color("vip:N", scale=alt.Scale(domain=[CINEMA_TYPE_LABEL["traditional"], CINEMA_TYPE_LABEL["vip"]],
                                                                 range=[CHAIN_COLOR["cinepolis"], NEUTRAL]), legend=alt.Legend(orient="top", title=None)),
-                        tooltip=[alt.Tooltip("cinema_name:N", title="Complejo"), alt.Tooltip("price:Q", title="Precio", format="$,.0f"), alt.Tooltip("vip:N", title="Tipo")])
+                        tooltip=[alt.Tooltip("cinema_name:N", title=CONCESSION_CHART_TEXT["cinema"]), alt.Tooltip("price:Q", title=CONCESSION_CHART_TEXT["price"], format="$,.0f"), alt.Tooltip("vip:N", title=CONCESSION_CHART_TEXT["cinema_type"])])
                     rule = alt.Chart(pd.DataFrame({"m": [med]})).mark_rule(color=GRAY, strokeDash=[4, 3]).encode(x="m:Q")
                     chart((barsc + rule).properties(height=alt.Step(9)))
                     md(f'<p class="nota">{esc(prod)}: de ${B[prod].min_price:,.0f} a ${B[prod].max_price:,.0f} en {int(B[prod].cinemas)} complejos, '

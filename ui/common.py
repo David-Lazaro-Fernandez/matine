@@ -31,6 +31,7 @@ from analytics.labels import (  # noqa: E402
     CHAIN_LABEL,
     CINEMA_TYPE_LABEL,
     COLUMN_LABEL,
+    CONCESSION_CHART_TEXT,
     DATA_TEXT,
     DATASET_HELP,
     DATASET_LABEL,
