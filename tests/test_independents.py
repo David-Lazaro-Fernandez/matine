@@ -70,6 +70,19 @@ def test_the_order_is_deterministic(conn):
     assert overlap == sorted(overlap, key=lambda r: (-r["shows_indep"], r["title_norm"]))
 
 
+def test_overlap_limit_keeps_the_first_titles(conn):
+    overlap = analytics.independent_overlap(conn, D0, D1, from_now=False)
+    assert analytics.independent_overlap(conn, D0, D1, from_now=False, limit=2) == overlap[:2]
+
+
+def test_occupancy_is_readable_only_confirmed_and_with_enough_samples(monkeypatch):
+    rows = [{"samples": independents.OCCUPANCY_MIN_SAMPLES - 1}, {"samples": 1}]
+    assert not independents.occupancy_readable(rows)
+    monkeypatch.setattr(independents, "OCCUPANCY_CONFIRMED", True)
+    assert independents.occupancy_readable(rows)
+    assert not independents.occupancy_readable(rows[:1])
+
+
 def test_occupancy_by_cinema_weights_by_seats_in_day_order(conn):
     occ = analytics.occupancy_by_cinema(conn)
     assert [(r["cinema_id"], r["slot"], r["sold_pct"]) for r in occ] == [

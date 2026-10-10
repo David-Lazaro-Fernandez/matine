@@ -87,7 +87,7 @@ with seccion("indep-programa"):
 with seccion("indep-ocupacion"):
     occ = load("occupancy_by_cinema", days=analytics.independents.OCCUPANCY_DAYS, chain=INDEP_CHAIN)
     measured = int(occ.samples.sum()) if not occ.empty else 0
-    enough = confirmed and measured >= analytics.independents.OCCUPANCY_MIN_SAMPLES
+    enough = analytics.independents.occupancy_readable(occ.to_dict("records"))
     pregunta(T["q_ocupacion"], concl.get("ocupacion", "") if enough else "")
     if not confirmed:
         st.info(T["ocupacion_pending"])
@@ -119,7 +119,8 @@ with seccion("indep-solape"):
     status_domain = [T["status"]["shared"], T["status"]["indep_only"]]
     leyenda([(status_domain[0], CHAIN_COLOR["cinemex"]), (status_domain[1], INDEP)])
     st.markdown(f"**{T['solape_chart']}**")
-    top_overlap = overlap.head(15)
+    top_overlap = load("independent_overlap", d0=d0, d1=d1, limit=15)
+    top_overlap["Estado"] = top_overlap["status"].map(T["status"])
     bars = alt.Chart(top_overlap).mark_bar().encode(
         y=alt.Y("title:N", sort=None, title=None, axis=alt.Axis(labelLimit=260, labelColor=GRAY_DARK, ticks=False, domain=False)),
         x=alt.X("share_indep:Q", title=COLUMN_LABEL["share_indep"]),
