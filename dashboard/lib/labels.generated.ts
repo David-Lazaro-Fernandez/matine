@@ -492,6 +492,13 @@ export const AVAILABILITY_LABEL = {
   "low": "Baja"
 } as const;
 
+export const SEATS_CHART_TEXT = {
+  "title": "Funciones frente a butacas por película ({chain})",
+  "axis": "% del total de {chain} en el periodo",
+  "measure": "Medida",
+  "share": "%"
+} as const;
+
 export const ROLE_LABEL = {
   "admin": "Administrador",
   "viewer": "Consulta"
