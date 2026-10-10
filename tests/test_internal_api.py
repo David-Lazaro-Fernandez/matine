@@ -160,13 +160,19 @@ def test_health_needs_no_session(client):
     assert client.get("/api/salud").json() == {"ok": True}
 
 
-def test_datos_reads_the_recorded_capture(client, viewer, capture_db, tmp_path, monkeypatch):
+@pytest.fixture
+def recorded(capture_db, tmp_path, monkeypatch):
+    """`snapshots.db` en disco con la captura grabada de Cinemex y Cinépolis, con hoy fijo y la caché vacía."""
     path = tmp_path / "snapshots.db"
     with sqlite3.connect(path) as disk:
         capture_db("cinemex", "cinepolis").backup(disk)
     monkeypatch.setattr(config, "DB_PATH", path)
     monkeypatch.setattr(analytics, "today", lambda: "2026-09-26")
     pages._cache.clear()
+    return path
+
+
+def test_datos_reads_the_recorded_capture(client, viewer, recorded):
     _login(client, "viewer@example.test")
     body = client.get("/api/datos").json()
     assert body["dataset"] == "cinemas" and body["rows"] and not body["truncated"]
@@ -176,3 +182,46 @@ def test_datos_reads_the_recorded_capture(client, viewer, capture_db, tmp_path, 
     assert body["rows"] and {r["chain"] for r in body["rows"]} == {"cinemex"}
     assert body["cinemas"] and {c["chain"] for c in body["cinemas"]} == {"cinemex"}
     assert client.get("/api/datos", params={"dataset": "nada"}).status_code == 422
+
+
+def test_mapa_reads_the_recorded_capture(client, viewer, recorded):
+    _login(client, "viewer@example.test")
+    body = client.get("/api/mapa").json()
+    assert (body["d0"], body["d1"]) == ("2026-09-26", analytics.cinema_week("2026-09-26")[1])
+    assert body["plaza"] is None and body["cinemas"] and len(body["options"]) == len(body["cinemas"])
+    assert {r["chain"] for r in body["highlights"]} <= {"cinemex", "cinepolis"} and body["sites"]
+    one = body["cinemas"][0]["cinema_id"]
+    body = client.get("/api/mapa", params={"chains": ["cinemex", "cinepolis"], "cinema_ids": [one]}).json()
+    assert [r["cinema_id"] for r in body["cinemas"]] == [one] and len(body["options"]) > 1
+    assert [c["cinema_id"] for s in body["sites"] for c in s["cinemas"]] == [one]
+    assert client.get("/api/mapa", params={"chains": "nadie"}).status_code == 422
+    assert client.get("/api/mapa", params={"plaza": "nadie"}).status_code == 422
+
+
+def test_dulceria_reads_the_recorded_capture(client, viewer, recorded):
+    _login(client, "viewer@example.test")
+    body = client.get("/api/dulceria", params={"plaza": "cdmx", "platform": "rappi", "chain": "cinepolis"}).json()
+    assert (body["plaza"], body["platform"], body["chain"]) == ("cdmx", "rappi", "cinepolis")
+    assert isinstance(body["conclusion"], str) and all(f["topic"] == "dulceria" for f in body["findings"])
+    for key in ("basket", "product_by_cinema", "by_cinema", "delivery_compare", "delivery_products", "delivery_stores"):
+        assert isinstance(body[key], list)
+    assert client.get("/api/dulceria", params={"product": "Caviar"}).status_code == 422
+
+
+def test_operaciones_is_admin_only(client, viewer, admin, recorded):
+    _login(client, "viewer@example.test")
+    assert client.get("/api/operaciones").status_code == 403
+    _login(client, "admin@example.test")
+    body = client.get("/api/operaciones", params={"log": "health", "lines": 20}).json()
+    assert set(body["report"]["chains"]) >= {"cinemex", "cinepolis"} and body["report"]["hours"] == 24
+    # Corridas y unidades cuentan días desde la hora real: la captura grabada envejece.
+    assert isinstance(body["runs"], list) and isinstance(body["units"], list) and body["coverage"]
+    assert body["jobs"] and body["log"]["name"] == "health" and "db_bytes" in body["storage"]
+    assert client.get("/api/operaciones", params={"lines": 0}).status_code == 422
+
+
+def test_operaciones_without_database_still_shows_the_server(client, admin, tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "no-existe.db")
+    _login(client, "admin@example.test")
+    body = client.get("/api/operaciones").json()
+    assert body["report"] is None and body["runs"] is None and body["jobs"] and body["log"]["lines"] == []
