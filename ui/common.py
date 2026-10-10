@@ -55,6 +55,7 @@ from analytics.labels import (  # noqa: E402
     KIND_LABEL,
     LANGUAGE_BUCKETS,
     LANGUAGE_LABEL,
+    LAYER_TEXT,
     LINE,
     MAP_ATTRIBUTION,
     MAP_METRIC,
@@ -442,7 +443,7 @@ def chart(c, width="stretch"):
 
 
 def capa(num, title, desc, roja=False, anchor=None):
-    md(f'<div class="capa-tag" id="{anchor or f"capa{num}"}"><span class="num{" roja" if roja else ""}">CAPA {num}</span>'
+    md(f'<div class="capa-tag" id="{anchor or f"capa{num}"}"><span class="num{" roja" if roja else ""}">{esc(LAYER_TEXT["tag"].format(num=num))}</span>'
        f'<h2>{esc(title)}</h2></div><p class="capa-desc">{esc(desc)}</p>')
 
 
@@ -458,7 +459,7 @@ def pregunta(texto, conclusion, nota=None):
 
 def leerla(slug, texto):
     with st.container(key=f"leerla-{slug}"):
-        with st.expander("Cómo leerla"):
+        with st.expander(LAYER_TEXT["read_it"]):
             st.markdown(texto)
 
 

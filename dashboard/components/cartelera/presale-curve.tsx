@@ -4,7 +4,7 @@
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
 import { VegaChart } from '@/components/vega-chart';
-import { fill } from '@/components/cartelera/format';
+import { fill } from '@/lib/format';
 import { CARTELERA_CHART_TEXT as TEXT, CHAIN_COLOR, CHAIN_LABEL, COMPARED } from '@/lib/labels.generated';
 
 // Una fila de `analytics.presale_curve`.

@@ -99,6 +99,19 @@ ZONE_TEXT = {
     "title_national": "Cartelera nacional",
     "page_title": "Cartelera · Cinemex frente a Cinépolis",
 }
+# Selector de periodo de la cartelera. `{d0}` y `{d1}` son fechas de `date_es` sin año; `{state}` es de PUBLICATION_LABEL.
+PERIOD_TEXT = {
+    "header": "Periodo",
+    "select": "Semana o día a analizar",
+    "today": "Hoy",
+    "tomorrow": "Mañana",
+    "week": "Resto de la semana de cine (hasta el {d1})",
+    "next_week": "Semana de cine siguiente ({d0} a {d1}){state}",
+    "custom": "Elegir fechas",
+    "custom_range": "Del … al …",
+    "from": "Del",
+    "to": "Al",
+}
 
 
 def plaza_title(plaza):
@@ -202,9 +215,22 @@ SEATS_CHART_TEXT = {
 }
 
 
+# Partes de fechas y horas. `date_es`, `range_es` y `time_12` las usan aquí y en dashboard/lib/format.ts.
+DATE_TEXT = {
+    "weekdays": ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
+    "months": ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
+               "noviembre", "diciembre"],
+    "am": "A.M.",
+    "pm": "P.M.",
+    "date": "{weekday} {day} de {month}",
+    "with_year": "{date} de {year}",
+    "range": "del {d0} al {d1}",
+}
+
+
 def hour_12(hour, minute=0):
     """17 -> '5:00 P.M.'; 0 -> '12:00 A.M.'"""
-    suffix = "A.M." if hour < 12 else "P.M."
+    suffix = DATE_TEXT["am"] if hour < 12 else DATE_TEXT["pm"]
     h = hour % 12 or 12
     return f"{h}:{minute:02d} {suffix}"
 
@@ -236,17 +262,15 @@ def date_es(iso, with_year=True):
     """'2026-09-07' -> 'lunes 7 de septiembre de 2026'"""
     from datetime import date
     d = date.fromisoformat(iso)
-    dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-    meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
-             "septiembre", "octubre", "noviembre", "diciembre"]
-    s = f"{dias[d.weekday()]} {d.day} de {meses[d.month - 1]}"
-    return f"{s} de {d.year}" if with_year else s
+    s = DATE_TEXT["date"].format(weekday=DATE_TEXT["weekdays"][d.weekday()], day=d.day, month=DATE_TEXT["months"][d.month - 1])
+    return DATE_TEXT["with_year"].format(date=s, year=d.year) if with_year else s
 
 
 def range_es(d0, d1):
+    """'2026-09-07','2026-09-09' -> 'del lunes 7 de septiembre al miércoles 9 de septiembre de 2026'"""
     if d0 == d1:
         return date_es(d0)
-    return f"del {date_es(d0, with_year=False)} al {date_es(d1)}"
+    return DATE_TEXT["range"].format(d0=date_es(d0, with_year=False), d1=date_es(d1))
 
 
 def range_short(d0, d1):
@@ -758,3 +782,17 @@ COLUMN_LABEL.update({
     "unit": "Unidad", "label": "Alcance", "last_at": "Última captura", "last_ok": "OK", "last_error": "Último error",
     "avg_calls": "Llamadas (media)", "avg_duration_s": "Duración media (s)", "avg_shows": "Funciones (media)",
 })
+
+# Rótulos fijos de los componentes de capa (`capa`, `leerla` en ui/common.py y dashboard/components/common.tsx).
+LAYER_TEXT = {"tag": "CAPA {num}", "read_it": "Cómo leerla"}
+# Título de cada página en la navegación. La llave es la ruta del dashboard; `cartelera` es la raíz.
+PAGE_LABEL = {
+    "cartelera": "Cartelera",
+    "mapa": MAP_TEXT["nav"],
+    "recomendador": RECOMMEND_TEXT["nav"],
+    "dulceria": "Dulcería",
+    "independientes": INDEP_TEXT["nav"],
+    "datos": DATA_TEXT["title"],
+    "usuarios": AUTH_TEXT["users_title"],
+    "operaciones": OPS_TEXT["title"],
+}

@@ -247,6 +247,19 @@ export const ZONE_TEXT = {
   "page_title": "Cartelera · Cinemex frente a Cinépolis"
 } as const;
 
+export const PERIOD_TEXT = {
+  "header": "Periodo",
+  "select": "Semana o día a analizar",
+  "today": "Hoy",
+  "tomorrow": "Mañana",
+  "week": "Resto de la semana de cine (hasta el {d1})",
+  "next_week": "Semana de cine siguiente ({d0} a {d1}){state}",
+  "custom": "Elegir fechas",
+  "custom_range": "Del … al …",
+  "from": "Del",
+  "to": "Al"
+} as const;
+
 export const LANGUAGE_BUCKETS = [
   "spanish",
   "subtitled"
@@ -537,6 +550,37 @@ export const SEATS_CHART_TEXT = {
   "axis": "% del total de {chain} en el periodo",
   "measure": "Medida",
   "share": "%"
+} as const;
+
+export const DATE_TEXT = {
+  "weekdays": [
+    "lunes",
+    "martes",
+    "miércoles",
+    "jueves",
+    "viernes",
+    "sábado",
+    "domingo"
+  ],
+  "months": [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre"
+  ],
+  "am": "A.M.",
+  "pm": "P.M.",
+  "date": "{weekday} {day} de {month}",
+  "with_year": "{date} de {year}",
+  "range": "del {d0} al {d1}"
 } as const;
 
 export const ROLE_LABEL = {
@@ -1087,4 +1131,20 @@ export const OPS_TEXT = {
       "CPU, almacenamiento libre y conexiones vienen de CloudWatch. El servidor ya usa boto3 para SES; falta el permiso y una consulta cacheada."
     ]
   ]
+} as const;
+
+export const LAYER_TEXT = {
+  "tag": "CAPA {num}",
+  "read_it": "Cómo leerla"
+} as const;
+
+export const PAGE_LABEL = {
+  "cartelera": "Cartelera",
+  "mapa": "Mapa",
+  "recomendador": "¿A dónde ir?",
+  "dulceria": "Dulcería",
+  "independientes": "Independientes",
+  "datos": "Datos",
+  "usuarios": "Usuarios",
+  "operaciones": "Operaciones"
 } as const;
