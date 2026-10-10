@@ -288,3 +288,22 @@ def test_plazas_lists_the_zones_with_cinemas(client, viewer, recorded):
     body = client.get("/api/plazas").json()
     assert body == sorted(body, key=lambda p: list(PLAZAS).index(p["plaza"]))
     assert all(p["cinemas_cinemex"] or p["cinemas_cinepolis"] for p in body)
+
+
+def test_cartelera_reads_the_recorded_capture(client, viewer, recorded):
+    _login(client, "viewer@example.test")
+    body = client.get("/api/cartelera").json()
+    assert body["plaza"] is None and body["hours"] == [0, 24] and body["full_day"]
+    assert (body["d0"], body["d1"]) == ("2026-09-26", analytics.cinema_week("2026-09-26")[1])
+    assert {r["chain"] for r in body["kpis"]} == {"cinemex", "cinepolis"}
+    assert body["movie_gaps"] and body["heatmap"] and body["mix"]
+    assert [c["hours"] for c in body["general_summary"]] == [[0, 24], [18, 24]]
+    assert set(body["offered_by_title"]) == set(body["capacity_by_cinema"]) == {"cinemex", "cinepolis"}
+    assert client.get("/api/cartelera", params={"h0": 18}).json()["hours"] == [18, 24]
+    historia = client.get("/api/cartelera/historia", params={"chain": "cinepolis"}).json()
+    assert historia["cinemas"] and historia["cinema_id"] == historia["cinemas"][0]["cinema_id"]
+    assert client.get("/api/cartelera/cambios", params={"kinds": ["removed"]}).status_code == 200
+    for params in ({"plaza": "nada"}, {"h0": 7}, {"h0": 18, "h1": 12}, {"d0": "2026-09-28", "d1": "2026-09-27"}):
+        assert client.get("/api/cartelera", params=params).status_code == 422
+    assert client.get("/api/cartelera/cambios", params={"kinds": ["availability"]}).status_code == 422
+    assert client.get("/api/cartelera/historia", params={"chain": "cineteca"}).status_code == 422
