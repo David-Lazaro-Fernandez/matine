@@ -666,9 +666,9 @@ Petición del cliente tras la primera revisión: entender los precios de dulcer�
   "Scraper de snapshots" abajo.
 - `analytics/`: consultas de negocio sobre `data/snapshots.db` (`concessions.py`: dulcería). Funciones puras que reciben una
   conexión de solo lectura y una **ventana de fechas** `(d0, d1)` y devuelven listas de dicts; sin
-  dependencias. `queries.py` (`kpis`, `showtimes_by_slot`, `heatmap_day_slot`, `movies_by_chain`,
-  `mix`, `concentration`, `coverage`, `recent_events`, `events_by_kind`, `snapshot_health`,
-  `cinema_week`), `findings.py` (Capa 1: hasta tres hallazgos redactados como decisión con sus números de
+  dependencias. `queries.py` (`kpis`, `showtimes_by_slot`, `heatmap_day_slot`, `movies_by_chain`, `movie_gaps`,
+  `mix`, `concentration`, `coverage`, `week_publication`, `recent_events`, `events_by_kind`, `snapshot_health`,
+  `capture_status`, `cinema_week`), `findings.py` (Capa 1: hasta tres hallazgos redactados como decisión con sus números de
   soporte, y las conclusiones que abren cada sección de la Capa 2; cada hallazgo entra solo si cruza su umbral
   en pp), `headlines.py` (frases ejecutivas por tema, versión previa; la app ya no lo usa pero sigue exportado)
   y `labels.py` (todo texto de cara al usuario: franjas, cubetas de formato, tipos de cambio, colores). Toda la lógica de negocio va

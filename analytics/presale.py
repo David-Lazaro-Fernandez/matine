@@ -119,3 +119,23 @@ def presale_compare(conn, plaza=None):
                     "pace_pct_day_cinemex": u and u["pace_pct_day"], "pace_pct_day_cinepolis": t and t["pace_pct_day"],
                     "gap_pp": round(u["sold_pct"] - t["sold_pct"], 1) if u and t else None, "status": status(u, t)})
     return sorted(out, key=lambda r: (-max(r["sold_pct_cinemex"] or 0, r["sold_pct_cinepolis"] or 0), r["title"]))
+
+
+def presale_by_chain(conn, plaza=None):
+    """`presale_compare` con una fila por título y cadena que lo tiene en preventa: `title`, `release_date`, `status`,
+    `chain`, `title_norm`, `shows`, `sold`, `seats`, `sold_pct`, `pace_pct_day` e `in_other_chain`, qué hace la otra
+    cadena con el título: `presale` (también en preventa), `absent` (no lo exhibe) o `shown` (lo exhibe fuera de su
+    preventa). Textos en `labels.PRESALE_OTHER_LABEL` y `labels.PRESALE_TAG`. Orden: las filas de Cinemex y luego las
+    de Cinépolis, cada grupo en el orden de `presale_compare`."""
+    compare = presale_compare(conn, plaza=plaza)
+    out = []
+    for chain in ("cinemex", "cinepolis"):
+        for r in compare:
+            if not r[f"shows_{chain}"]:
+                continue
+            other = "presale" if r["status"] == "ambas" else "absent" if r["status"].startswith("exclusiva") else "shown"
+            out.append({"title": r["title"], "release_date": r["release_date"], "status": r["status"], "chain": chain,
+                        "title_norm": r[f"title_norm_{chain}"], "shows": r[f"shows_{chain}"], "sold": r[f"sold_{chain}"],
+                        "seats": r[f"seats_{chain}"], "sold_pct": r[f"sold_pct_{chain}"],
+                        "pace_pct_day": r[f"pace_pct_day_{chain}"], "in_other_chain": other})
+    return out

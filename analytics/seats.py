@@ -82,6 +82,16 @@ def occupancy_summary(conn, chain="cinepolis", phase="post", plaza=None):
         FROM occupancy_sample WHERE chain = ? AND {_PHASE[phase]}{where} GROUP BY 1 ORDER BY avg_sold_pct DESC""", (chain, *params))
 
 
+def occupancy_total(conn, chain="cinepolis", phase="post", plaza=None):
+    """Una fila con el total de `occupancy_summary`: `samples`, `sold_pct` (butacas vendidas entre aforo, ponderado;
+    0.0 sin muestras) y `levels` (colores del semáforo con muestras, sin contar las funciones sin color)."""
+    levels = occupancy_summary(conn, chain=chain, phase=phase, plaza=plaza)
+    samples = sum(r["samples"] for r in levels)
+    sold, seats = sum(r["sold"] or 0 for r in levels), sum(r["seats"] or 0 for r in levels)
+    return [{"samples": samples, "sold_pct": 100.0 * sold / seats if samples and seats else 0.0,
+             "levels": sum(r["availability"] != "(sin color)" for r in levels)}]
+
+
 def occupancy_recent(conn, limit=50, chain="cinepolis", phase="post", plaza=None):
     """Últimas muestras de ocupación de la cadena, con cine, función y % vendido."""
     where, params = plaza_cinema_where(plaza, "o.", chains=(chain,))
@@ -122,6 +132,22 @@ def prices(conn, days=14, plaza=None):
                ROUND(AVG(CASE WHEN rk IN ((n + 1) / 2, (n + 2) / 2) THEN general_cents END) / 100.0, 0) median_price,
                MIN(general_cents) / 100.0 min_price, MAX(general_cents) / 100.0 max_price, MAX(sampled_at) last_sampled
         FROM ranked GROUP BY chain, format_bucket, day_type ORDER BY chain, format_bucket, day_type""", (f"-{int(days)}", *params))
+
+
+def price_summary(conn, days=14, plaza=None):
+    """Resumen de `prices`: `cinemas`, {cadena: cines muestreados} (el máximo entre sus combinaciones de formato y tipo de
+    día), y `markup_min_pct` / `markup_max_pct`, el rango de cuánto más cobra Cinépolis en tradicional, premium y gran
+    formato. El rango es None salvo que Cinépolis cobre más en todas las combinaciones con precio de ambas cadenas."""
+    median, cinemas = {}, {}
+    for r in prices(conn, days=days, plaza=plaza):
+        median[(r["chain"], r["format_bucket"], r["day_type"])] = r["median_price"]
+        cinemas[r["chain"]] = max(cinemas.get(r["chain"], 0), r["cinemas"])
+    markups = [100 * (median[("cinepolis", b, d)] / median[("cinemex", b, d)] - 1)
+               for b in ("traditional", "premium", "large") for d in ("weekday", "promo", "weekend")
+               if median.get(("cinemex", b, d)) and ("cinepolis", b, d) in median]
+    higher = bool(markups) and min(markups) > 0
+    return {"cinemas": cinemas, "markup_min_pct": min(markups) if higher else None,
+            "markup_max_pct": max(markups) if higher else None}
 
 
 def effective_ticket_price(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None, days=14):
