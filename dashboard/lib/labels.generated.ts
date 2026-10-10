@@ -1437,3 +1437,22 @@ export const PAGE_LABEL = {
   "usuarios": "Usuarios",
   "operaciones": "Operaciones"
 } as const;
+
+export const MODULE_LABEL = {
+  "cartelera": "Cartelera",
+  "dulceria": "Dulcería",
+  "datos": "Datos",
+  "admin": "Administración"
+} as const;
+
+export const NAV_LABEL = {
+  "cartelera": "Resumen",
+  "mapa": "Mapa",
+  "recomendador": "¿A dónde ir?",
+  "dulceria": "En sala",
+  "independientes": "Independientes",
+  "datos": "Datos",
+  "usuarios": "Usuarios",
+  "operaciones": "Operaciones",
+  "domicilio": "A domicilio"
+} as const;

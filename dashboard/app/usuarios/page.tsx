@@ -18,15 +18,21 @@ import {
   MessageBar,
   MessageBarBody,
   Option,
-  Title1,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { Pregunta, Seccion, Table } from '@/components/common';
+import {
+  PageHeader,
+  Pregunta,
+  Seccion,
+  Table,
+  SkeletonSeccion,
+  SkeletonTable,
+} from '@/components/common';
 import { useSession } from '@/components/shell';
 import { ApiError, api } from '@/lib/api';
 import { fill, localTime } from '@/lib/format';
-import { AUTH_TEXT, COLUMN_LABEL, GRAY, ROLE_HELP, ROLE_LABEL } from '@/lib/labels.generated';
+import { AUTH_TEXT, COLUMN_LABEL, ROLE_HELP, ROLE_LABEL } from '@/lib/labels.generated';
 
 type Role = keyof typeof ROLE_LABEL;
 type Account = {
@@ -48,7 +54,6 @@ const COLUMNS = ['name', 'email', 'role', 'active', 'last_login_at', 'pending_in
 const CHECK = '✓';
 
 const useStyles = makeStyles({
-  lead: { color: GRAY, margin: `${tokens.spacingVerticalXS} 0 ${tokens.spacingVerticalL}` },
   columns: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
@@ -257,9 +262,14 @@ export default function Page() {
 
   return (
     <>
-      <Title1 as="h1">{AUTH_TEXT.users_title}</Title1>
-      <p className={s.lead}>{AUTH_TEXT.users_lead}</p>
+      <PageHeader title={AUTH_TEXT.users_title} meta={[AUTH_TEXT.users_lead]} />
       {error && <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>}
+      {!users && !error && (
+        <>
+          <SkeletonTable rows={4} columns={6} />
+          <div className={s.columns}><SkeletonSeccion table /><SkeletonSeccion table /></div>
+        </>
+      )}
       {users && users.length > 0 && (
         <Table headers={COLUMNS.map((c) => COLUMN_LABEL[c])} rows={users.map((a) => COLUMNS.map((c) => cell(a, c)))} />
       )}

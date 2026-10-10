@@ -1,57 +1,75 @@
 # Guía de Diseño
 
-Referencia visual para todo lo que se presente al cliente (Cinemex): dashboard Streamlit, gráficas Altair, reportes y capturas. Cinemex es la marca protagonista y va en rojo; Cinépolis es el competidor y va en tinta (casi negro), nunca en rojo. La estructura de la página es la jerarquía en tres capas del mockup del 2026-09-08.
+Referencia visual para todo lo que se presente al cliente (Cinemex): el dashboard de `dashboard/` (Next.js + Fluent UI
+v9), sus gráficas de Vega-Lite, reportes y capturas. Desde el 2026-10-10 el dashboard tiene aspecto de aplicación
+empresarial: **la interfaz es Fluent tal cual** (marca azul, neutros, Segoe) y **el color de las cadenas vive solo en los
+datos**. Cinemex va en rojo y Cinépolis en tinta, en gráficas, tablas y hallazgos; nunca en botones ni en la navegación.
+La estructura de cada página sigue siendo la jerarquía en tres capas del mockup del 2026-09-08.
+
+Streamlit (`app.py`, `ui/`, `views/`) conserva su aspecto editorial anterior hasta el corte de la migración; esta guía
+describe el de `dashboard/`.
 
 ## Paleta de colores
 
-Adoptada el 2026-09-08 con el mockup "Propuesta de jerarquía en 3 capas". Sustituye al rojo `#FF1744` y al
-gris `#333333` de la primera versión.
+Hay dos familias que no se mezclan:
 
-### Tokens
+1. **Interfaz: los tokens de Fluent** (`webLightTheme`, `lib/theme.ts`). Fondos, bordes, texto, botones, foco,
+   selección y enlaces usan `tokens.*` de `@fluentui/react-components`, nunca un hex. La marca es el azul de Fluent
+   (`colorBrandBackground`, `#0F6CBD`).
+2. **Datos: las constantes de `analytics/labels.py`.** Series, celdas y cifras de cada cadena.
+
+### Tokens de interfaz (Fluent)
+
+| Uso | Token |
+|---|---|
+| Fondo del contenido y de tarjetas | `colorNeutralBackground1` (blanco) |
+| Fondo de página detrás de las tarjetas, bloque de conclusión | `colorNeutralBackground2` |
+| Panel de navegación del módulo | `colorNeutralBackground3` |
+| Bordes de tarjetas, divisores de tabla, borde del riel | `colorNeutralStroke2` |
+| Texto principal / secundario / terciario | `colorNeutralForeground1` / `2` / `3` |
+| Acción: botón primario, enlace, foco, selección, módulo activo | `colorBrandBackground`, `colorBrandForeground1`, `colorBrandBackground2` |
+| Avisos | `MessageBar` con su `intent` (`info`, `warning`, `error`, `success`) |
+
+### Colores de datos (`analytics/labels.py`)
 
 | Token | Hex | Uso |
 |---|---|---|
-| `--red` | `#E31837` | Cinemex: serie en gráficas, acento del encabezado, borde izquierdo de los hallazgos, chips "Decisión" |
-| `--red-soft` | `#FDEDF0` | Fondo de chips y hover de botones y navegación |
-| `--red-dark` | `#9E0F26` | Primer tono de la rampa ordinal (Premium / VIP) |
-| `--ink` | `#191A1E` | Texto fuerte, Cinépolis en gráficas, rótulos "CAPA" |
-| `--indep` | `#8C8E95` | La Cineteca Nacional (cine independiente) en gráficas, `INDEP` en `labels.py`. Solo en la página Independientes y en las listas de tres cadenas (Datos, Operaciones); es el mismo gris del centro de la paleta divergente |
-| `--gris` | `#5C6068` | Texto secundario, ejes y leyendas |
-| `--linea` | `#E4E5E9` | Bordes de tarjetas y divisores de tabla |
-| `--papel` | `#FFFFFF` | Tarjetas y secciones |
-| `--fondo` | `#F6F6F4` | Fondo de página y bloque de conclusión |
-| `--ok` | `#2F6F4E` | Chip de estado sano. **Solo en la página Operaciones** (admin) |
-| `--warn` | `#B45309` | Chip y celdas de estado con problema, corridas fallidas. **Solo en la página Operaciones**; el rojo sigue siendo Cinemex |
+| `RED` | `#E31837` | Cinemex: serie en gráficas, cifras de Cinemex en tablas y hallazgos, borde de la tarjeta de hallazgo |
+| `RED_SOFT` | `#FDEDF0` | Fondo del chip "Decisión" del hallazgo |
+| `RED_DARK` | `#9E0F26` | Primer tono de la rampa ordinal (Premium / VIP) |
+| `INK` | `#191A1E` | Cinépolis en gráficas |
+| `INDEP` | `#8C8E95` | La Cineteca y los independientes. Solo en Independientes, Mapa, Recomendador y las listas de varias cadenas |
+| `GRAY`, `GRID`, `LINE`, `PAPER` | | Ejes, rejilla, bordes y fondo **dentro de las gráficas** de Vega-Lite (`lib/vega-theme.ts`) |
+| `OK` | `#2F6F4E` | Estado sano. **Solo en Operaciones** |
+| `WARN` | `#B45309` | Estado con problema. **Solo en Operaciones** |
 
 ### Reglas de uso
 
-- **Rojo solo para Cinemex y para acción.** Un rojo en pantalla significa "Cinemex" o "decisión / haz clic". No se usa
-  para alertas ni para valores negativos.
-- **La Cineteca en gris medio.** No compite con ninguna de las dos cadenas: ni rojo (Cinemex) ni tinta (Cinépolis). Al
-  lado de Cinemex, Cinemex va primero y en rojo.
-- **Cinépolis en tinta.** En comparativas, Cinépolis va en `#191A1E` (barras, puntos) y sus cifras en negro; las de
-  Cinemex pueden ir en rojo. El rojo domina sin competir.
-- **Contraste alto.** Texto blanco sobre rojo o tinta; texto `#191A1E` sobre blanco o `#F6F6F4`. Gris `#5C6068` solo
-  para texto secundario de 13 px o más.
+- **Rojo solo para Cinemex, y solo en los datos.** Un rojo en pantalla significa "Cinemex". No se usa para acciones,
+  alertas ni valores negativos. Las acciones van en el azul de Fluent.
+- **Cinépolis en tinta.** En comparativas, Cinépolis va en `INK` y sus cifras en negrita; las de Cinemex en rojo.
+  Cinemex siempre primero en las escalas; las series no se ciclan.
+- **La Cineteca en gris medio.** No compite con ninguna de las dos cadenas.
 - **Rampa ordinal** (cubetas ordenadas de formato) a partir del rojo: `#9E0F26`, `#E31837`, `#F08497`, `#F7CDD5`.
   El texto sobre los dos tonos claros es `#7A2233` (`RED_RAMP_TEXT`).
 - **Divergente** (mapa de calor de Δ pp): lado Cinemex en rojo (`#F6B7C2` → `#E31837`), lado Cinépolis en tinta
   (`#8C8E95` → `#191A1E`), centro `#EFEFEF`. Texto blanco cuando la celda es oscura o saturada.
+- Para un color de datos nuevo: agrégalo a `analytics/labels.py` y documéntalo aquí antes de usarlo. Para la interfaz,
+  usa un token de Fluent; si ninguno sirve, se discute antes.
 
 ## Tipografía
 
-Una sola familia: **Archivo** (variable, Google Fonts), con el eje de anchura para los títulos. Sans-serif del sistema
-como respaldo.
+La de Fluent: Segoe UI con sus respaldos del sistema (`tokens.fontFamilyBase`), y la rampa tipográfica de Fluent
+(`Title2`, `Subtitle1`, `Body1`, `Caption1` o `tokens.fontSize*`). Sin fuentes externas ni anchuras condensadas.
 
-| Elemento | Peso | Anchura (`font-stretch`) | Tamaño |
-|---|---|---|---|
-| H1 (encabezado) | 850 | 75 % | 30–46 px, `line-height` 1.02 |
-| H2 (título de capa) | 800 | 80 % | 26 px |
-| Pregunta de sección | 800 | 82 % | 22 px |
-| Titular de hallazgo | 750 | 100 % | 19 px |
-| Conclusión | 700 | 100 % | 15.5 px |
-| Cuerpo | 400–500 | 100 % | 15 px, `line-height` 1.55 |
-| Notas, soporte, tablas | 400–600 | 100 % | 12.5–13.5 px, números tabulares |
+| Elemento | Componente o token |
+|---|---|
+| Título de página | `Title3` (28 px, semibold) |
+| Título de capa | `Subtitle1` (20 px, semibold) |
+| Pregunta de sección | `Subtitle2` (16 px, semibold) |
+| Titular de hallazgo | `fontSizeBase500`, semibold |
+| Cuerpo | `Body1` (14 px) |
+| Notas, soporte, tablas | `Caption1` / `fontSizeBase200`, números tabulares |
 
 ## Jerarquía en tres capas
 
@@ -66,79 +84,112 @@ La página se lee de arriba abajo con costo de atención decreciente:
 3. **Capa 3, "Detalle y apéndice".** Todo colapsado con una línea de resumen en gris al lado del título; un panel
    pendiente lo dice dentro de su propio apéndice. Cierra con el pie de fuentes.
 
+## Navegación y marco
+
+Como la consola de una aplicación de Microsoft (`components/shell.tsx`):
+
+- **Riel de módulos** a la izquierda, 56 px, fondo blanco y borde derecho: un icono por módulo (`@fluentui/react-icons`,
+  relleno cuando está activo, con fondo `colorBrandBackground2`) y un `Tooltip` con su nombre. Abajo, el `Avatar` de la
+  cuenta abre un `Popover` con nombre, correo, rol y "Cerrar sesión".
+- **Panel del módulo**, 220 px, fondo `colorNeutralBackground3`: el nombre del módulo y sus páginas (`NavItem` con
+  icono). Los nombres salen de `MODULE_LABEL` y `NAV_LABEL`.
+- **Módulos.** Cada uno corresponde a un plan que se contrata aparte; por ahora toda cuenta ve todos:
+  - **Cartelera** (películas y funciones): Resumen (`/`), Mapa, ¿A dónde ir?, Independientes.
+  - **Dulcería**: En sala (`/dulceria/`), A domicilio (`/dulceria/domicilio/`).
+  - **Datos**: el explorador.
+  - **Administración** (solo admin): Usuarios, Operaciones.
+- **Contenido** a la derecha: una superficie blanca con elevación de Fluent depth 16 (`tokens.shadow16`) sobre el
+  fondo `colorNeutralBackground3`, y adentro el ancho de lectura de 1120 px. En celular va sin sombra.
+- **Celular (≤ 768 px):** riel y panel se ocultan. Los módulos van en una `TabList` fija abajo, al alcance del pulgar, y
+  las páginas del módulo en una `TabList` arriba del contenido.
+- Sin sesión no hay riel ni panel: solo la tarjeta de acceso.
+
 ## Componentes
 
-### Encabezado
+Los de Fluent v9 antes que uno propio. Los compartidos viven en `components/common.tsx`.
 
-Título con la palabra "Cinemex" en rojo, borde inferior de 3 px en tinta, fila de metadatos (periodo, cines,
-funciones, última captura) y navegación en píldora con borde de tinta a las tres capas.
+### Encabezado de página
+
+Título (`Title3`), una fila de metadatos en `colorNeutralForeground3` (zona, periodo, cines, funciones, última captura)
+y, debajo, la barra de filtros. Sin palabras en rojo ni borde grueso.
+
+### Barra de filtros
+
+Una fila con `flexWrap` bajo el encabezado: `Field` con `Dropdown`, `Combobox`, `Input` o `DatePicker`. Los controles
+que solo afectan una sección van dentro de esa sección. El estado vive en la URL.
 
 ### Rótulos de capa
 
-Etiqueta "CAPA N" en caja (roja para la Capa 1, tinta para las demás), H2 a su derecha y una línea de descripción en
-gris de hasta 640 px.
+Etiqueta "CAPA N" como `Badge` (`appearance="tint"`, color de marca), título de capa a su derecha y una línea de
+descripción en `colorNeutralForeground3` de hasta 640 px.
 
 ### Tarjeta de hallazgo
 
-Fondo blanco, borde `#E4E5E9`, borde izquierdo de 5 px rojo, radio 6 px, padding 20 × 24 px. Rejilla de dos columnas:
-texto y columna de soporte (240 px, separada por una línea) con pares etiqueta / valor en negrita; valores de Cinemex en
-rojo. En pantallas angostas la columna pasa abajo.
+`Card` blanca con borde `colorNeutralStroke2`, borde izquierdo de 4 px en `RED` (es un dato de Cinemex), radio
+`borderRadiusMedium`. Dos columnas: texto y columna de soporte (240 px) con pares etiqueta / valor; valores de Cinemex en
+rojo. Chip "Decisión" con fondo `RED_SOFT`. En pantallas angostas la columna pasa abajo.
 
 ### Sección de evidencia
 
-Fondo blanco, borde `#E4E5E9`, radio 6 px, padding 22 × 26 px. Orden fijo: pregunta, conclusión (fondo `#F6F6F4`, borde
-izquierdo 3 px tinta, negrita, con la nota en cursiva gris), leyenda, gráfico, controles, "Cómo leerla".
+`Card` blanca con borde, radio `borderRadiusMedium`, sin sombra. Orden fijo: pregunta, conclusión (fondo
+`colorNeutralBackground2`, borde izquierdo de 3 px `colorNeutralStroke1`), leyenda, gráfico, controles, "Cómo leerla".
 
 ### Apéndice
 
-`st.expander` estilizado: fondo blanco, borde, radio 6 px, chevrón rojo. La etiqueta lleva el título y, en gris, una
-línea de resumen con las cifras clave para que no haga falta abrirlo.
+`Accordion` dentro de una tarjeta con borde. La etiqueta lleva el título y, en `colorNeutralForeground3`, una línea de
+resumen con las cifras clave.
 
 ### Botones y controles
 
-Secundarios en píldora (radio 999 px), borde 1.5 px tinta, texto tinta, hover `#FDEDF0`. No hay botones rojos
-rellenos en el dashboard: el rojo se reserva para Cinemex y los chips de decisión.
+Los de Fluent: `appearance="primary"` (azul) para la acción principal de un formulario, `secondary` para el resto,
+`subtle` en la navegación. Nunca un botón rojo.
 
-### Formularios y tarjeta de acceso
+### Tarjeta de acceso
 
-Las páginas sin sesión (entrar, olvidé mi contraseña, restablecer) usan una sola tarjeta centrada de ancho medio
-(columna central de tres, ~1/3 del ancho), fondo blanco, borde `#E4E5E9`, radio 6 px, padding 30 × 32 px, con la marca
-"Absolut Cinema" condensada (la segunda palabra en rojo), un encabezado corto y una línea de contexto en gris. Los campos
-son los del tema (borde `#E4E5E9`, foco rojo) y el botón de envío es la píldora secundaria de siempre; no hay botón rojo
-relleno ni en el login. Los errores usan `st.error` con los textos de `AUTH_TEXT`; nunca se revela si un correo existe.
-Al entrar o salir la página se recarga completa (≈1 s): es lo que exige la cookie en Streamlit.
-
-### Barra de cuenta
-
-Con sesión, la barra lateral abre con "Sesión de **Nombre**", correo y rol en gris (`.cuenta`) y el botón píldora
-"Cerrar sesión", seguido de un divisor; debajo van los filtros de la página: en la cartelera y la dulcería, primero
-"Zona" (radio con las plazas que tienen cines en la base y "Nacional"; CDMX por defecto), luego periodo y franja. El
-encabezado dice "Cartelera CDMX" o "Cartelera nacional" según la zona (`labels.plaza_title`). La página Usuarios reutiliza la sección de
-evidencia (`seccion`) para los dos bloques (nueva cuenta, administrar una cuenta) y la tabla estándar para la lista. El
-explorador Datos usa `st.dataframe` a 560 px de alto con orden y búsqueda nativos, precios con formato `$`, y un botón
-de descarga CSV.
+Entrar, olvidé y restablecer: una `Card` centrada de 420 px sobre `colorNeutralBackground2`, con el nombre del producto,
+un encabezado corto, una línea de contexto y el botón primario. Los errores van en `MessageBar` con los textos de
+`AUTH_TEXT`; nunca se revela si un correo existe.
 
 ### Tablas
 
-Compactas, sin fondo en el encabezado: cabecera en gris con borde inferior 1.5 px, filas separadas por 1 px
-`#E4E5E9`, números tabulares alineados a la derecha, la columna de Cinemex en rojo y la de Cinépolis en negrita.
+`DataGrid` compacto: cabecera en `colorNeutralForeground3` semibold, filas separadas por `colorNeutralStroke2`, números
+tabulares a la derecha, la columna de Cinemex en rojo y la de Cinépolis en negrita.
 
-### Gráficas (Altair)
+### Gráficas (Vega-Lite)
 
-- Serie Cinemex `#E31837`, serie Cinépolis `#191A1E`; la barra del dumbbell en `#C9CBD0`.
-- Fuente Archivo, ejes y leyendas en gris `#5C6068`, rejilla `#ECEDEF`, sin marco ni ticks.
+- Serie Cinemex `RED`, serie Cinépolis `INK`; la barra del dumbbell en `NEUTRAL`.
+- Fuente de Fluent, ejes y leyendas en `GRAY`, rejilla `GRID`, sin marco ni ticks (`lib/vega-theme.ts`).
 - Mapa de calor: celdas con radio 4 px separadas por 4 px de blanco, sin leyenda de color (el número va en la celda).
-- Barras apiladas al 100 %: rampa ordinal roja, etiqueta de la cadena coloreada (Cinemex rojo, Cinépolis tinta).
+- Barras apiladas al 100 %: rampa ordinal roja, etiqueta de la cadena coloreada.
+
+## Carga
+
+Ninguna pantalla se queda en blanco ni con un `Spinner` suelto. Mientras un endpoint no responde, la página pinta
+`Skeleton` de Fluent con la forma de lo que viene (`components/common.tsx`): `SkeletonCapas` en las páginas de tres
+capas, `SkeletonSeccion`, `SkeletonTable`, `SkeletonApendice`, `SkeletonHallazgo` y `SkeletonLines`. `VegaChart` y
+`CinemaMap` muestran su propio bloque hasta que la gráfica o el mapa terminan de cargar, y el marco pinta riel y panel
+mientras se valida la sesión. Una página nueva arma su esqueleto con estas piezas.
+
+## Movimiento
+
+Las animaciones de Fluent, no unas propias. Los componentes de Fluent ya traen las suyas (`NavDrawer`, `Accordion`,
+`Popover`, `Dialog`, `Tooltip`, `Spinner`). Lo que aparece al llegar los datos (secciones, hallazgos, apéndices y la
+tarjeta de acceso) entra con `Entrada` de `components/common.tsx`: sube 8 px y se aclara, con
+`motionTokens.durationNormal` y `curveDecelerateMid`. Fluent la acorta cuando el sistema pide menos movimiento.
 
 ## Estilo visual
 
-- **Editorial, no de panel de control.** Titulares condensados y contundentes, mucho blanco, una sola familia.
-- **Contraste.** Rojo + tinta + blanco como trío principal; el gris solo acompaña.
-- **Espaciado.** Las capas respiran (44 px entre rótulos); las tarjetas 14–18 px entre sí.
-- **Bordes.** Radio 4–8 px en tarjetas; píldora solo en navegación y botones.
-- **Sin sombras.** La jerarquía la dan el borde, el color y el tamaño del texto.
+- **Aplicación empresarial, no editorial.** Mucho blanco, jerarquía con la rampa tipográfica de Fluent.
+- **El color es información.** La interfaz es neutra y azul; el rojo y la tinta solo aparecen donde hay datos de una
+  cadena.
+- **Espaciado** con `tokens.spacing*`; 32 px entre capas, 16 px entre tarjetas.
+- **Bordes** de 1 px `colorNeutralStroke2` y radio `borderRadiusMedium`. La única elevación propia es la superficie del
+  contenido (`shadow16`); las tarjetas van sin sombra. Fluent pone las suyas en `Popover`, `Dialog` y `Tooltip`.
 
 ## Aplicación en este repo
+
+Esta sección describe Streamlit, que se borra en el corte. En `dashboard/` el tema es `lib/theme.ts` (`webLightTheme`)
+y los colores de datos llegan por `lib/labels.generated.ts` (`make labels`).
 
 - **Tema Streamlit.** El bloque `[theme]` de `.streamlit/config.toml` fija colores, radios, la familia Archivo y los
   pesos de encabezado. Fondo de página `#F6F6F4`, fondo secundario blanco (tarjetas, barra lateral).
@@ -187,7 +238,7 @@ la dulcería: la serie de la Cineteca en `INDEP` y, cuando se compara con nosotr
 primero y en rojo. Cinépolis no aparece: la Cineteca no entra al head-to-head. Los paneles de ocupación se muestran como
 pendientes (`st.info`) mientras la lectura de sus planos no esté confirmada.
 
-### Navegación entre páginas
+### Navegación entre páginas (Streamlit)
 
 `st.navigation(position="top")`: pestañas "Cartelera", "Mapa", "¿A dónde ir?", "Dulcería", "Independientes", "Datos" y, para el rol admin, "Usuarios" y "Operaciones" en la barra
 superior en escritorio. Sin sesión la navegación va oculta (`position="hidden"`) y solo existen las páginas de acceso. En pantallas de

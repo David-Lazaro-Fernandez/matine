@@ -19,7 +19,6 @@ import {
   RadioGroup,
   Select,
   Slider,
-  Spinner,
   Switch,
   Tab,
   TabList,
@@ -27,7 +26,25 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { useSearchParams } from 'next/navigation';
-import { Apendice, AppLink, Capa, type Cell, type Finding, Hallazgo, Leerla, Leyenda, Pregunta, Seccion, Table } from '@/components/common';
+import {
+  Apendice,
+  AppLink,
+  Capa,
+  type Cell,
+  type CellClass,
+  type Finding,
+  Hallazgo,
+  Leerla,
+  Leyenda,
+  type MetaItem,
+  PageFooter,
+  PageHeader,
+  Pregunta,
+  Seccion,
+  Table,
+  SkeletonCapas,
+  SkeletonTable,
+} from '@/components/common';
 import { MixBars, type MixRow } from '@/components/cartelera/mix-bars';
 import { PresaleBars, type PresaleRow } from '@/components/cartelera/presale-bars';
 import { type CurveRow, PresaleCurve } from '@/components/cartelera/presale-curve';
@@ -52,20 +69,16 @@ import {
   FORMAT_BUCKETS,
   FORMAT_LABEL,
   FULL_DAY,
-  GRAY,
   HOURS_TEXT,
   HOUR_MARKS,
   HOUR_PRESETS,
   INDEP_TEXT,
-  INK,
   KIND_HELP,
   KIND_LABEL,
   LANGUAGE_BUCKETS,
   LANGUAGE_LABEL,
-  LINE,
   PLAZA_LABEL,
   PUBLICATION_LABEL,
-  RED,
   RED_RAMP,
   SEATS_CHART_TEXT,
   SLOTS,
@@ -163,33 +176,26 @@ const RELABEL: Record<string, Record<string, string>> = {
 };
 
 const useStyles = makeStyles({
-  enc: { padding: '6px 0 8px', borderBottom: `3px solid ${INK}`, marginBottom: '8px' },
-  title: {
-    fontSize: 'clamp(30px, 4.2vw, 46px)',
-    fontWeight: 850,
-    fontStretch: '75%',
-    lineHeight: 1.02,
-    margin: 0,
-    '& span': { color: RED },
+  navCapas: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalL}`,
+    fontSize: tokens.fontSizeBase200,
+    marginBottom: tokens.spacingVerticalM,
+    '& a': { color: tokens.colorNeutralForeground2, textDecoration: 'none' },
   },
-  meta: { display: 'flex', flexWrap: 'wrap', gap: '6px 22px', padding: '12px 0 14px', color: GRAY, fontSize: '13.5px' },
-  metaKey: { color: INK, fontWeight: 600 },
-  navCapas: { display: 'flex', flexWrap: 'wrap', gap: '6px 18px', fontSize: '13px', '& a': { color: INK, textDecoration: 'none' } },
-  navNum: { color: RED, marginRight: '6px' },
-  filters: { display: 'flex', flexWrap: 'wrap', gap: '12px 28px', alignItems: 'flex-start', margin: '8px 0 12px' },
+  navNum: { color: tokens.colorBrandForeground1, marginRight: tokens.spacingHorizontalXS },
   dates: { display: 'flex', gap: tokens.spacingHorizontalS },
-  guide: { fontSize: '13px', color: GRAY, maxWidth: '720px', marginBottom: '12px' },
-  caption: { color: GRAY, fontSize: '12.5px', margin: '4px 0' },
-  spinner: { margin: '48px 0' },
+  guide: { fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3, maxWidth: '720px', marginBottom: '12px' },
+  caption: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, margin: `${tokens.spacingVerticalXS} 0` },
   columns: { display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '24px', '@media (max-width: 760px)': { gridTemplateColumns: '1fr' } },
   // Sin esto, una columna de grid no se encoge por debajo del ancho de su tabla.
   column: { minWidth: 0 },
   controls: { display: 'flex', flexWrap: 'wrap', gap: '12px 20px', alignItems: 'flex-end', margin: '8px 0' },
   wide: { minWidth: '240px' },
-  chartTitle: { fontWeight: 700, margin: '10px 0 4px' },
-  nota: { color: GRAY, fontSize: '13px', margin: '6px 0 10px' },
+  chartTitle: { fontWeight: tokens.fontWeightSemibold, margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalXS}` },
+  nota: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalS}` },
   scroll: { maxHeight: '400px', overflow: 'auto', minWidth: 0 },
-  pie: { marginTop: '48px', paddingTop: '16px', borderTop: `1px dashed ${LINE}`, color: GRAY, fontSize: '12.5px' },
 });
 
 // --- Formato propio de la cartelera: equivalentes de `hour_mark`, `hours_label`, `range_short` y `plaza_title`. ---
@@ -358,21 +364,10 @@ export default function Page() {
   }, [request]);
 
   const nextState = data?.next_week_publication ? PUBLICATION_LABEL[data.next_week_publication] : '';
-  const filters = (
-    <div className={s.filters}>
-      <PlazaSelector />
-      <PeriodSelector nextState={nextState} />
-      <HoursSelector />
-    </div>
-  );
-  const title = (
-    // El título de labels.py lleva un <span> para la palabra en rojo.
-    <h1 className={s.title} dangerouslySetInnerHTML={{ __html: fill(T.title, { plaza: plazaTitle(plaza) }) }} />
-  );
-
+  const ready = data != null && loaded === request && data.kpis.length >= 2;
   const body = () => {
     if (error) return <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>;
-    if (!data || loaded !== request) return <Spinner className={s.spinner} />;
+    if (!data || loaded !== request) return <SkeletonCapas findings={3} sections={5} appendices={4} />;
     if (!data.coverage.length) return <Info text={T.no_shows} />;
     if (data.kpis.length < 2) return <Info text={fill(T.no_board, { range: range_es(d0, d1) })} />;
     return <Contenido key={request} data={data} />;
@@ -380,35 +375,37 @@ export default function Page() {
 
   return (
     <>
-      <div className={s.enc}>
-        {title}
-        {data && loaded === request && data.kpis.length >= 2 && <Meta data={data} />}
-      </div>
-      {filters}
+      <PageHeader title={fill(T.title, { plaza: plazaTitle(plaza) })} meta={ready && data ? metaItems(data) : undefined}>
+        <PlazaSelector />
+        <PeriodSelector nextState={nextState} />
+        <HoursSelector />
+      </PageHeader>
+      {ready && <NavCapas />}
       {data && loaded === request && <Guia data={data} />}
       {body()}
     </>
   );
 }
 
-function Meta({ data }: { data: Cartelera }) {
-  const s = useStyles();
+function metaItems(data: Cartelera): MetaItem[] {
   const [us, them] = COMPARED.map((c) => data.kpis.find((k) => k.chain === c)!);
   const times = data.capture.flatMap((r) => (r.last_ok_at ? [r.last_ok_at] : []));
   const last = times.length ? times.reduce((a, b) => (new Date(a) <= new Date(b) ? a : b)) : null;
+  return [
+    [T.meta_period, rangeShort(data.d0, data.d1)],
+    ...(data.full_day ? [] : [[T.meta_hours, hoursLabel(data.hours)] as const]),
+    [`${us.cinemas} + ${them.cinemas}`, T.meta_cinemas],
+    [thousands(us.shows + them.shows), T.meta_shows],
+    `${T.meta_capture} ${last ? localTime(last) : '—'}`,
+  ];
+}
+
+function NavCapas() {
+  const s = useStyles();
   return (
-    <>
-      <div className={s.meta}>
-        <span><strong className={s.metaKey}>{T.meta_period}</strong> {rangeShort(data.d0, data.d1)}</span>
-        {!data.full_day && <span><strong className={s.metaKey}>{T.meta_hours}</strong> {hoursLabel(data.hours)}</span>}
-        <span><strong className={s.metaKey}>{us.cinemas} + {them.cinemas}</strong> {T.meta_cinemas}</span>
-        <span><strong className={s.metaKey}>{thousands(us.shows + them.shows)}</strong> {T.meta_shows}</span>
-        <span>{T.meta_capture} {last ? localTime(last) : '—'}</span>
-      </div>
-      <nav className={s.navCapas}>
-        {T.nav.map((label, i) => <a key={label} href={`#capa${i + 1}`}><b className={s.navNum}>{i + 1}</b>{label}</a>)}
-      </nav>
-    </>
+    <nav className={s.navCapas}>
+      {T.nav.map((label, i) => <a key={label} href={`#capa${i + 1}`}><b className={s.navNum}>{i + 1}</b>{label}</a>)}
+    </nav>
   );
 }
 
@@ -449,7 +446,7 @@ function Contenido({ data }: { data: Cartelera }) {
         return <MessageBar key={r.chain} intent="warning"><MessageBarBody>{text}</MessageBarBody></MessageBar>;
       })}
 
-      <Capa num={1} title={T.layer1} desc={T.layer1_desc} roja />
+      <Capa num={1} title={T.layer1} desc={T.layer1_desc} />
       {!data.findings.length && <Info text={T.no_findings} />}
       {data.findings.map((f) => <Hallazgo key={f.title} f={f} />)}
       {topics.has('dulceria') && <p><AppLink href="/dulceria">{T.link_dulceria}</AppLink></p>}
@@ -472,7 +469,7 @@ function Contenido({ data }: { data: Cartelera }) {
       </Apendice>
       <Ocupacion data={data} />
 
-      <p className={s.pie}>{fill(T.footer, { filter: hoursFilter, date: date_es(data.first_snapshot) })}</p>
+      <PageFooter>{fill(T.footer, { filter: hoursFilter, date: date_es(data.first_snapshot) })}</PageFooter>
     </>
   );
 }
@@ -487,9 +484,9 @@ function Resumen({ data }: { data: Cartelera }) {
   const cells = rows.map((r): Cell[] => {
     const title = r.kind === 'title';
     if (title) rank += 1;
-    const cell = (text: string, extra?: 'cmx' | 'cnp'): Cell => {
-      const cls = title ? extra : 'sum';
-      return cls ? [text, cls] : text;
+    const cell = (text: string, chain?: CellClass): Cell => {
+      const classes = [...(title ? [] : ['sum' as const]), ...(chain ? [chain] : [])];
+      return classes.length ? [text, classes] : text;
     };
     const name = { title: r.title, rest: T.resumen_rest, total: T.resumen_total }[r.kind];
     return [
@@ -817,7 +814,7 @@ function Historial({ plaza }: { plaza: string | null }) {
     api<Historia>(request).then((body) => live && setH(body), () => live && setH(null));
     return () => { live = false; };
   }, [request]);
-  if (!h) return <Spinner size="small" />;
+  if (!h) return <SkeletonTable rows={4} />;
 
   const base = { chain: h.chain, cinema_id: h.cinema_id ?? undefined, date: h.date ?? undefined };
   const screens = [...new Set(h.functions.map((f) => f.screen).filter((x): x is string => x != null).map(String))]

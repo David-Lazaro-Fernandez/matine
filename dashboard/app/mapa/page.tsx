@@ -11,9 +11,22 @@ import {
   MessageBarBody,
   Option,
   makeStyles,
+  tokens,
 } from '@fluentui/react-components';
 import { useSearchParams } from 'next/navigation';
-import { Apendice, type Cell, Leerla, Leyenda, Pregunta, Seccion, Table } from '@/components/common';
+import {
+  Apendice,
+  type Cell,
+  Leerla,
+  Leyenda,
+  PageFooter,
+  PageHeader,
+  Pregunta,
+  Seccion,
+  Table,
+  SkeletonApendice,
+  SkeletonSeccion,
+} from '@/components/common';
 import { PlazaSelector, usePlaza, useSetParams } from '@/components/filters';
 import { CinemaMap, type MapPoint } from '@/components/mapa/cinema-map';
 import { api } from '@/lib/api';
@@ -23,14 +36,10 @@ import {
   CHAIN_LABEL,
   COLUMN_LABEL,
   FORMAT_LABEL,
-  GRAY,
-  INK,
-  LINE,
   MAP_METRIC,
   MAP_TEXT as T,
   NATIONAL_LABEL,
   PLAZA_LABEL,
-  RED,
 } from '@/lib/labels.generated';
 
 type Chain = keyof typeof CHAIN_LABEL;
@@ -87,23 +96,10 @@ const MONEY_COLUMNS: readonly string[] = ['ticket_price', 'ticket_max', 'popcorn
 const TEXT_COLUMNS: readonly string[] = ['chain', 'cinema_name', 'ticket_sampled_at', 'ticket_max_format'];
 
 const useStyles = makeStyles({
-  enc: { padding: '6px 0 8px', borderBottom: `3px solid ${INK}`, marginBottom: '8px' },
-  title: {
-    fontSize: 'clamp(30px, 4.2vw, 46px)',
-    fontWeight: 850,
-    fontStretch: '75%',
-    lineHeight: 1.02,
-    margin: 0,
-    '& span': { color: RED },
-  },
-  meta: { display: 'flex', flexWrap: 'wrap', gap: '6px 22px', padding: '12px 0 14px', color: GRAY, fontSize: '13.5px' },
-  metaKey: { color: INK, fontWeight: 600 },
-  filters: { display: 'flex', flexWrap: 'wrap', gap: '12px 28px', alignItems: 'flex-start', margin: '8px 0 22px' },
   wide: { minWidth: '260px', flexGrow: 1, maxWidth: '520px' },
-  nota: { color: GRAY, fontSize: '13px', margin: '6px 0 2px' },
-  detail: { fontWeight: 700, margin: '14px 0 4px' },
-  hint: { color: GRAY, fontSize: '13px' },
-  pie: { marginTop: '48px', paddingTop: '16px', borderTop: `1px dashed ${LINE}`, color: GRAY, fontSize: '12.5px' },
+  nota: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalXXS}` },
+  detail: { fontWeight: tokens.fontWeightSemibold, margin: `${tokens.spacingVerticalM} 0 ${tokens.spacingVerticalXS}` },
+  hint: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
 });
 
 function has(v: number | null | undefined): v is number {
@@ -225,7 +221,7 @@ export default function Page() {
   const mapPoints = React.useMemo(() => points(data?.sites ?? [], byKey, metric), [data, byKey, metric]);
 
   const filters = (
-    <div className={s.filters}>
+    <>
       <PlazaSelector />
       <Field label={T.size_by} hint={T.size_help}>
         <Dropdown
@@ -260,29 +256,21 @@ export default function Page() {
             .map(([id, name]) => <Option key={id} value={id}>{name}</Option>)}
         </Combobox>
       </Field>
-    </div>
+    </>
   );
 
   const zoneLabel = plaza ? PLAZA_LABEL[plaza as keyof typeof PLAZA_LABEL] ?? plaza : NATIONAL_LABEL;
-  const header = (
-    <div className={s.enc}>
-      {/* El título de labels.py lleva un <span> para la palabra en rojo. */}
-      <h1 className={s.title} dangerouslySetInnerHTML={{ __html: T.title }} />
-      {data && (
-        <div className={s.meta}>
-          <span><strong className={s.metaKey}>{T.meta_zone}:</strong> {zoneLabel}</span>
-          <span><strong className={s.metaKey}>{T.meta_period}:</strong> {range_es(data.d0, data.d1)}</span>
-          <span>{validIds.length ? fill(T.filtered, { n: n(data.cinemas.length), total: n(data.options.length) }) : T.meta_note}</span>
-        </div>
-      )}
-    </div>
-  );
+  const meta = data && [
+    [`${T.meta_zone}:`, zoneLabel],
+    [`${T.meta_period}:`, range_es(data.d0, data.d1)],
+    validIds.length ? fill(T.filtered, { n: n(data.cinemas.length), total: n(data.options.length) }) : T.meta_note,
+  ] as const;
 
   const info = (text: string) => <MessageBar intent="info"><MessageBarBody>{text}</MessageBarBody></MessageBar>;
   const body = () => {
     if (!chains.length) return info(T.no_chains);
     if (error) return <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>;
-    if (!data) return null;
+    if (!data) return <><SkeletonSeccion table /><SkeletonSeccion height={560} /><SkeletonApendice /></>;
     if (!data.cinemas.length) return info(T.empty);
     const present = new Set(data.cinemas.map((c) => c.chain));
     const shownChains = CHAINS.filter((c) => chains.includes(c) && present.has(c));
@@ -333,15 +321,14 @@ export default function Page() {
             numCols={TABLE_COLUMNS.flatMap((col, i) => (TEXT_COLUMNS.includes(col) ? [] : [i]))}
           />
         </Apendice>
-        <p className={s.pie}>{T.footer}</p>
+        <PageFooter>{T.footer}</PageFooter>
       </>
     );
   };
 
   return (
     <>
-      {header}
-      {filters}
+      <PageHeader title={T.title} meta={meta || undefined}>{filters}</PageHeader>
       {body()}
     </>
   );

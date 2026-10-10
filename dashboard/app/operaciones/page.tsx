@@ -10,12 +10,20 @@ import {
   MessageBarBody,
   Option,
   SpinButton,
-  Title1,
+  Subtitle1,
+  Subtitle2,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Leyenda, Seccion, Table, type Cell } from '@/components/common';
+import {
+  Leyenda,
+  PageHeader,
+  Seccion,
+  Table,
+  type Cell,
+  SkeletonSeccion,
+} from '@/components/common';
 import { RunsChart, type RecentRun } from '@/components/operaciones/runs-chart';
 import { api, ApiError, query } from '@/lib/api';
 import { PILOT_TIMEZONE, fill, n } from '@/lib/format';
@@ -23,12 +31,7 @@ import {
   CHAIN_COLOR,
   CHAIN_LABEL,
   COLUMN_LABEL,
-  GRAY,
-  INK,
-  LINE,
-  NEUTRAL,
   OPS_TEXT,
-  PAPER,
   PLAZA_LABEL,
   WARN,
 } from '@/lib/labels.generated';
@@ -61,28 +64,38 @@ const LOG_DEFAULT = 'run';
 const COVERAGE_MAX_HEIGHT = '500px';
 
 const useStyles = makeStyles({
-  lead: { color: GRAY, margin: '4px 0 18px' },
-  nota: { fontStyle: 'italic', color: GRAY, fontSize: '13px' },
-  titulo: { fontWeight: 800, fontStretch: '82%', fontSize: '22px', margin: '0 0 4px', lineHeight: 1.2 },
-  controles: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalL, margin: '0 0 10px' },
+  nota: { fontStyle: 'italic', color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
+  titulo: { display: 'block', margin: `0 0 ${tokens.spacingVerticalXS}` },
+  controles: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalL, margin: `0 0 ${tokens.spacingVerticalS}` },
   scroll: { maxHeight: COVERAGE_MAX_HEIGHT, overflowY: 'auto' },
   problemas: { margin: '4px 0 0', paddingLeft: '18px' },
   log: {
     backgroundColor: tokens.colorNeutralBackground3,
-    border: `1px solid ${LINE}`,
-    borderRadius: '5px',
-    padding: '12px 14px',
-    fontSize: '12px',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
+    fontSize: tokens.fontSizeBase200,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     margin: 0,
   },
-  pendiente: { backgroundColor: INK, color: PAPER, borderRadius: '6px', padding: '22px 26px', marginTop: '18px' },
-  pendienteTitulo: { margin: '0 0 4px', fontSize: '19px', fontWeight: 800 },
-  pendienteGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', marginTop: '14px' },
-  cuando: { color: NEUTRAL, fontSize: '12px', fontWeight: 700 },
-  que: { fontWeight: 750, margin: '2px 0 4px' },
-  pendienteTexto: { margin: 0, fontSize: '13px', color: NEUTRAL },
+  pendiente: {
+    backgroundColor: tokens.colorNeutralBackground2,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`,
+    marginTop: tokens.spacingVerticalL,
+  },
+  pendienteTitulo: { display: 'block', margin: `0 0 ${tokens.spacingVerticalXS}` },
+  pendienteGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: tokens.spacingHorizontalL,
+    marginTop: tokens.spacingVerticalM,
+  },
+  cuando: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
+  que: { fontWeight: tokens.fontWeightSemibold, margin: `${tokens.spacingVerticalXXS} 0 ${tokens.spacingVerticalXS}` },
+  pendienteTexto: { margin: 0, fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground2 },
 });
 
 // 'dd/mm h:mm AM' en hora de la plaza, como `local_time` de ui/common.py. Una hora sin zona ya es local.
@@ -141,7 +154,7 @@ function Encabezado({ titulo, lead }: { titulo: string; lead: string }) {
   const s = useStyles();
   return (
     <>
-      <h3 className={s.titulo}>{titulo}</h3>
+      <Subtitle2 as="h3" className={s.titulo}>{titulo}</Subtitle2>
       <p className={s.nota}>{lead}</p>
     </>
   );
@@ -220,12 +233,17 @@ export default function Page() {
 
   const header = (
     <>
-      <Title1 as="h1">{OPS_TEXT.title}</Title1>
-      <p className={s.lead}>{OPS_TEXT.lead}</p>
+      <PageHeader title={OPS_TEXT.title} meta={[OPS_TEXT.lead]} />
     </>
   );
   if (!data) {
-    return <>{header}{error && <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>}</>;
+    return (
+      <>
+        {header}
+        {error ? <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>
+          : [0, 1, 2, 3].map((i) => <SkeletonSeccion key={i} table />)}
+      </>
+    );
   }
 
   const { report, hours, deployment: dep, storage: sto, log: tail } = data;
@@ -429,7 +447,7 @@ export default function Page() {
       </Seccion>
 
       <div className={s.pendiente}>
-        <h3 className={s.pendienteTitulo}>{OPS_TEXT.pending}</h3>
+        <Subtitle1 as="h3" className={s.pendienteTitulo}>{OPS_TEXT.pending}</Subtitle1>
         <p className={s.pendienteTexto}>{OPS_TEXT.pending_lead}</p>
         <div className={s.pendienteGrid}>
           {OPS_TEXT.pending_items.map(([cuando, que, texto]) => (

@@ -172,11 +172,13 @@ mira si extender una existente con un parámetro con nombre cubre el caso.
 - **Ningún nombre interno llega al usuario.** `chain`, `kind`, claves de franja y de cubeta se
   traducen en `analytics/labels.py`. Si un texto aparece en pantalla, sale de `labels.py` (etiquetas)
   o de `findings.py` (frases), nunca escrito en `app.py`, `ui/` ni `views/`.
-- **Ningún hex se escribe en la presentación (`app.py`, `ui/`, `views/`).** Los colores viven en `analytics/labels.py` (`RED`, `INK`,
+- **Ningún hex se escribe en la presentación (`app.py`, `ui/`, `views/`, `dashboard/`).** En `dashboard/` la interfaz
+  usa `tokens.*` de Fluent. Los colores viven en `analytics/labels.py` (`RED`, `INK`,
   `GRAY`, `LINE`, `CHAIN_COLOR`, `RED_RAMP`, `DIVERGING`…). Para un color nuevo: agrégalo a
   `labels.py` y documéntalo en `DESIGN.md` **antes** de usarlo.
-- **Rojo = Cinemex o acción. Cinépolis = tinta (`#191A1E`).** El rojo no se usa para alertas ni para
-  valores negativos. Cinemex siempre primero en las escalas; las series no se ciclan.
+- **Rojo = Cinemex, solo en los datos. Cinépolis = tinta (`#191A1E`).** En `dashboard/` la interfaz (botones,
+  navegación, foco, enlaces) usa los tokens de Fluent con su marca azul (decisión 2026-10-10, `DESIGN.md`); el rojo no se
+  usa para acciones, alertas ni valores negativos. Cinemex siempre primero en las escalas; las series no se ciclan.
 - Formato para directivos: horas en 12 h, fechas en español, números tabulares. Usa los helpers
   (`date_es`, `range_es`, `time_12`, `n`, `pp`), no `f"{x:.1f}"` a mano.
 

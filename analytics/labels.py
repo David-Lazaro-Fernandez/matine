@@ -1077,3 +1077,14 @@ PAGE_LABEL = {
     "usuarios": AUTH_TEXT["users_title"],
     "operaciones": OPS_TEXT["title"],
 }
+
+# Módulos del riel de navegación del dashboard. Cada uno agrupa las páginas de un plan.
+MODULE_LABEL = {
+    "cartelera": "Cartelera",
+    "dulceria": "Dulcería",
+    "datos": DATA_TEXT["title"],
+    "admin": "Administración",
+}
+
+# Nombre de cada página dentro del panel de su módulo.
+NAV_LABEL = {**PAGE_LABEL, "cartelera": "Resumen", "dulceria": "En sala", "domicilio": "A domicilio"}

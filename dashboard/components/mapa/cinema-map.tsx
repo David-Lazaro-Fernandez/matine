@@ -5,7 +5,9 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import type { GeoJSONSource, Map as MapLibre } from 'maplibre-gl';
-import { BASEMAP_STYLE, GRAY, INK, LINE, PAPER } from '@/lib/labels.generated';
+import { tokens } from '@fluentui/react-components';
+import { SkeletonBlock } from '@/components/common';
+import { BASEMAP_STYLE, GRAY, INK, PAPER } from '@/lib/labels.generated';
 
 export type MapPoint = {
   siteId: string;
@@ -135,5 +137,10 @@ export function CinemaMap({ points, center, zoom, onPick, onMapClick, ring, heig
     map?.jumpTo({ center: [lng, lat], zoom });
   }, [map, lng, lat, zoom]);
 
-  return <div ref={box} style={{ height, border: `1px solid ${LINE}`, borderRadius: '4px' }} />;
+  return (
+    <div style={{ position: 'relative' }}>
+      <div ref={box} style={{ height, border: `1px solid ${tokens.colorNeutralStroke2}`, borderRadius: tokens.borderRadiusMedium }} />
+      {!map && <div style={{ position: 'absolute', inset: 0 }}><SkeletonBlock height={height} /></div>}
+    </div>
+  );
 }

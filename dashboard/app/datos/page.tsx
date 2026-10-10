@@ -15,13 +15,15 @@ import {
   Option,
   Radio,
   RadioGroup,
-  Spinner,
-  Title1,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Table } from '@/components/common';
+import {
+  PageHeader,
+  Table,
+  SkeletonTable,
+} from '@/components/common';
 import { ApiError, api } from '@/lib/api';
 import { PILOT_TIMEZONE, fill, fixed } from '@/lib/format';
 import {
@@ -35,7 +37,6 @@ import {
   DAY_TYPE_LABEL,
   FORMAT_BUCKETS,
   FORMAT_LABEL,
-  GRAY,
   KIND_LABEL,
   LANGUAGE_LABEL,
   PLATFORM_LABEL,
@@ -72,12 +73,11 @@ const RELABEL: Record<string, Record<string, string>> = {
 const PER_DATASET = ['category', 'search', 'latest_only'];
 
 const useStyles = makeStyles({
-  lead: { color: GRAY, margin: '0 0 12px' },
-  bar: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalL, alignItems: 'flex-end', marginBottom: '12px' },
+  bar: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalL, alignItems: 'flex-end', marginBottom: tokens.spacingVerticalM },
   wide: { minWidth: '220px' },
   dates: { display: 'flex', gap: tokens.spacingHorizontalS },
   scroll: { maxHeight: '560px', overflow: 'auto' },
-  caption: { display: 'block', color: GRAY, margin: '0 0 8px' },
+  caption: { display: 'block', color: tokens.colorNeutralForeground3, margin: `0 0 ${tokens.spacingVerticalS}` },
 });
 
 // 'dd/mm hh:mm A.M.' en hora de la plaza, como `local_time` de ui/common.py. Una hora sin zona ya es local.
@@ -159,8 +159,7 @@ export default function Page() {
 
   return (
     <>
-      <Title1 as="h1">{DATA_TEXT.title}</Title1>
-      <p className={s.lead}>{DATA_TEXT.lead}</p>
+      <PageHeader title={DATA_TEXT.title} meta={[DATA_TEXT.lead]} />
 
       <div className={s.bar}>
         <Field label={DATA_TEXT.dataset}>
@@ -287,7 +286,7 @@ export default function Page() {
       <Caption1 className={s.caption}>{DATASET_HELP[dataset]}</Caption1>
 
       {error && <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>}
-      {!data && !error && <Spinner />}
+      {!data && !error && <SkeletonTable rows={12} columns={6} />}
       {data && !data.rows.length && <MessageBar intent="info"><MessageBarBody>{DATA_TEXT.empty}</MessageBarBody></MessageBar>}
       {data && data.rows.length > 0 && (
         <>

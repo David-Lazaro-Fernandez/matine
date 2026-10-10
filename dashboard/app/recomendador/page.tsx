@@ -19,9 +19,21 @@ import {
   RadioGroup,
   Slider,
   makeStyles,
+  tokens,
 } from '@fluentui/react-components';
 import { useSearchParams } from 'next/navigation';
-import { Apendice, type Cell, Leerla, Leyenda, Pregunta, Seccion, Table } from '@/components/common';
+import {
+  Apendice,
+  type Cell,
+  Leerla,
+  Leyenda,
+  PageFooter,
+  PageHeader,
+  Pregunta,
+  Seccion,
+  Table,
+  SkeletonSeccion,
+} from '@/components/common';
 import { today, useSetParams } from '@/components/filters';
 import { CinemaMap, type MapPoint } from '@/components/mapa/cinema-map';
 import { ApiError, api } from '@/lib/api';
@@ -31,16 +43,13 @@ import {
   CHAIN_LABEL,
   FORMAT_BUCKETS,
   FORMAT_LABEL,
-  GRAY,
   GROUP_LABEL,
   HOUR_PRESETS,
   INK,
   LANGUAGE_LABEL,
-  LINE,
   PAPER,
   RECOMMEND_SORT,
   RECOMMEND_TEXT as T,
-  RED,
   SNACK_LABEL,
 } from '@/lib/labels.generated';
 
@@ -114,21 +123,11 @@ const WHEN = { hoy: T.today, manana: T.tomorrow, fecha: T.pick } as const;
 type When = keyof typeof WHEN;
 
 const useStyles = makeStyles({
-  enc: { padding: '6px 0 8px', borderBottom: `3px solid ${INK}`, marginBottom: '8px' },
-  title: {
-    fontSize: 'clamp(30px, 4.2vw, 46px)',
-    fontWeight: 850,
-    fontStretch: '75%',
-    lineHeight: 1.02,
-    margin: 0,
-    '& span': { color: RED },
-  },
   row: { display: 'flex', flexWrap: 'wrap', gap: '12px 24px', alignItems: 'flex-end', margin: '10px 0' },
   grow: { flexGrow: 1, minWidth: '240px' },
   small: { width: '140px' },
-  nota: { color: GRAY, fontSize: '13px', margin: '6px 0 14px' },
+  nota: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalM}` },
   more: { margin: '0 0 18px' },
-  pie: { marginTop: '48px', paddingTop: '16px', borderTop: `1px dashed ${LINE}`, color: GRAY, fontSize: '12.5px' },
 });
 
 function money(v: number | null): string {
@@ -285,13 +284,6 @@ export default function Page() {
       stroke: INK, strokeWidth: 3 }];
   }, [data, location?.lat, location?.lng]);
 
-  const header = (
-    <div className={s.enc}>
-      {/* El título de labels.py lleva un <span> para la palabra en rojo. */}
-      <h1 className={s.title} dangerouslySetInnerHTML={{ __html: T.title }} />
-    </div>
-  );
-
   const groupInput = (g: Group, label: string) => (
     <Field label={label} className={s.small}>
       <Input type="number" min={0} max={MAX_PER_GROUP} value={String(group[g])}
@@ -306,7 +298,7 @@ export default function Page() {
         <Field label={T.address} className={s.grow}>
           <Input value={address} placeholder={T.address_placeholder} onChange={(_, d) => setAddress(d.value)} />
         </Field>
-        <Button type="submit">{T.search}</Button>
+        <Button type="submit" appearance="primary">{T.search}</Button>
         <Button type="button" onClick={locate}>{T.locate}</Button>
       </form>
       {locating && <p className={s.nota}>{`${T.locating} ${T.locate_https}`}</p>}
@@ -417,7 +409,7 @@ export default function Page() {
     if (!location) return info(T.no_location);
     if (!people) return info(T.group_empty);
     const summary = data?.summary;
-    if (!data || !summary) return null;
+    if (!data || !summary) return <SkeletonSeccion table />;
     const c = summary.cheapest;
     const near = summary.nearest;
     let text = '';
@@ -476,14 +468,14 @@ export default function Page() {
             />
           )}
         </Apendice>
-        <p className={s.pie}>{T.footer}</p>
+        <PageFooter>{T.footer}</PageFooter>
       </>
     );
   };
 
   return (
     <>
-      {header}
+      <PageHeader title={T.title} />
       {plan}
       {more}
       {location && source && <p className={s.nota}>{sourceText}</p>}

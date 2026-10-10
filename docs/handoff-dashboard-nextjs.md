@@ -1,6 +1,6 @@
 # Handoff: dashboard de Streamlit a Next.js con Fluent UI
 
-Actualizado el 2026-10-10, al cerrar la ola 2. Lee antes `AGENTS.md` (reglas del repo) y
+Actualizado el 2026-10-10, al cerrar la ola 3 y el rediseño. Lee antes `AGENTS.md` (reglas del repo) y
 `docs/plan-dashboard-nextjs.md` (el plan completo: arquitectura, fases, olas en paralelo y decisiones).
 
 ## Objetivo
@@ -12,8 +12,9 @@ mismo dominio, `stable` y `make deploy`.
 
 ## Estado
 
-Todo está en la rama **`dashboard-nextjs`**, sin push. Sale de `independientes-demo`. En el repo principal pasan
-`make check` (con `AC_DATA_DIR="$PWD/data"`) y `pnpm run build` (18 páginas estáticas).
+Todo está en la rama **`dashboard-nextjs`**, sin push. Sale de `independientes-demo`. `make check` y `pnpm run build`
+pasaron por última vez al cerrar la ola 2; la ola 3 y el rediseño no se han compilado. El usuario los revisó en
+`pnpm dev` y se ven bien.
 
 | Fase | Estado | Dónde |
 | --- | --- | --- |
@@ -23,7 +24,9 @@ Todo está en la rama **`dashboard-nextjs`**, sin push. Sale de `independientes-
 | 2b. Un endpoint por página | Hecha | `api/pages/<pagina>.py`, más `/api/plazas`; pruebas en `tests/test_internal_api.py` |
 | Gráficas en Vega-Lite | Hechas todas | `dashboard/components/**` sobre `components/vega-chart.tsx` |
 | 3. Cascarón | Hecha, falta probar la cookie en navegador | `components/shell.tsx`, `components/filters.tsx`, `components/common.tsx`, `lib/api.ts`, `lib/format.ts` |
-| 4–6. Páginas | Falta | Datos, Mapa, Usuarios, Operaciones → Dulcería, Independientes, Recomendador → Cartelera |
+| 4–6. Páginas | Hechas (2026-10-10), sin build ni pruebas | Las ocho, más Dulcería en dos vistas; commit `7936088` |
+| Diseño empresarial | Hecho (2026-10-10), sin commit | Tema Fluent, riel de módulos, `shadow16`, `Entrada`, esqueletos (`DESIGN.md`) |
+| Velocidad de Cartelera | Falta | `docs/handoff-cartelera-velocidad.md` |
 | 7. Corte | Falta | Servicio, Caddy, borrar Streamlit, docs |
 
 ### Endpoints (`api/pages/`)
@@ -70,6 +73,10 @@ texto en español y el rango libre necesita dos horas.
 
 ## Decisiones tomadas
 
+- **Diseño empresarial** (2026-10-10, `DESIGN.md`): tema `webLightTheme` tal cual, el rojo solo en datos de Cinemex,
+  riel de módulos con panel (`components/shell.tsx`, `MODULE_LABEL`, `NAV_LABEL`). Dulcería se divide en `/dulceria/` (en
+  sala) y `/dulceria/domicilio/`, sobre `components/dulceria/dulceria-page.tsx`. Encabezado y pie compartidos:
+  `PageHeader` y `PageFooter` en `common.tsx`.
 - **Gráficas en Vega-Lite (`vega-embed`), no Fluent Charts ni Chart.js.** Altair genera specs de Vega-Lite y cada
   gráfica se traduce casi 1:1. Fluent Charts no tiene dumbbell y su heatmap pierde el signo. Fluent sigue para el resto
   de la UI. Detalle en el plan §3.
@@ -91,27 +98,17 @@ texto en español y el rango libre necesita dos horas.
 - **La ola 3 va rápido: sin pruebas ni `pnpm run build` por página.** El usuario prueba y reporta los errores.
 - **ruff no revisa `.claude/`** (`pyproject.toml`): los worktrees de agentes tienen código a medias.
 
-## Antes de la ola 3
+## Siguiente paso
 
-- **Probar la cookie en un navegador real** (lo que cierra la fase 3): `uvicorn api.internal:app --port 8501` y
-  `cd dashboard && pnpm dev`. Recorrer invitación → contraseña → entrar → refrescar → salir. Con curl ya funciona.
-  `make user-create EMAIL=… NAME=… ROLE=admin` imprime el enlace de invitación.
-- **Paquetes que faltan** (los agentes no pueden instalarlos; el usuario corre `pnpm add` en `dashboard/`):
-  `@fluentui-contrib/react-data-grid-react-window` (`DataGrid` virtualizado para Datos), `openapi-typescript` (dev, tipos
-  de `lib/api.generated.ts`), `@fluentui/react-icons` (iconos de la navegación) y `maplibre-gl` (Mapa y Recomendador).
-  Ninguno bloquea empezar.
-
-## Siguiente paso: ola 3
-
-Una rama por página, cada una en `dashboard/app/<pagina>/page.tsx` sobre su endpoint y los componentes de
-`components/common.tsx`. Cada página mueve sus gráficas desde `/preview/*` a su sección. Orden del plan:
-
-1. **Simples:** Datos, Mapa, Usuarios, Operaciones. Pueden ir las cuatro en paralelo.
-2. **Medias:** Dulcería, Independientes, Recomendador.
-3. **Cartelera:** la más grande. Antes, sus textos escritos a mano pasan a `labels.py`.
-
-Las páginas no deben tocar `components/common.tsx`, `components/shell.tsx` ni `components/filters.tsx` en paralelo. Si
-una necesita cambiar un componente compartido, se hace primero en `dashboard-nextjs` y las demás ramas lo fusionan.
+1. **Velocidad de Cartelera.** Carga por partes y optimización de consultas. Tiene su propio handoff:
+   `docs/handoff-cartelera-velocidad.md`.
+2. **Compilar y probar.** La ola 3 y el rediseño se hicieron sin `pnpm run build` ni `make check`, a pedido del usuario.
+   Lo probable que falle: `tests/test_internal_api.py` (cambió `/api/mapa`, los textos de 401 y `first_snapshot` en
+   Dulcería) y tipos en `PageHeader` y las celdas con varias clases de `Table`.
+3. **Fuente.** Segoe UI solo existe en Windows; en Mac se ve San Francisco. Pendiente que el usuario elija: dejarlo así o
+   servir Selawik (OFL, métricas de Segoe). Las etiquetas de las gráficas usan tamaños fuera de la rampa de Fluent.
+4. **`common.tsx`.** `Table` sin orden por columna ni casillas; Datos necesita el `DataGrid` virtualizado.
+5. **Corte (fase 7).** Servicio, Caddy, build en GitHub Actions, borrar Streamlit y `/preview/`, reglas de `AGENTS.md`.
 
 ## Pendientes conocidos
 
@@ -131,8 +128,8 @@ una necesita cambiar un componente compartido, se hace primero en `dashboard-nex
     `slot_label`, `label`) se arman en `app/page.tsx` desde `movie_gaps` y `heatmap_day_slot`.
   - `hour_mark`, `hours_label`, `range_short` y `plaza_title` tienen su equivalente en `app/page.tsx`. Si otra página
     los necesita, pasan a `lib/format.ts`.
-  - En frío tarda ~7.5 s con CDMX y ~9.5 s nacional (157 y 245 KB); con caché, 2 ms. `findings` se lleva 4.6 s. Si
-    molesta, la optimización va en `analytics/findings.py`.
+  - En frío tarda ~7.5 s con CDMX y ~9.5 s nacional; `findings` se lleva 4.6 s. El plan está en
+    `docs/handoff-cartelera-velocidad.md`.
   - `SHOWN_MOVIES`, `TOTAL_MOVIES` y `FIRST_SNAPSHOT` están copiados de `ui/common.py` en `api/pages/cartelera.py`,
     porque `api/` no puede importar `ui/`. La copia de `ui/` se borra en el corte.
   - Los textos de la página viven en `CARTELERA_TEXT` y los del filtro de franja en `HOURS_TEXT`.

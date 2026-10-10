@@ -15,7 +15,22 @@ import {
 } from '@fluentui/react-components';
 import { useSearchParams } from 'next/navigation';
 import type { ComponentProps } from 'react';
-import { Apendice, AppLink, Capa, type Cell, type Finding, Hallazgo, Leerla, Leyenda, Pregunta, Seccion, Table } from '@/components/common';
+import {
+  Apendice,
+  AppLink,
+  Capa,
+  type Cell,
+  type Finding,
+  Hallazgo,
+  Leerla,
+  Leyenda,
+  PageFooter,
+  PageHeader,
+  Pregunta,
+  Seccion,
+  Table,
+  SkeletonCapas,
+} from '@/components/common';
 import { PlazaSelector, today, usePlaza, useSetParams } from '@/components/filters';
 import { IndepOccupancyHeatmap } from '@/components/independientes/occupancy-heatmap';
 import { IndepOverlapBars } from '@/components/independientes/overlap-bars';
@@ -23,7 +38,7 @@ import { IndepSlotsBars } from '@/components/independientes/slots-bars';
 import { IndepTitlesBars } from '@/components/independientes/titles-bars';
 import { ApiError, api, query } from '@/lib/api';
 import { addDays, cinemaWeek, date_es, fill, fixed, n, range_es } from '@/lib/format';
-import { CHAIN_COLOR, CHAIN_LABEL, COLUMN_LABEL, GRAY, INDEP, INDEP_TEXT as T, INK, LINE, RED } from '@/lib/labels.generated';
+import { CHAIN_COLOR, CHAIN_LABEL, COLUMN_LABEL, INDEP, INDEP_TEXT as T } from '@/lib/labels.generated';
 
 type Row = Record<string, string | number | null>;
 type Overlap = ComponentProps<typeof IndepOverlapBars>['titles'][number];
@@ -56,22 +71,9 @@ const ONE_DECIMAL = ['share_shows', 'share_indep', 'sold_pct', 'avg_seats'];
 const TEXT_COLUMNS = ['cinema_name', 'title', 'first_date', 'last_date'];
 
 const useStyles = makeStyles({
-  enc: { padding: '6px 0 8px', borderBottom: `3px solid ${INK}`, marginBottom: '8px' },
-  title: {
-    fontSize: 'clamp(30px, 4.2vw, 46px)',
-    fontWeight: 850,
-    fontStretch: '75%',
-    lineHeight: 1.02,
-    margin: 0,
-    '& span': { color: RED },
-  },
-  meta: { display: 'flex', flexWrap: 'wrap', gap: '6px 22px', padding: '12px 0 14px', color: GRAY, fontSize: '13.5px' },
-  metaKey: { color: INK, fontWeight: 600 },
-  filters: { display: 'flex', flexWrap: 'wrap', gap: '12px 28px', alignItems: 'flex-start', margin: '8px 0 22px' },
   dates: { display: 'flex', gap: tokens.spacingHorizontalS },
-  chartTitle: { fontWeight: 700, margin: '10px 0 4px' },
+  chartTitle: { fontWeight: tokens.fontWeightSemibold, margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalXS}` },
   scroll: { maxHeight: '500px', overflow: 'auto' },
-  pie: { marginTop: '48px', paddingTop: '16px', borderTop: `1px dashed ${LINE}`, color: GRAY, fontSize: '12.5px' },
 });
 
 // El periodo de la URL dentro de ayer y el miércoles de la semana de cine en curso, el rango que acepta la API.
@@ -151,7 +153,6 @@ function sum(rows: Row[], column: string): number {
 }
 
 export default function Page() {
-  const s = useStyles();
   const plaza = usePlaza();
   const { d0, d1, max } = usePeriod();
   const [data, setData] = React.useState<Independientes | null>(null);
@@ -174,32 +175,23 @@ export default function Page() {
 
   const info = (text: string) => <MessageBar intent="info"><MessageBarBody>{text}</MessageBarBody></MessageBar>;
   const header = (withMeta: boolean) => (
-    <div className={s.enc}>
-      {/* El título de labels.py lleva un <span> para la palabra en rojo. */}
-      <h1 className={s.title} dangerouslySetInnerHTML={{ __html: T.title }} />
-      {withMeta && (
-        <div className={s.meta}>
-          <span><strong className={s.metaKey}>{T.meta_zone}:</strong> {T.meta_zone_value}</span>
-          <span><strong className={s.metaKey}>{T.meta_period}:</strong> {range_es(d0, d1)}</span>
-          <span>{T.meta_note}</span>
-        </div>
-      )}
-    </div>
-  );
-  const filters = (
-    <div className={s.filters}>
+    <PageHeader
+      key="h"
+      title={T.title}
+      meta={withMeta ? [[`${T.meta_zone}:`, T.meta_zone_value], [`${T.meta_period}:`, range_es(d0, d1)], T.meta_note] : undefined}
+    >
       <PlazaSelector />
       {supported && <PeriodRadio />}
-    </div>
+    </PageHeader>
   );
 
   const body = () => {
-    if (!supported) return [header(false), filters, info(T.no_plaza)];
-    if (error) return [header(false), filters, <MessageBar key="e" intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>];
+    if (!supported) return [header(false), info(T.no_plaza)];
+    if (error) return [header(false), <MessageBar key="e" intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>];
     const empty = data !== null && data.d0 === d0 && data.d1 === d1 && !data.venues.length;
-    if (!published || empty) return [header(false), filters, info(fill(T.no_data, { period: range_es(d0, d1) }))];
-    if (!data) return [header(false), filters];
-    return [header(true), filters, <Contenido key="c" data={data} />];
+    if (!published || empty) return [header(false), info(fill(T.no_data, { period: range_es(d0, d1) }))];
+    if (!data) return [header(false), <SkeletonCapas key="s" findings={2} sections={4} appendices={3} />];
+    return [header(true), <Contenido key="c" data={data} />];
   };
 
   return <>{body().map((node, i) => <React.Fragment key={i}>{node}</React.Fragment>)}</>;
@@ -218,7 +210,7 @@ function Contenido({ data }: { data: Independientes }) {
 
   return (
     <>
-      <Capa num={1} title={T.layer1} desc={T.layer1_desc} roja />
+      <Capa num={1} title={T.layer1} desc={T.layer1_desc} />
       {!data.findings.length && info(data.occupancy_confirmed
         ? fill(T.layer1_none, { pct: fixed(th.indep_min_sold_pct, 0), n: th.indep_min_samples })
         : T.layer1_pending)}
@@ -297,7 +289,7 @@ function Contenido({ data }: { data: Independientes }) {
       </Apendice>
 
       <p><AppLink href="/">{T.back}</AppLink></p>
-      <p className={s.pie}>{fill(T.footer, { first: date_es(data.first_snapshot) })}</p>
+      <PageFooter>{fill(T.footer, { first: date_es(data.first_snapshot) })}</PageFooter>
     </>
   );
 }
