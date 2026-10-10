@@ -1,34 +1,9 @@
 'use client';
 
-// Spike de la fase 0: las dos gráficas de la cartelera con datos reales de `dashboard/scripts/spike_data.py`.
-import { Subtitle1, makeStyles, tokens } from '@fluentui/react-components';
-import data from '@/.spike-data/cartelera.json';
-import { DaySlotHeatmap } from '@/components/day-slot-heatmap';
-import { MoviesDumbbell } from '@/components/movies-dumbbell';
-
-const useStyles = makeStyles({
-  page: { maxWidth: '1100px', margin: '0 auto', padding: tokens.spacingHorizontalXXL },
-  section: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    borderRadius: tokens.borderRadiusLarge,
-    padding: tokens.spacingHorizontalXL,
-    marginBottom: tokens.spacingVerticalXXL,
-  },
-});
+// Página vacía del cascarón. La llena su rama de la ola 3 (docs/plan-dashboard-nextjs.md).
+import { Title1 } from '@fluentui/react-components';
+import { PAGE_LABEL } from '@/lib/labels.generated';
 
 export default function Page() {
-  const styles = useStyles();
-  return (
-    <main className={styles.page}>
-      <section className={styles.section}>
-        <Subtitle1 as="h2">{data.text.dumbbell_title}</Subtitle1>
-        <MoviesDumbbell movies={data.dumbbell} axisTitle={data.text.dumbbell_axis} />
-      </section>
-      <section className={styles.section}>
-        <Subtitle1 as="h2">{data.text.heatmap_title}</Subtitle1>
-        <DaySlotHeatmap {...data.heatmap} />
-      </section>
-    </main>
-  );
+  return <Title1 as="h1">{PAGE_LABEL.cartelera}</Title1>;
 }

@@ -1,6 +1,13 @@
 """Página principal: la cartelera en tres capas (hallazgos → evidencia → apéndice) con los filtros de zona, periodo y
 franja horaria en la barra lateral. La dulcería vive en su propia página (views/dulceria.py)."""
-from analytics.labels import EXCLUSIVE_LABEL, PRESALE_OTHER_LABEL, PRESALE_TAG, PUBLICATION_LABEL, RED_RAMP_TEXT
+from analytics.labels import (
+    EXCLUSIVE_LABEL,
+    PERIOD_TEXT,
+    PRESALE_OTHER_LABEL,
+    PRESALE_TAG,
+    PUBLICATION_LABEL,
+    RED_RAMP_TEXT,
+)
 from ui.common import *  # noqa: F401,F403
 
 # --- barra lateral: zona, periodo y franja ---------------------------------------------------------------
@@ -26,16 +33,17 @@ next_w0, next_w1 = analytics.cinema_week((date.fromisoformat(this_w1) + timedelt
 next_state = PUBLICATION_LABEL.get(load_raw("week_publication", d0=next_w0, d1=next_w1, plaza=plaza), "")
 
 periods = {
-    "Hoy": (today_s, today_s),
-    "Mañana": ((today_d + timedelta(days=1)).isoformat(),) * 2,
-    f"Resto de la semana de cine (hasta el {date_es(this_w1, with_year=False)})": (today_s, this_w1),
-    f"Semana de cine siguiente ({date_es(next_w0, with_year=False)} a {date_es(next_w1, with_year=False)}){next_state}": (next_w0, next_w1),
-    "Elegir fechas": None,
+    PERIOD_TEXT["today"]: (today_s, today_s),
+    PERIOD_TEXT["tomorrow"]: ((today_d + timedelta(days=1)).isoformat(),) * 2,
+    PERIOD_TEXT["week"].format(d1=date_es(this_w1, with_year=False)): (today_s, this_w1),
+    PERIOD_TEXT["next_week"].format(d0=date_es(next_w0, with_year=False), d1=date_es(next_w1, with_year=False),
+                                    state=next_state): (next_w0, next_w1),
+    PERIOD_TEXT["custom"]: None,
 }
-st.sidebar.header("Periodo")
-choice = st.sidebar.radio("Semana o día a analizar", list(periods), index=2, label_visibility="collapsed")
+st.sidebar.header(PERIOD_TEXT["header"])
+choice = st.sidebar.radio(PERIOD_TEXT["select"], list(periods), index=2, label_visibility="collapsed")
 if periods[choice] is None:
-    rng = st.sidebar.date_input("Del … al …", value=(today_d, date.fromisoformat(this_w1)),
+    rng = st.sidebar.date_input(PERIOD_TEXT["custom_range"], value=(today_d, date.fromisoformat(this_w1)),
                                 min_value=today_d - timedelta(days=1), max_value=today_d + timedelta(days=35),
                                 format="DD/MM/YYYY")
     d0, d1 = (rng[0].isoformat(), rng[-1].isoformat()) if isinstance(rng, tuple) and rng else (today_s, today_s)

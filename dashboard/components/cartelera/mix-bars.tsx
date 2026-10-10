@@ -4,7 +4,7 @@
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
 import { VegaChart } from '@/components/vega-chart';
-import { fill, fixed } from '@/components/cartelera/format';
+import { fill, fixed } from '@/lib/format';
 import {
   CARTELERA_CHART_TEXT as TEXT, CHAIN_LABEL, COMPARED, FORMAT_BUCKETS, FORMAT_LABEL, INK, LANGUAGE_BUCKETS,
   LANGUAGE_LABEL, PAPER, RED, RED_RAMP, RED_RAMP_TEXT, US,
