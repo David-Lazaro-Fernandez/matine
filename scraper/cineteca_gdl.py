@@ -57,7 +57,8 @@ class _SessionsPage(HTMLParser):
             self._field = "time"
 
     def handle_endtag(self, tag):
-        self._field = None                  # una clasificación vacía no toma el texto que le sigue
+        # Una clasificación vacía no toma el texto que le sigue.
+        self._field = None
 
     def handle_data(self, data):
         text = data.strip()

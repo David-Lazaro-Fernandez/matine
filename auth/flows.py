@@ -182,7 +182,8 @@ def _send(user, template, link, **ttl):
     ctx = {"name": user["name"], "link": link, **ttl}
     try:
         mail.send(user["email"], template["subject"], template["text"].format(**ctx), template["html"].format(**ctx))
-    except Exception as e:  # boto3 tiene su propia jerarquía; aquí solo importa que no salió
+    # Boto3 tiene su propia jerarquía; aquí solo importa que no salió.
+    except Exception as e:
         raise MailFailed(link, e) from e
 
 

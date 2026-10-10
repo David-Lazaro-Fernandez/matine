@@ -9,8 +9,10 @@ import pytest
 import analytics
 from analytics import independents
 
-findings_module = sys.modules["analytics.findings"]      # `analytics.findings` es la función
-D0 = D1 = "2026-09-27"                                  # el día grabado de la Cineteca
+# `analytics.findings` es la función.
+findings_module = sys.modules["analytics.findings"]
+# El día grabado de la Cineteca.
+D0 = D1 = "2026-09-27"
 
 
 @pytest.fixture
@@ -49,7 +51,8 @@ def test_shares_sum_to_100_per_chain(conn):
 
 def test_versions_group_by_title_and_match_ours(conn):
     titles = {t["title_norm"]: t for t in analytics.independent_titles(conn, D0, D1, from_now=False, limit=1000)}
-    assert titles["mary y max"]["title"] == "Mary y Max"            # DOB y SUB, una sola película
+    # DOB y SUB, una sola película.
+    assert titles["mary y max"]["title"] == "Mary y Max"
     assert titles["mary y max"]["subtitled"] and titles["mary y max"]["spanish"]
     overlap = {r["title_norm"]: r for r in analytics.independent_overlap(conn, D0, D1, from_now=False)}
     assert overlap["cars"]["status"] == "shared" and overlap["cars"]["shows_vs"] == 1
@@ -85,7 +88,8 @@ def test_the_finding_waits_for_a_confirmed_seat_map(conn, monkeypatch):
 
 def test_conclusions_leave_out_what_has_no_data(conn, monkeypatch):
     out = analytics.independent_conclusions(conn, D0, D1)
-    assert set(out) == {"programa", "solape", "franjas"}              # sin planos confirmados, sin ocupación
+    # Sin planos confirmados, sin ocupación.
+    assert set(out) == {"programa", "solape", "franjas"}
     monkeypatch.setattr(findings_module, "OCCUPANCY_CONFIRMED", True)
     assert "ocupacion" in analytics.independent_conclusions(conn, D0, D1)
     assert independents.OCCUPANCY_CONFIRMED is False

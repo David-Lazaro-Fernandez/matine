@@ -30,7 +30,8 @@ AREAS = {"cdmx": (19.05, -99.40, 19.90, -98.80),
          "gdl": (20.45, -103.55, 20.80, -103.18),
          "mty": (25.35, -100.55, 25.97, -100.03)}
 TIMEOUT_S = 120
-SAME_PLACE_M = 400                              # a esta distancia o menos, mismo nombre y tipo es un solo lugar
+# A esta distancia o menos, mismo nombre y tipo es un solo lugar.
+SAME_PLACE_M = 400
 KINDS = ["Alcaldía", "Ciudad", "Colonia", "Metro", "Metrobús", "Tren Ligero", "Cablebús", "Mexibús", "Mexicable",
          "Mi Macro", "Metrorrey", "Ecovía", "Estación", "Pueblo", "Localidad", "Plaza comercial", "Universidad"]
 _QUERY = """[out:json][timeout:{timeout}];

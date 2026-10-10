@@ -99,15 +99,19 @@ BASEMAP_STYLE = os.environ.get("AC_BASEMAP_STYLE", "https://tiles.openfreemap.or
 _MAPLIBRE_JS = "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"
 _MAPLIBRE_CSS = "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css"
 _MAPLIBRE_LEAFLET_JS = "https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"
-TTL = 60  # segundos; los planos de asientos escriben cada 15 min y la cartelera tres veces al día
+# Segundos; los planos de asientos escriben cada 15 min y la cartelera tres veces al día.
+TTL = 60
 TZ = ZoneInfo("America/Mexico_City")
-SNAPSHOT_TIMES = job_registry.daily_times(job_keys.SNAPSHOT)  # horas de captura de cartelera, del registro
+# Horas de captura de cartelera, del registro.
+SNAPSHOT_TIMES = job_registry.daily_times(job_keys.SNAPSHOT)
 KINDS = ["added", "removed", "moved", "changed", "availability"]
 CHAINS = ["cinemex", "cinepolis"]
 CHAIN_DOMAIN = [CHAIN_LABEL[c] for c in CHAINS]
 CHAIN_RANGE = [CHAIN_COLOR[c] for c in CHAINS]
-FIRST_SNAPSHOT = date(2026, 9, 7)          # inicio de la historia; los paneles de tendencia dependen de ella
-SHOWN_MOVIES, TOTAL_MOVIES = 8, 15         # dumbbell: las de mayor diferencia, y todas al pedirlo
+# Inicio de la historia; los paneles de tendencia dependen de ella.
+FIRST_SNAPSHOT = date(2026, 9, 7)
+# Dumbbell: las de mayor diferencia, y todas al pedirlo.
+SHOWN_MOVIES, TOTAL_MOVIES = 8, 15
 FONT = "Archivo, system-ui, sans-serif"
 
 PAGE_TITLE = ZONE_TEXT["page_title"]
@@ -458,7 +462,8 @@ def leerla(slug, texto):
 
 def apendice(slug, title, resumen):
     """Expander con línea de resumen visible: quien lo necesita lo abre."""
-    label = f"{title}  :gray[· {resumen}]".replace("$", "\\$") if resumen else title   # $ escapado: si no, LaTeX
+    # $ escapado: si no, LaTeX.
+    label = f"{title}  :gray[· {resumen}]".replace("$", "\\$") if resumen else title
     return st.container(key=f"apendice-{slug}").expander(label)
 
 

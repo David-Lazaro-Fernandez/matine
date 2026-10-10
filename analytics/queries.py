@@ -81,7 +81,8 @@ _FORMAT_CASE = """CASE
     WHEN format = '3D' OR lower(experience) IN ('v4d', '4dx') THEN '3d4d'
     ELSE 'traditional' END"""
 _LANG_CASE = "CASE WHEN language = 'subtitled' THEN 'subtitled' ELSE 'spanish' END"
-_WEEKDAY = "(CAST(strftime('%w', date) AS INTEGER) + 6) % 7"      # 0 = lunes
+# 0 = lunes.
+_WEEKDAY = "(CAST(strftime('%w', date) AS INTEGER) + 6) % 7"
 _IS_PRIME = f"({_WEEKDAY} >= 4 AND {_HOUR} >= {PRIME_START_HOUR})"
 _SLOT_CASE = "CASE " + " ".join(f"WHEN {_HOUR} BETWEEN {lo} AND {hi - 1} THEN '{key}'" for key, lo, hi, _ in SLOTS) + " END"
 
@@ -120,7 +121,8 @@ def kpis(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None):
         FROM current_showtime WHERE {where} GROUP BY chain ORDER BY chain""", params)
 
 
-kpis_today = kpis   # compatibilidad
+# Nombre anterior de `kpis`; se conserva para quien ya lo importa.
+kpis_today = kpis
 
 
 def showtimes_by_slot(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None):

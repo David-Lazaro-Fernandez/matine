@@ -5,7 +5,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scraper import diff  # noqa: E402
 
-TAKEN = "2026-09-09T20:00:00+00:00"   # 14:00 CDMX
+# 14:00 CDMX.
+TAKEN = "2026-09-09T20:00:00+00:00"
 
 
 def row(show_id, dt, **extra):
@@ -21,7 +22,8 @@ def kinds(events):
 
 
 def test_started_function_is_expired_and_keeps_first_seen():
-    prev = {"a": row("a", "2026-09-09T13:30:00")}          # empezó hace 30 min
+    # Empezó hace 30 min.
+    prev = {"a": row("a", "2026-09-09T13:30:00")}
     events = diff.diff("cinepolis", prev, {}, 2, 1, TAKEN)
     assert kinds(events) == [("expired", "a")]
     assert events[0]["after"] is None
@@ -29,14 +31,16 @@ def test_started_function_is_expired_and_keeps_first_seen():
 
 
 def test_future_function_missing_is_removed():
-    prev = {"b": row("b", "2026-09-09T19:00:00")}          # faltaban 5 h
+    # Faltaban 5 h.
+    prev = {"b": row("b", "2026-09-09T19:00:00")}
     events = diff.diff("cinepolis", prev, {}, 2, 1, TAKEN)
     assert kinds(events) == [("removed", "b")]
     assert events[0]["before"]["first_seen"]
 
 
 def test_about_to_start_is_expired():
-    prev = {"c": row("c", "2026-09-09T14:20:00")}          # empieza en 20 min (< 30 de gracia)
+    # Empieza en 20 min (< 30 de gracia).
+    prev = {"c": row("c", "2026-09-09T14:20:00")}
     assert kinds(diff.diff("cinepolis", prev, {}, 2, 1, TAKEN)) == [("expired", "c")]
 
 
@@ -58,15 +62,19 @@ def test_moved_strips_first_seen_from_both_sides():
 
 
 def test_closing_kind_rules():
-    assert diff.closing_kind("2026-09-09T13:30:00", TAKEN) == "expired"     # ya empezó
-    assert diff.closing_kind("2026-09-09T14:20:00", TAKEN) == "expired"     # empieza dentro de la gracia
-    assert diff.closing_kind("2026-09-09T19:00:00", TAKEN) == "removed"     # faltaban horas
+    # Ya empezó.
+    assert diff.closing_kind("2026-09-09T13:30:00", TAKEN) == "expired"
+    # Empieza dentro de la gracia.
+    assert diff.closing_kind("2026-09-09T14:20:00", TAKEN) == "expired"
+    # Faltaban horas.
+    assert diff.closing_kind("2026-09-09T19:00:00", TAKEN) == "removed"
     assert diff.closing_kind(None, TAKEN) == "removed"
 
 
 def test_closing_kind_in_utc_for_other_timezones():
     """Con `datetime_utc` la regla es exacta en cualquier zona; sin él se asume la zona de referencia (CDMX)."""
-    taken = "2026-09-09T21:10:00+00:00"                                    # 15:10 CDMX, 14:10 Tijuana
+    # 15:10 CDMX, 14:10 Tijuana.
+    taken = "2026-09-09T21:10:00+00:00"
     # 15:00 local en Tijuana = 22:00 UTC: faltan 50 min, es una cancelación. Con solo la hora local parecería concluida.
     assert diff.closing_kind("2026-09-09T15:00:00", taken, "2026-09-09T22:00:00+00:00") == "removed"
     assert diff.closing_kind("2026-09-09T15:00:00", taken) == "expired"

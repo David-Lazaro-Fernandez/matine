@@ -7,8 +7,10 @@ export type PlacesFile = { version: number; generated_at: string; kinds: string[
 
 export type Place = {
   name: string;
-  context: string; // el texto gris de la sugerencia: "Colonia", "Metro", "Cine · Cinépolis"
-  rank: number; // prioridad del tipo; el menor va primero
+  // El texto gris de la sugerencia: "Colonia", "Metro", "Cine · Cinépolis".
+  context: string;
+  // Prioridad del tipo; el menor va primero.
+  rank: number;
   lat: number;
   lng: number;
   plain: string;

@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-if not hasattr(hashlib, "scrypt"):         # el Python del sistema de macOS no lo trae; auth/ corre en el venv
+# El Python del sistema de macOS no lo trae; auth/ corre en el venv.
+if not hasattr(hashlib, "scrypt"):
     pytest.skip("sin hashlib.scrypt", allow_module_level=True)
 from auth import db, errors, flows, security, sessions, users  # noqa: E402
 
@@ -34,7 +35,8 @@ def test_invite_redeem_and_login(conn):
     cookie, logged = flows.login(conn, "ADMIN@test.mx", PASSWORD, ip="1.2.3.4")
     assert logged["id"] == user["id"]
     assert sessions.current_session(conn, cookie)["email"] == "admin@test.mx"
-    assert isinstance(users.by_id(conn, user["id"])["last_login_at"], datetime)       # las fechas vuelven como datetime
+    # Las fechas vuelven como datetime.
+    assert isinstance(users.by_id(conn, user["id"])["last_login_at"], datetime)
 
 
 def test_a_used_invite_cannot_be_redeemed_twice(conn):
@@ -51,7 +53,8 @@ def test_lockout_after_max_fails(conn):
         with pytest.raises((errors.InvalidCredentials, errors.AccountLocked)):
             flows.login(conn, "admin@test.mx", "mala")
     with pytest.raises(errors.AccountLocked):
-        flows.login(conn, "admin@test.mx", PASSWORD)                                  # ni con la buena
+        # Ni con la buena.
+        flows.login(conn, "admin@test.mx", PASSWORD)
 
 
 def test_duplicate_email_and_last_admin(conn):
@@ -82,8 +85,10 @@ def test_deactivate_revokes_sessions_and_logout(conn):
 def test_prune_removes_only_old_closed_sessions(conn):
     admin = _admin(conn)
     old = datetime.now(timezone.utc) - timedelta(days=200)
-    sessions.create(conn, admin["id"], now=old)                                   # caducó hace más de 90 días
-    sessions.create(conn, admin["id"])                                            # vigente
+    # Caducó hace más de 90 días.
+    sessions.create(conn, admin["id"], now=old)
+    # Vigente.
+    sessions.create(conn, admin["id"])
     n_sessions, _ = sessions.prune(conn)
     assert n_sessions == 1
     assert db.one(conn, "SELECT count(*) AS n FROM session")["n"] == 1

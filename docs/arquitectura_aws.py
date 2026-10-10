@@ -19,10 +19,12 @@ from diagrams.onprem.client import User, Users
 from diagrams.saas.cdn import Cloudflare
 
 OUT = Path(__file__).with_name("arquitectura-aws")
-LOGOS = Path(__file__).with_name("logos")   # PNG cuadrados: marcas oficiales (Wikimedia Commons, sitios propios)
+# PNG cuadrados: marcas oficiales (Wikimedia Commons, sitios propios).
+LOGOS = Path(__file__).with_name("logos")
 
 
-WIDE = {"cinemex", "cinepolis", "didi", "sqlite"}   # logotipos horizontales: caja ancha y baja para que se lean
+# Logotipos horizontales: caja ancha y baja para que se lean.
+WIDE = {"cinemex", "cinepolis", "didi", "sqlite"}
 
 
 def logo(label, name):

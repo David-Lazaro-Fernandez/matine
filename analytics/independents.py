@@ -23,11 +23,15 @@ from .seats import occupancy_by_title
 # regla queda; si no, las ventas se leen como lo que `broken` sube sobre la base de su sala. Al confirmarlo se cambia a
 # True y se anota la fecha en `project.md`.
 OCCUPANCY_CONFIRMED = False
-OCCUPANCY_DAYS = 7          # ventana de planos: una semana de cine
-OCCUPANCY_MIN_SAMPLES = 20  # funciones medidas en esa ventana para pintar la ocupación: menos es anécdota
+# Ventana de planos: una semana de cine.
+OCCUPANCY_DAYS = 7
+# Funciones medidas en esa ventana para pintar la ocupación: menos es anécdota.
+OCCUPANCY_MIN_SAMPLES = 20
 # Umbrales del hallazgo de Capa 1 (`findings._independent_finding`); ajustar con una o dos semanas de planos.
-INDEP_MIN_SOLD_PCT = 60.0   # % vendido tras el inicio de un título solo suyo que ya es demanda que no atendemos
-INDEP_MIN_SAMPLES = 5       # funciones de ese título medidas en la ventana
+# % vendido tras el inicio de un título solo suyo que ya es demanda que no atendemos.
+INDEP_MIN_SOLD_PCT = 60.0
+# Funciones de ese título medidas en la ventana.
+INDEP_MIN_SAMPLES = 5
 # La Cineteca marca el idioma al final del título ("Mary y Max DOB"); el idioma ya va en `language`.
 _LANGUAGE_SUFFIX = re.compile(r"\s+(dob|dub|sub)\s*$", re.IGNORECASE)
 

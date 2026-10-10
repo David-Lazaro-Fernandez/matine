@@ -32,8 +32,10 @@ from . import keys, registry
 LOCK_DIR = config.DATA_DIR / "locks"
 LOG_PATH = config.LOG_DIR / "jobs.jsonl"
 VENV_PYTHON = config.ROOT / ".venv" / "bin" / "python"
-TIMEOUT_EXIT = 124           # la misma convención que `timeout(1)`
-KILL_GRACE_S = 30            # tras SIGTERM, cuánto se espera antes de SIGKILL
+# La misma convención que `timeout(1)`
+TIMEOUT_EXIT = 124
+# Tras SIGTERM, cuánto se espera antes de SIGKILL.
+KILL_GRACE_S = 30
 
 
 def _now():

@@ -81,7 +81,8 @@ def plist(e, root):
         p = registry.parse_schedule(spec)
         fields = []
         if p["weekday"] is not None:
-            fields.append(("Weekday", (p["weekday"] + 1) % 7))     # launchd: 0 = domingo
+            # launchd: 0 = domingo.
+            fields.append(("Weekday", (p["weekday"] + 1) % 7))
         if p["day"] is not None:
             fields.append(("Day", p["day"]))
         if p["hour"] is not None:

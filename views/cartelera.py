@@ -44,7 +44,7 @@ else:
     d0, d1 = periods[choice]
 includes_today = d0 <= today_s <= d1
 
-# Franja horaria: filtra por la hora de inicio de la función y aplica a todo el tablero salvo al Resumen general,
+# Franja horaria: filtra por la hora de inicio de la función. Aplica a todo el tablero salvo al Resumen general,
 # que muestra sus dos cortes lado a lado. Solo corta en los límites de las franjas, así ninguna queda partida.
 st.sidebar.header("Franja horaria")
 preset = st.sidebar.radio("Franja horaria", list(HOUR_PRESETS) + ["Rango libre"], index=0, label_visibility="collapsed", key="hours_preset")
@@ -84,7 +84,7 @@ st.sidebar.caption(f"La cartelera se captura a las {', '.join(time_12(hm) for hm
 health = load("snapshot_health", limit=12)
 last_ok = health[health.ok == 1].groupby("chain").first()
 # Una cadena está desactualizada si su intento más reciente falló o si su última captura buena tiene más de
-# MAX_AGE_MIN de scraper.health (la cartelera se captura tres veces al día; el hueco nocturno normal es de 11 h).
+# MAX_AGE_MIN. La cartelera se captura tres veces al día y el hueco nocturno normal es de 11 h.
 # Fallos ya superados por una captura buena no avisan.
 now_utc = datetime.now(ZoneInfo("UTC"))
 stale = []
@@ -149,7 +149,8 @@ concl = load_raw("conclusions", d0=d0, d1=d1, shown=SHOWN_MOVIES, total=TOTAL_MO
 # --- Resumen general (formato del reporte diario del cliente) ------------------------------------------
 with seccion("resumen"):
     pregunta("¿Cómo se reparte la programación de la semana?", concl.get("resumen", ""))
-    tab_labels = list(HOUR_PRESETS)[:2]   # "Todo el día" y "Después de las 6 PM", lado a lado como en su reporte
+    # "Todo el día" y "Después de las 6 PM", lado a lado como en su reporte.
+    tab_labels = list(HOUR_PRESETS)[:2]
     for tab, label in zip(st.tabs(tab_labels), tab_labels):
         with tab:
             gs = load("general_summary", d0=d0, d1=d1, hours=HOUR_PRESETS[label], plaza=plaza)
@@ -284,7 +285,8 @@ with seccion("formatos"):
             sub["Grupo"] = sub["bucket"].map(label_map)
             sub["orden"] = sub["bucket"].map({b: i for i, b in enumerate(buckets)})
             sub["label"] = sub["share"].map(lambda v: f"{v:.0f} %" if v >= 7 else "")
-            sub["light"] = sub["orden"] >= (2 if dim == "format" else 1)   # tonos claros: texto oscuro
+            # Tonos claros: texto oscuro.
+            sub["light"] = sub["orden"] >= (2 if dim == "format" else 1)
             domain = [label_map[b] for b in buckets]
             with col:
                 leyenda(list(zip(domain, palette)), square=True)
@@ -430,7 +432,8 @@ with apendice("kpis", "Indicadores del periodo", resumen):
 
 # --- Cambios en la cartelera publicada -----------------------------------------------------------------
 # Los cambios del competidor valen como comportamiento semanal, no como alerta: Cinemex programa por semana de cine.
-CARTELERA_KINDS = [k for k in KINDS if k != "availability"]   # la ocupación es una medida, no un cambio de cartelera
+# La ocupación es una medida, no un cambio de cartelera.
+CARTELERA_KINDS = [k for k in KINDS if k != "availability"]
 by_kind = load("events_by_kind", since_hours=24 * 7, plaza=plaza)
 ev = {(r.chain, r.kind): int(r.n) for r in by_kind.itertuples()} if not by_kind.empty else {}
 g = lambda c, k: ev.get((c, k), 0)  # noqa: E731

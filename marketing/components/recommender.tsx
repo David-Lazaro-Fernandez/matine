@@ -39,11 +39,13 @@ import {
 
 const RecommenderMap = dynamic(() => import('@/components/recommender-map'), { ssr: false });
 
-const PLACES_URL = '/lugares.json'; // De scripts/export_places.py. Sin él, solo sugiere el geocodificador.
+// Lo genera scripts/export_places.py. Sin él, solo sugiere el geocodificador.
+const PLACES_URL = '/lugares.json';
 // Photon (komoot, datos de OpenStreetMap) permite sugerir mientras se escribe y no pide clave. Nominatim lo prohíbe.
 // La instancia pública es de uso justo: con tráfico real, usar una instancia propia.
 const GEOCODER = 'https://photon.komoot.io/api/';
-const DEFAULT_CENTER = { lat: 19.4326, lng: -99.1332 }; // CDMX, hasta que cargan las opciones
+// CDMX, hasta que cargan las opciones.
+const DEFAULT_CENTER = { lat: 19.4326, lng: -99.1332 };
 const API_MAX_PEOPLE = 20;
 const LOCAL_MIN_CHARS = 2;
 const ONLINE_MIN_CHARS = 3;
@@ -125,8 +127,10 @@ const HOURS: Record<string, [number, number]> = {
   'Matiné, antes de las 12 PM': [0, 12],
 };
 const RADII = [2, 5, 10, 15];
-const MAP_OVERLAP = 150; // px del mapa que tapa el dock con punto de partida
-const KEYBOARD_MIN = 120; // px; menos es la barra del navegador que se esconde, no el teclado
+// Píxeles del mapa que tapa el dock con punto de partida.
+const MAP_OVERLAP = 150;
+// Menos píxeles es la barra del navegador que se esconde, no el teclado.
+const KEYBOARD_MIN = 120;
 
 type Point = { lat: number; lng: number; label: string };
 
@@ -344,7 +348,8 @@ type RowId = 'group' | 'snacks' | 'when' | 'budget' | 'more';
 type Tool = 'filter' | 'sort';
 const TOOL_LABEL: Record<Tool, string> = { filter: 'Filtrar', sort: 'Ordenar' };
 type Tab = 'complete' | 'snacks_unpriced' | 'unpriced';
-const PAGE = 20; // funciones por página en la pantalla de resultados
+// Funciones por página en la pantalla de resultados.
+const PAGE = 20;
 
 function MenuRow({
   id,
@@ -406,7 +411,8 @@ export function Recommender() {
   const [seniors, setSeniors] = useState(0);
   const [budget, setBudget] = useState('');
   const [snacks, setSnacks] = useState<Snacks>('none');
-  const [combo, setCombo] = useState<string | null>(null);   // un combo elegido de la lista manda sobre `snacks`
+  // Un combo elegido de la lista manda sobre `snacks`.
+  const [combo, setCombo] = useState<string | null>(null);
   const withSnacks = snacks !== 'none' || combo !== null;
   const snackPlan = combo ?? SNACK_LABEL[snacks].toLowerCase();
   const [date, setDate] = useState('');
@@ -639,7 +645,8 @@ export function Recommender() {
   const siteRows = useMemo(
     () =>
       [...(siteSearch.data?.complete ?? []), ...(siteSearch.data?.snacks_unpriced ?? [])]
-        .filter((r) => siteKey(r) === siteId) // Mientras carga, `data` es del edificio anterior.
+        // Mientras carga, `data` es del edificio anterior.
+        .filter((r) => siteKey(r) === siteId)
         .sort((a, b) => a.datetime_local.localeCompare(b.datetime_local)),
     [siteSearch.data, siteId],
   );

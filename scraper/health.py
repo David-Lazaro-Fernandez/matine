@@ -36,9 +36,12 @@ from jobs import registry as job_registry
 
 from . import config, sample, states, store, titles
 
-MAX_AGE_MIN = 12 * 60        # tres capturas al día: el hueco normal más largo (20:30 → 07:30) es de 11 h
-SLOT_TOLERANCE_MIN = 30      # una captura programada cuenta si hay snapshot bueno a ±30 min
-COVERAGE_MIN_RATIO = 0.9     # cines en la última captura frente al máximo de 7 días: menos es un estado o ciudad que llegó vacío
+# Tres capturas al día: el hueco normal más largo (20:30 → 07:30) es de 11 h.
+MAX_AGE_MIN = 12 * 60
+# Una captura programada cuenta si hay snapshot bueno a ±30 min.
+SLOT_TOLERANCE_MIN = 30
+# Cines en la última captura frente al máximo de 7 días: menos es un estado o ciudad que llegó vacío.
+COVERAGE_MIN_RATIO = 0.9
 # Las cinetecas y los independientes van en el trabajo `snapshot`: se vigilan igual (frescura y cobertura). Las
 # revisiones de dulcería, preventa y semáforo son de otras cadenas y no les aplican.
 CHAINS = ("cinemex", "cinepolis", "cineteca", "cineteca_gdl", "cineteca_mty", "wtc", "papalote_mty", "tonala", "cinemania", "cinery", "epic", "raly", "cabanas")
@@ -46,7 +49,8 @@ CHAINS = ("cinemex", "cinepolis", "cineteca", "cineteca_gdl", "cineteca_mty", "w
 # que la página nunca reciba una ruta arbitraria.
 LOGS = {"run": "run.log", "sample": "sample.log", "delivery": "delivery.log", "health": "health.log",
         "deploy": "deploy.log", "backup": "backup.log", "mail": "mail.log", "systemd": "systemd.out", "jobs": "jobs.jsonl"}
-JOB_RUN_LINES = 5000         # corridas de jobs.jsonl que se leen (~60 al día: cubre más de un mes)
+# Corridas de jobs.jsonl que se leen (~60 al día: cubre más de un mes).
+JOB_RUN_LINES = 5000
 
 
 def _dt(s):
@@ -101,8 +105,8 @@ def check(conn, hours=24, now=None):
                               FROM occupancy_sample WHERE chain = ? AND sampled_at >= ?""", (chain, since)).fetchone()
         c["occupancy_t60"], c["occupancy_post_start"] = occ["pre"] or 0, occ["post"] or 0
         week_ago = (now - timedelta(days=7)).isoformat(timespec="seconds")
-        # Cobertura: una captura buena con muchos menos cines que las de la semana significa que un estado o una ciudad
-        # respondió vacío (la API contesta 200 igual). El máximo semanal es la referencia, no una constante.
+        # Cobertura. Una captura buena con muchos menos cines que las de la semana indica un estado o una ciudad vacíos.
+        # La API contesta 200 igual. El máximo semanal es la referencia, no una constante.
         peak = conn.execute("SELECT MAX(n_cinemas) FROM snapshot WHERE chain = ? AND ok = 1 AND taken_at >= ?", (chain, week_ago)).fetchone()[0]
         c["last_cinemas"], c["peak_cinemas_7d"] = last["n_cinemas"], peak
         # Unidades (estado de Cinemex, lote de Cinépolis) que fallaron en la última captura buena: sus cines quedaron

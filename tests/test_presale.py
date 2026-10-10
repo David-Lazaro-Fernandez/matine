@@ -47,7 +47,8 @@ def test_panel_keeps_sampled_shows_and_fills_one_per_cinema():
     rows = [_row("a1", "a", "2026-10-01T10"), _row("a2", "a", "2026-10-01T12"), _row("a3", "a", "2026-10-01T14"),
             _row("b1", "b", "2026-10-01T11"), _row("c1", "c", "2026-10-02T10"), _row("x1", "a", "2026-10-01T10", "m2")]
     picked = [r["show_id"] for r in presale.pick_panel(rows, sampled={"a3"}, per_title=4)]
-    assert picked == ["a3", "a1", "b1", "c1", "x1"]      # a3 se conserva; luego una por cine (a, b, c); m2 aparte
+    # `a3` se conserva; luego una por cine (a, b, c); m2 aparte.
+    assert picked == ["a3", "a1", "b1", "c1", "x1"]
 
 
 def test_ranking_uses_the_latest_reading_and_the_pace_between_two():
@@ -55,10 +56,14 @@ def test_ranking_uses_the_latest_reading_and_the_pace_between_two():
     conn.row_factory = sqlite3.Row
     conn.execute("""CREATE TABLE presale_sample (chain, show_id, movie_title, title_norm, cinema_id, release_date,
                     sampled_at, days_to_start, seats, sold)""")
-    reads = [("s1", "Duna", "duna", ago(24), 100, 10), ("s1", "Duna", "duna", ago(0), 100, 30),     # +20 en 24 h
-             ("s2", "Duna", "duna", ago(0), 100, 50),                                               # sin lectura previa
-             ("v1", "Verity", "verity", ago(12), 200, 4), ("v1", "Verity", "verity", ago(0), 200, 6),  # +2 en 12 h
-             ("old", "Vieja", "vieja", ago(24 * 5), 100, 90)]                                        # fuera del panel vigente
+    # +20 en 24 h.
+    reads = [("s1", "Duna", "duna", ago(24), 100, 10), ("s1", "Duna", "duna", ago(0), 100, 30),
+             # Sin lectura previa.
+             ("s2", "Duna", "duna", ago(0), 100, 50),
+             # +2 en 12 h.
+             ("v1", "Verity", "verity", ago(12), 200, 4), ("v1", "Verity", "verity", ago(0), 200, 6),
+             # Fuera del panel vigente.
+             ("old", "Vieja", "vieja", ago(24 * 5), 100, 90)]
     conn.executemany("INSERT INTO presale_sample VALUES ('cinemex', ?, ?, ?, 'c1', '2026-12-17', ?, 30, ?, ?)", reads)
     conn.execute("INSERT INTO presale_sample VALUES ('cinepolis', 'p1', 'Duna', 'duna', 'c9', '2026-12-17', ?, 30, 100, 99)", (ago(0),))
     out = {r["title_norm"]: r for r in analytics_presale.presale_ranking(conn)}
@@ -66,7 +71,8 @@ def test_ranking_uses_the_latest_reading_and_the_pace_between_two():
     assert (out["duna"]["shows"], out["duna"]["sold"], out["duna"]["sold_pct"]) == (2, 80, 40.0)
     assert (out["duna"]["paced_shows"], out["duna"]["pace_per_show_day"]) == (1, 20.0)
     assert out["verity"]["pace_per_show_day"] == 4.0
-    assert (out["duna"]["pace_pct_day"], out["verity"]["pace_pct_day"]) == (20.0, 2.0)     # puntos del aforo al día
+    # Puntos del aforo al día.
+    assert (out["duna"]["pace_pct_day"], out["verity"]["pace_pct_day"]) == (20.0, 2.0)
     assert [r["title_norm"] for r in analytics_presale.presale_ranking(conn)] == ["duna", "verity"]
 
 
@@ -81,7 +87,8 @@ def test_compare_puts_both_chains_on_one_row():
                       ("cinepolis", "c", "Rammstein", "rammstein live in mexico city", ago(0), 10),
                       ("cinepolis", "d", "Linkin Park", "linkin park unshatter", ago(0), 5)])
     conn.execute("CREATE TABLE current_showtime (chain, title_norm, city_id)")
-    conn.execute("INSERT INTO current_showtime VALUES ('cinemex', 'linkin park unshatter', '15')")   # la exhibimos sin preventa
+    # La exhibimos sin preventa.
+    conn.execute("INSERT INTO current_showtime VALUES ('cinemex', 'linkin park unshatter', '15')")
     out = analytics_presale.presale_compare(conn)
     assert [(r["title"], r["sold_pct_cinemex"], r["sold_pct_cinepolis"], r["gap_pp"], r["status"]) for r in out] == [
         ("BTS Buenos Aires", 40.0, 60.0, -20.0, "ambas"), ("Rammstein", None, 10.0, None, "exclusiva_cinepolis"),

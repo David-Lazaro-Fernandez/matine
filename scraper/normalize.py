@@ -16,10 +16,8 @@ COLUMNS = [
     "date", "datetime_local", "datetime_utc", "screen", "language", "language_raw",
     "format", "experience", "premium_tier", "version_raw", "availability", "program", "fare_json",
 ]
-# Columnas de la dimensión de cines (tabla `cinema`): la llave geográfica más fina de cada API (`city_id`: Cinépolis
-# slug de ciudad, Cinemex id de área), el estado de Cinemex (su agrupación de API), el estado de INEGI de ambas
-# cadenas (`state_code`, `scraper/states.py`), la zona horaria IANA (solo la publica Cinépolis) y el vistaId de
-# Cinépolis, que piden los planos y la dulcería.
+# Columnas de la dimensión de cines, tabla `cinema`. Solo Cinépolis publica `timezone`. Su `vista_id` lo piden los
+# planos y la dulcería. AGENTS.md §3 define `city_id`, `state_id` y `state_code`.
 CINEMA_COLUMNS = ["chain", "cinema_id", "name", "lat", "lng", "city_id", "state_id", "state_code", "timezone", "vista_id"]
 
 # Campos cuyo cambio se considera "movida" (misma función, distinta hora o sala).
@@ -86,7 +84,8 @@ def _utc(local, offset_or_tz):
 
 def cinepolis_cinemas(raw):
     """Dimensión de cines desde el crudo de Cinépolis (una fila por cine, columnas CINEMA_COLUMNS)."""
-    city = raw.get("city_id")   # crudo del piloto: la ciudad iba a nivel captura
+    # Crudo del piloto: la ciudad iba a nivel captura.
+    city = raw.get("city_id")
     for c in raw.get("cinemas", []):
         yield {"chain": "cinepolis", "cinema_id": c["id"], "name": c.get("name"), "lat": c.get("lat"), "lng": c.get("lng"),
                "city_id": c.get("cityId") or city, "state_id": None,
@@ -112,8 +111,8 @@ def cinepolis_rows(raw):
                         local = (st.get("datetime") or "")[:19]
                         yield {
                             "chain": "cinepolis",
-                            # El sessionId de Vista solo es único dentro de cada cine (914 colisiones
-                            # entre cines de CDMX el 2026-09-08), por eso la identidad lleva el cine.
+                            # El sessionId de Vista solo es único dentro de cada cine. El 2026-09-08 hubo
+                            # 914 colisiones entre cines de CDMX. Por eso la identidad lleva el cine.
                             "show_id": f"{slug}:{st['sessionId']}",
                             "cinema_id": slug,
                             "cinema_name": cinema.get("name"),

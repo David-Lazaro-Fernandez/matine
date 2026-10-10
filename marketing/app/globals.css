@@ -269,7 +269,8 @@ button {
   border-radius: 16px;
   transition: all 0.5s var(--ease-out);
   position: relative;
-  z-index: 41; /* Sobre el menú abierto: la marca y el botón de cerrar quedan visibles. */
+  /* Sobre el menú abierto: la marca y el botón de cerrar quedan visibles. */
+  z-index: 41;
 }
 
 .nav--scrolled {
@@ -1818,7 +1819,8 @@ button {
 .rec-card {
   position: absolute;
   z-index: 3;
-  top: 132px; /* debajo del crédito del mapa, arriba a la izquierda */
+  /* Debajo del crédito del mapa, arriba a la izquierda. */
+  top: 132px;
   left: 24px;
   width: min(400px, calc(100% - 48px));
   max-height: calc(100% - 132px - 190px);
@@ -2579,7 +2581,8 @@ button {
 @media (max-width: 700px) {
   .rec-stage__map,
   .rec-stage__glass {
-    top: 0; /* Detrás de la barra: sin franja blanca arriba. */
+    /* Detrás de la barra: sin franja blanca arriba. */
+    top: 0;
   }
 
   /* Debajo de la barra: no tapan la marca ni el menú. */
@@ -2652,7 +2655,8 @@ button {
     top: auto;
     left: 0;
     right: 0;
-    bottom: var(--keyboard, 0px); /* Sube con el teclado, como el dock: así se ve el campo de presupuesto. */
+    /* Sube con el teclado, como el dock: así se ve el campo de presupuesto. */
+    bottom: var(--keyboard, 0px);
     display: flex;
     flex-direction: column;
     max-height: calc(85svh - var(--keyboard, 0px));

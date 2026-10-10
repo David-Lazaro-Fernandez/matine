@@ -16,7 +16,8 @@ from auth.security import SESSION_TTL_DAYS
 from scraper import config
 
 COOKIE = "ac_session"
-_MEMO_SECONDS = 60      # cada cuánto se vuelve a validar la sesión en app.db; acota el efecto de una revocación
+# Cada cuánto se vuelve a validar la sesión en app.db; acota el efecto de una revocación.
+_MEMO_SECONDS = 60
 
 
 def current_user():

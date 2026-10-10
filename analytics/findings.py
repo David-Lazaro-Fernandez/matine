@@ -56,29 +56,44 @@ THEM_NAME = CHAIN_LABEL[THEM]
 
 # Umbrales (en puntos porcentuales salvo que se indique) a partir de los cuales una diferencia
 # merece una tarjeta de Capa 1.
-TITLE_SEATS_MIN_PP = 1.5        # diferencia entre Δ funciones y Δ butacas de un título
-TITLE_MIN_SHARE = 2.0           # % mínimo de la parrilla de alguna cadena para considerar un título
+# Diferencia entre Δ funciones y Δ butacas de un título.
+TITLE_SEATS_MIN_PP = 1.5
+# % mínimo de la parrilla de alguna cadena para considerar un título.
+TITLE_MIN_SHARE = 2.0
 TOP3_MIN_PP = 3.0
 SLOT_MIN_PP = 1.0
 FORMAT_MIN_PP = 5.0
 EXCLUSIVE_MIN_TITLES = 3
 EXCLUSIVE_MIN_SHOWS = 20
-CONCESSION_MIN_PCT = 10.0       # brecha mediana de precio en la canasta comparable de dulcería a domicilio
-MOVE_MIN_PP = 1.0               # cambio de share de un título en lo que falta de la semana
-MOVE_MIN_SHOWS = 30             # y al menos estas funciones netas, para que un título chico no cruce solo por pp
-PRICE_MIN_PCT = 10.0            # brecha del boleto promedio ponderado por la parrilla de cada cadena
-PRICE_MIN_PRICED = 50.0         # % mínimo de funciones con precio muestreado para afirmar un promedio
-DEMAND_MIN_DEV = 0.3            # un título vende 30 % más (o menos) de lo esperado para su horario en Cinépolis
-DEMAND_MIN_SAMPLES = 20         # planos tras el inicio del título en la ventana de muestreo
-DEMAND_MIN_SHARE = 1.0          # % de la parrilla vigente de Cinépolis: el título tiene que seguir en su cartelera
-PRESALE_MIN_RATIO = 2.0         # el título que más vende en preventa le saca al menos el doble al segundo
-PRESALE_MIN_SHOWS = 10          # funciones del panel vigente para comparar un título
-PRESALE_GAP_MIN_PP = 10.0       # brecha de % del aforo vendido en un mismo título entre cadenas
-PRESALE_EXCLUSIVE_MIN_PCT = 40.0  # % del aforo vendido de una preventa exclusiva de Cinépolis que ya merece atención
-PRICE_MIN_CINEMAS = 5           # cines muestreados por cadena para citar una combinación de formato y tipo de día
+# Brecha mediana de precio en la canasta comparable de dulcería a domicilio.
+CONCESSION_MIN_PCT = 10.0
+# Cambio de share de un título en lo que falta de la semana.
+MOVE_MIN_PP = 1.0
+# Y al menos estas funciones netas, para que un título chico no cruce solo por pp.
+MOVE_MIN_SHOWS = 30
+# Brecha del boleto promedio ponderado por la parrilla de cada cadena.
+PRICE_MIN_PCT = 10.0
+# % mínimo de funciones con precio muestreado para afirmar un promedio.
+PRICE_MIN_PRICED = 50.0
+# Un título vende 30 % más (o menos) de lo esperado para su horario en Cinépolis.
+DEMAND_MIN_DEV = 0.3
+# Planos tras el inicio del título en la ventana de muestreo.
+DEMAND_MIN_SAMPLES = 20
+# % de la parrilla vigente de Cinépolis: el título tiene que seguir en su cartelera.
+DEMAND_MIN_SHARE = 1.0
+# El título que más vende en preventa le saca al menos el doble al segundo.
+PRESALE_MIN_RATIO = 2.0
+# Funciones del panel vigente para comparar un título.
+PRESALE_MIN_SHOWS = 10
+# Brecha de % del aforo vendido en un mismo título entre cadenas.
+PRESALE_GAP_MIN_PP = 10.0
+# % del aforo vendido de una preventa exclusiva de Cinépolis que ya merece atención.
+PRESALE_EXCLUSIVE_MIN_PCT = 40.0
+# Cines muestreados por cadena para citar una combinación de formato y tipo de día.
+PRICE_MIN_CINEMAS = 5
 
-# Ventanas de muestreo: el precio se renueva una vez por semana por cine, formato y tipo de día, así que 14 días cubren
-# una vuelta completa con holgura; la ocupación se mide cada hora y una semana de cine basta para leer la demanda.
+# Ventanas de muestreo. El precio se renueva una vez por semana por cine, formato y tipo de día. Con 14 días cubrimos
+# una vuelta completa con holgura. La ocupación se mide cada hora y una semana de cine basta para leer la demanda.
 PRICE_SAMPLE_DAYS = 14
 DEMAND_SAMPLE_DAYS = 7
 # La dulcería a domicilio se captura a diario: un dato más viejo ya no describe el precio de hoy.
@@ -213,7 +228,8 @@ def _concentration_finding(conn, d0, d1, movies, hours=None, plaza=None):
 
 def _slot_finding(conn, d0, d1, hours=None, plaza=None):
     if not is_full_day(hours):
-        return None   # con la franja recortada, la "franja ganadora" pierde el sentido comparativo
+        # Con la franja recortada, la "franja ganadora" pierde el sentido comparativo.
+        return None
     slots = {r["chain"]: r for r in showtimes_by_slot(conn, d0, d1, plaza=plaza)}
     if US not in slots or THEM not in slots or not slots[US]["total"] or not slots[THEM]["total"]:
         return None

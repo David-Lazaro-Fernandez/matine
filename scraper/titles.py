@@ -21,13 +21,20 @@ PAIRS_PATH = Path(__file__).resolve().parent / "title_pairs.csv"
 
 # Cada regla, con el caso que la justifica (vistos en la cartelera del 2026-09-25).
 _DECORATIONS = [
-    re.compile(r" (dob|dub|sub)$"),              # Cineteca: "Cars 20 aniversario DOB", "Mary y Max SUB"; antes de aniversario
-    re.compile(r"\bre ?estrenos?( \d{4})?\b"),   # "Coraline … (Re-estreno 2026)", "Reestreno Rápido Y Furioso"
-    re.compile(r"\b\d{1,3} aniversario\b"),      # "Rápido y Furioso (25° Aniversario)", "Transformers … 40 Aniversario"
-    re.compile(r"^evento especial "),            # "Evento Especial: Puella Magi Madoka Magica"
-    re.compile(r" (en vivo|live viewing)$"),     # BTS: "En Vivo" en Cinépolis, "Live Viewing" en Cinemex
-    re.compile(r" (infinity vision|4k)$"),       # "Avengers: Endgame Bonus Infinity Vision", "Akira 4k"
-    re.compile(r"^the "),                        # "The Transformers: La Película …" frente a "Transformers: La película"
+    # Cineteca: "Cars 20 aniversario DOB", "Mary y Max SUB"; antes de aniversario.
+    re.compile(r" (dob|dub|sub)$"),
+    # "Coraline … (Re-estreno 2026)", "Reestreno Rápido Y Furioso"
+    re.compile(r"\bre ?estrenos?( \d{4})?\b"),
+    # "Rápido y Furioso (25° Aniversario)", "Transformers … 40 Aniversario"
+    re.compile(r"\b\d{1,3} aniversario\b"),
+    # "Evento Especial: Puella Magi Madoka Magica"
+    re.compile(r"^evento especial "),
+    # BTS: "En Vivo" en Cinépolis, "Live Viewing" en Cinemex.
+    re.compile(r" (en vivo|live viewing)$"),
+    # "Avengers: Endgame Bonus Infinity Vision", "Akira 4k"
+    re.compile(r" (infinity vision|4k)$"),
+    # "The Transformers: La Película …" frente a "Transformers: La película"
+    re.compile(r"^the "),
 ]
 
 
@@ -78,9 +85,8 @@ def title_key(title_norm):
 
 
 # Candidatos: parecido de texto sobre la llave, como propuesta para revisar, nunca como unión automática. Solo se
-# comparan títulos que aún no tienen pareja en la otra cadena, y sus números deben coincidir ("Parte 1" no es
-# "Parte 3", "Terminator 2" no es "Terminator"). El parecido solo no distingue sedes ni secuelas sin número (dos
-# conciertos de BTS se parecen más de 80 %), por eso la decisión es siempre de una persona.
+# comparan títulos sin pareja en la otra cadena. Sus números deben coincidir: "Parte 1" no es "Parte 3". El parecido
+# no distingue sedes ni secuelas sin número. Dos conciertos de BTS se parecen más de 80 %. Por eso decide una persona.
 CANDIDATE_MIN_RATIO = 0.6
 _DIGITS = re.compile(r"\d+")
 

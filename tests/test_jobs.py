@@ -42,7 +42,8 @@ def test_parse_schedule_rejects_bad_specs(spec):
 
 def test_daily_times_are_what_health_expects():
     assert registry.daily_times(keys.SNAPSHOT) == ("07:30", "13:30", "20:30")
-    assert registry.daily_times(keys.AUTH_PRUNE) == ()         # semanal: no cuenta como captura diaria
+    # Semanal: no cuenta como captura diaria.
+    assert registry.daily_times(keys.AUTH_PRUNE) == ()
 
 
 def test_calendar_translations():
@@ -51,7 +52,8 @@ def test_calendar_translations():
     assert units._on_calendar("*:22") == "*-*-* *:22:00"
     assert registry.describe_schedule(("*:22", "*:52")) == "cada hora a :22 y :52"
     plist = units.plist({**registry.entry(keys.AUTH_PRUNE), "schedule": ("Sun 04:07",)}, "/repo")
-    assert "<key>Weekday</key><integer>0</integer>" in plist      # launchd: domingo es 0
+    # launchd: domingo es 0.
+    assert "<key>Weekday</key><integer>0</integer>" in plist
     assert "<string>KEY=auth-prune</string>" in plist
 
 

@@ -2,9 +2,8 @@ import { DEMO_URL } from '@/lib/site';
 import { Arrow } from './icons';
 import { Reveal } from './reveal';
 
-// Fake door test (design.md §3): nada de esto existe hoy. Cada puerta lleva a /request-demo/ con su llave de
-// EARLY_ACCESS, que el formulario pone en el asunto para contar el interés por separado. El diseño del resumen
-// narrado vive en ../project.md § "Paso 2".
+// Fake door test (design.md §3): nada de esto existe hoy. Cada puerta tiene su asunto en EARLY_ACCESS, para contar el
+// interés por separado. El diseño del resumen narrado está en ../project.md § "Paso 2".
 const door = (key: string) => `${DEMO_URL}?acceso=${key}`;
 
 const DOORS = [

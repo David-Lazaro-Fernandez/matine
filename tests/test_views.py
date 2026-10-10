@@ -118,7 +118,8 @@ def test_login_page_accepts_good_credentials(monkeypatch, admin):
     at.button[0].click().run()
     _clean(at)
     assert not at.error
-    assert any(AUTH_TEXT["continue"] in m.value for m in at.markdown)   # el iframe puso la cookie y quedó el enlace de respaldo
+    # El iframe puso la cookie y quedó el enlace de respaldo.
+    assert any(AUTH_TEXT["continue"] in m.value for m in at.markdown)
 
 
 def test_forgot_page_answers_the_same_for_any_email(monkeypatch, conn):
@@ -152,7 +153,8 @@ def test_reset_page_sets_a_new_password(monkeypatch, conn, viewer):
     _clean(at)
     assert [s.value for s in at.success] == [AUTH_TEXT["reset_done"]]
     assert security.verify_password("nueva-contraseña-larga-1", users.password_hash(conn, viewer["id"]))
-    users.set_password(conn, viewer["id"], PASSWORD)   # deja la cuenta como la encontró
+    # Deja la cuenta como la encontró.
+    users.set_password(conn, viewer["id"], PASSWORD)
 
 
 # --- páginas con sesión ------------------------------------------------------------------------------
@@ -177,7 +179,8 @@ def test_datos_each_dataset(monkeypatch, conn, viewer, dataset):
     at = _run(monkeypatch, cookie=_cookie(conn, viewer), page="datos")
     at.sidebar.selectbox(key="dataset").set_value(dataset).run()
     _clean(at)
-    assert len(at.dataframe) == 1 or at.info   # tabla con datos, o el aviso de "sin renglones"
+    # Tabla con datos, o el aviso de "sin renglones".
+    assert len(at.dataframe) == 1 or at.info
 
 
 @any_snapshots
@@ -191,7 +194,8 @@ def test_datos_filters_apply(monkeypatch, conn, viewer):
     at.sidebar.radio(key="chain").set_value("cinemex").run()
     _clean(at)
     assert len(at.dataframe[0].value) <= total
-    assert set(at.dataframe[0].value["Cadena"]) <= {"Cinemex"}   # el botón de descarga no lo expone AppTest
+    # El botón de descarga no lo expone AppTest.
+    assert set(at.dataframe[0].value["Cadena"]) <= {"Cinemex"}
 
 
 @any_snapshots
@@ -204,20 +208,24 @@ def test_mapa_for_viewer(monkeypatch, conn, viewer):
     _clean(at)
     with closing(analytics.connect()) as db:
         first = analytics.cinema_map(db, plaza=at.session_state["plaza"])[0]["cinema_id"]
-    at.session_state["map_cinemas"] = [first]                     # AppTest no elige en un multiselect con format_func
+    # AppTest no elige en un multiselect con format_func.
+    at.session_state["map_cinemas"] = [first]
     at.run()
     _clean(at)
     at.sidebar.radio(key="plaza").set_value("gdl" if "gdl" in at.sidebar.radio(key="plaza").options else None).run()
-    _clean(at)                                                    # el cine elegido ya no está en la zona: se suelta
+    # El cine elegido ya no está en la zona: se suelta.
+    _clean(at)
 
 
 @any_snapshots
 def test_recomendador_for_viewer(monkeypatch, conn, viewer):
     at = _run(monkeypatch, cookie=_cookie(conn, viewer), page="recomendador")
-    at.session_state["rec_location"] = (19.35, -99.162)                  # Coyoacán
+    # Coyoacán.
+    at.session_state["rec_location"] = (19.35, -99.162)
     at.run()
     _clean(at)
-    assert at.markdown                                                    # resumen y tabla de funciones
+    # Resumen y tabla de funciones.
+    assert at.markdown
 
 
 @any_snapshots
@@ -246,7 +254,8 @@ def recorded_db(capture_db, tmp_path, monkeypatch):
     mem.execute("UPDATE current_showtime SET city_id = 'guadalajara' WHERE chain = 'cinepolis'")
     mem.execute("UPDATE cinema SET city_id = 'guadalajara' WHERE chain = 'cinepolis'")
     _to_tomorrow(mem)
-    mem.commit()                                        # backup() espera sin fin a una transacción abierta
+    # `backup()` espera sin fin a una transacción abierta.
+    mem.commit()
     path = tmp_path / "snapshots.db"
     with sqlite3.connect(path) as dst:
         mem.backup(dst)
@@ -260,7 +269,8 @@ def test_independientes_with_recorded_capture(monkeypatch, conn, viewer, recorde
     at = _run(monkeypatch, cookie=_cookie(conn, viewer), page="independientes")
     at.sidebar.radio(key="indep_period").set_value(INDEP_TEXT["period_tomorrow"]).run()
     _clean(at)
-    assert len(at.dataframe) >= 2                       # sedes y cartelera completa
+    # Sedes y cartelera completa.
+    assert len(at.dataframe) >= 2
     assert INDEP_TEXT["ocupacion_pending"] in [i.value for i in at.info]
     at.sidebar.radio(key="plaza").set_value("gdl").run()
     _clean(at)
@@ -277,9 +287,12 @@ def test_mapa_with_recorded_capture(monkeypatch, conn, viewer, recorded_db):
 def test_recomendador_with_recorded_capture(monkeypatch, conn, viewer, recorded_db):
     at = _run(monkeypatch, cookie=_cookie(conn, viewer), page="recomendador")
     _clean(at)
-    assert at.info[-1].value == RECOMMEND_TEXT["no_location"]            # sin punto de partida, solo el plan y el mapa
-    at.session_state["rec_location"] = (21.493764, -104.8664)             # Forum Tepic, de lo grabado
-    at.radio(key="rec_when").set_value(RECOMMEND_TEXT["tomorrow"]).run()  # la cartelera grabada se movió a mañana
+    # Sin punto de partida, solo el plan y el mapa.
+    assert at.info[-1].value == RECOMMEND_TEXT["no_location"]
+    # Forum Tepic, de lo grabado.
+    at.session_state["rec_location"] = (21.493764, -104.8664)
+    # La cartelera grabada se movió a mañana.
+    at.radio(key="rec_when").set_value(RECOMMEND_TEXT["tomorrow"]).run()
     at.number_input(key="rec_children").set_value(2).run()
     at.radio(key="rec_snacks").set_value("best").run()
     _clean(at)
@@ -311,10 +324,12 @@ def test_usuarios_for_admin_lists_and_rejects_duplicate(monkeypatch, conn, admin
 def test_usuarios_role_change_is_explicit(monkeypatch, conn, admin, viewer):
     at = _run(monkeypatch, cookie=_cookie(conn, admin), page="usuarios")
     at.selectbox(key="target_user").set_value(str(viewer["id"])).run()
-    assert at.button(key="set_role").disabled            # mismo rol que tiene: nada que cambiar
+    # Mismo rol que tiene: nada que cambiar.
+    assert at.button(key="set_role").disabled
     at.selectbox(key=f"new_role_{viewer['id']}").set_value("admin").run()
     assert not at.button(key="set_role").disabled
-    assert users.by_id(conn, viewer["id"])["role"] == "viewer"   # elegir en el selector no cambia nada por sí solo
+    # Elegir en el selector no cambia nada por sí solo.
+    assert users.by_id(conn, viewer["id"])["role"] == "viewer"
     at.button(key="set_role").click().run()
     _clean(at)
     assert users.by_id(conn, viewer["id"])["role"] == "admin"
@@ -326,20 +341,26 @@ def test_viewer_cannot_open_usuarios(monkeypatch, conn, viewer):
     at = _run(monkeypatch, cookie=_cookie(conn, viewer), page="usuarios")
     _clean(at)
     assert AUTH_TEXT["create_and_invite"] not in [b.label for b in at.button]
-    assert len(at.dataframe) > 1                          # cayó en la cartelera
+    # Cayó en la cartelera.
+    assert len(at.dataframe) > 1
 
 
 @any_snapshots
 def test_operaciones_for_admin(monkeypatch, conn, admin):
     at = _run(monkeypatch, cookie=_cookie(conn, admin), page="operaciones")
     _clean(at)
-    assert at.success or at.warning                       # el veredicto de scraper.health, en un sentido o en otro
-    assert len(at.dataframe) >= 2                         # trabajos y corridas
-    assert at.slider(key="job_days")                      # la sección de trabajos programados del registro
-    assert at.code                                        # la cola del log de corridas
+    # El veredicto de scraper.health, en un sentido o en otro.
+    assert at.success or at.warning
+    # Trabajos y corridas.
+    assert len(at.dataframe) >= 2
+    # La sección de trabajos programados del registro.
+    assert at.slider(key="job_days")
+    # La cola del log de corridas.
+    assert at.code
     at.selectbox(key="log_name").set_value("sample").run()
     _clean(at)
-    assert at.code or at.info                             # cola del log de muestreo, o el aviso de que no existe aquí
+    # Cola del log de muestreo, o el aviso de que no existe aquí.
+    assert at.code or at.info
 
 
 @needs_sqlite
@@ -347,7 +368,8 @@ def test_viewer_cannot_open_operaciones(monkeypatch, conn, viewer):
     at = _run(monkeypatch, cookie=_cookie(conn, viewer), page="operaciones")
     _clean(at)
     assert OPS_TEXT["title"] not in "".join(m.value for m in at.markdown)
-    assert len(at.dataframe) > 1                          # cayó en la cartelera
+    # Cayó en la cartelera.
+    assert len(at.dataframe) > 1
 
 
 @any_snapshots

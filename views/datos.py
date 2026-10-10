@@ -23,7 +23,8 @@ if "dates" in filters:
     if isinstance(picked, tuple) and len(picked) == 2:
         kwargs["d0"], kwargs["d1"] = picked[0].isoformat(), picked[1].isoformat()
     else:
-        st.stop()  # rango a medio elegir
+        # Rango a medio elegir.
+        st.stop()
 if "platform" in filters:
     plat = st.sidebar.selectbox(DATA_TEXT["platform"], options=[None, *PLATFORM_LABEL],
                                 format_func=lambda v: DATA_TEXT["all"] if v is None else PLATFORM_LABEL[v], key="platform")

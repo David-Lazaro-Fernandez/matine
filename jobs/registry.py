@@ -23,14 +23,19 @@ DEFAULTS = {
     "steps": (),
     "schedule": (),
     "timeout_min": 30,
-    "enabled": True,        # False: la unidad se instala pero el timer queda apagado (se enciende a mano)
+    # False: la unidad se instala pero el timer queda apagado (se enciende a mano).
+    "enabled": True,
     "hosts": ("server",),
-    "egress": False,        # True: sale por WARP (Cinépolis); la unidad espera a warp-svc y privoxy
+    # True: sale por WARP (Cinépolis); la unidad espera a warp-svc y privoxy.
+    "egress": False,
     "user": "absolut",
     "nice": 10,
-    "jitter_min": 0,        # retraso aleatorio del timer, para no arrancar varios trabajos en el mismo segundo
-    "catch_up": True,       # si el servidor estaba apagado a la hora programada, corre al arrancar
-    "retries": 0,           # reintentos del trabajo completo si falla; los reintentos por petición ya están en http.py
+    # Retraso aleatorio del timer, para no arrancar varios trabajos en el mismo segundo.
+    "jitter_min": 0,
+    # Si el servidor estaba apagado a la hora programada, corre al arrancar.
+    "catch_up": True,
+    # Reintentos del trabajo completo si falla; los reintentos por petición ya están en http.py.
+    "retries": 0,
     "retry_delay_s": 0,
     "writes": (),
     "description": "",

@@ -191,8 +191,8 @@ def load_current(conn, chain):
 
 
 def _stored(col, value):
-    # El valor como lo guarda SQLite según la afinidad de la columna, para comparar con lo leído de la base sin que
-    # 3 contra "3" o 100 contra 100.0 cuenten como cambio.
+    # Convierte el valor según la afinidad de la columna, como lo guarda SQLite. Así 3 contra "3" o 100 contra 100.0
+    # no cuentan como cambio.
     if value is None:
         return None
     if col in _REAL_COLUMNS:

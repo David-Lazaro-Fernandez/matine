@@ -18,14 +18,16 @@ USER_AGENT = (
 GEOCODER_URL = os.environ.get("AC_GEOCODER_URL", "https://nominatim.openstreetmap.org/search")
 GEOCODER_USER_AGENT = os.environ.get("AC_GEOCODER_USER_AGENT", "absolut-cinema/1.0 (dashboard; recomendador de funciones)")
 GEOCODER_COUNTRY = os.environ.get("AC_GEOCODER_COUNTRY", "mx")
-REQUEST_TIMEOUT = 60      # segundos por petición
-RETRIES = 3               # reintentos ante 5xx / 429 / red
+# Segundos por petición.
+REQUEST_TIMEOUT = 60
+# Reintentos ante 5xx / 429 / red.
+RETRIES = 3
 # Reintentos de una unidad de captura completa (un estado de Cinemex, un lote de Cinépolis) que falló aun con los
 # reintentos por petición; se hacen al final de la pasada, cuando ya corrieron las demás (scraper/units.py).
 UNIT_RETRIES = 1
 PAUSE_BETWEEN_CALLS = 0.15
-# Pausa por host, cuando difiere de la general. Cinépolis no ha devuelto un 429 nunca, pero la captura nacional medida el
-# 2026-09-11 iba a 90 llamadas/min hacia api-g.cinepolis.com y el pase de butacas de :50 suma al mismo host; el límite
+# Pausa por host, cuando difiere de la general. Cinépolis nunca devolvió un 429. Pero la captura nacional medida el
+# 2026-09-11 iba a 90 llamadas/min hacia api-g.cinepolis.com, y el pase de butacas de :50 suma al mismo host. El límite
 # habitual de una API pública es 100/min y no queremos descubrirlo. Con 0.6 s la captura sola queda en ~55/min (975
 # llamadas en ~17 min) y con el pase de butacas encima en ~70/min. Cinemex sirve desde caché y va a 50/min: se queda.
 PAUSE_BY_HOST = {"api-g.cinepolis.com": float(os.environ.get("AC_CINEPOLIS_PAUSE", "0.6"))}
@@ -39,8 +41,7 @@ EGRESS_PROXY_HOSTS = tuple(h.strip() for h in os.environ.get("AC_EGRESS_PROXY_HO
                            if h.strip())
 
 # Zona horaria de referencia: la del dashboard, de "hoy" y de las horas programadas. Cada función lleva además su
-# hora UTC (`datetime_utc`), porque México tiene siete zonas (Tijuana, Hermosillo, Cancún…) y "ya empezó" se decide
-# con esa, no con la de referencia.
+# hora UTC en `datetime_utc`. México tiene siete zonas, y "ya empezó" se decide con la hora UTC.
 PILOT_TIMEZONE = "America/Mexico_City"
 
 
@@ -51,8 +52,10 @@ def _csv(name):
 
 # Alcance de la captura de cartelera: nacional por defecto. Para acotar (desarrollo, una plaza de prueba):
 # AC_CINEPOLIS_CITIES=cdmx AC_CINEMEX_STATES=8.
-CINEPOLIS_CITIES = _csv("AC_CINEPOLIS_CITIES")     # slugs de ciudad de Cinépolis (154 el 2026-09-11); vacío = todas
-CINEMEX_STATES = tuple(int(x) for x in _csv("AC_CINEMEX_STATES"))   # ids de estado de Cinemex (31); vacío = todos
+# Slugs de ciudad de Cinépolis (154 el 2026-09-11); vacío = todas.
+CINEPOLIS_CITIES = _csv("AC_CINEPOLIS_CITIES")
+# Ids de estado de Cinemex (31); vacío = todos.
+CINEMEX_STATES = tuple(int(x) for x in _csv("AC_CINEMEX_STATES"))
 # Plazas cuyas funciones entran al muestreo de planos de asientos (post-inicio, aforo, preventa). Claves de
 # scraper/plazas.py. Decisión 2026-09-11: los planos no se censan a nivel nacional; se acotan a las plazas que pida
 # el cliente, elegidas con el registro inicial de funciones por plaza.
@@ -64,18 +67,21 @@ CINEPOLIS_API_KEY = os.environ.get(
 )
 CINEPOLIS_LOCATIONS_URL = "https://api-g.cinepolis.com/shared-services/locations/graphql"
 CINEPOLIS_BILLBOARDS_URL = "https://api-g.cinepolis.com/v2/billboards/graphql"
-CINEPOLIS_TICKET_URL = "https://api-g.cinepolis.com/v1/ticket/graphql"              # planos y boletos (verificado 2026-09-08)
+# Planos y boletos (verificado 2026-09-08).
+CINEPOLIS_TICKET_URL = "https://api-g.cinepolis.com/v1/ticket/graphql"
 # Dulcería: lo consulta el microfrontend foods-menu-mf.cinepolis.com con la misma x-apikey (verificado 2026-09-08).
 CINEPOLIS_CONCESSIONS_URL = "https://api-g.cinepolis.com/v1/fab-struct-concession/graphql"
 CINEPOLIS_COUNTRY = "MX"
-CINEPOLIS_BATCH_SIZE = 30         # la API rechaza más de 30 cines por llamada (error 105; confirmado 2026-09-11 con 31 y 40)
+# La API rechaza más de 30 cines por llamada (error 105; confirmado 2026-09-11 con 31 y 40).
+CINEPOLIS_BATCH_SIZE = 30
 CINEPOLIS_PAGE_SIZE = 50
 
 # --- Cinemex (REST, ver project.md sección Cinemex) ---
 CINEMEX_BASE_URL = os.environ.get("CINEMEX_BASE_URL", "https://api.cinemex.com/rest/v2.38/")
 CINEMEX_CONSUMER_KEY = os.environ.get("CINEMEX_CONSUMER_KEY", "XXQha7vz4kdvoMSdixhN")
 # La unidad de consulta de cartelera es el estado (`cinemas/state/{id}/movies/`, 31 estados el 2026-09-11); CDMX es el 8.
-CINEMEX_DAYS_AHEAD = 14           # días hacia adelante a pedir por estado (cubre la semana de cine siguiente)
+# Días hacia adelante a pedir por estado (cubre la semana de cine siguiente).
+CINEMEX_DAYS_AHEAD = 14
 # Estados de Cinemex que se descargan a la vez. En serie iba a ~50 llamadas/min y 9 min la captura nacional; la API
 # sirve desde caché y nunca ha devuelto 429. Cada hilo respeta PAUSE_BETWEEN_CALLS. Cinépolis sigue en serie: su
 # ritmo lo fija PAUSE_BY_HOST, no el número de hilos.
@@ -88,7 +94,8 @@ CINEMEX_WORKERS = int(os.environ.get("AC_CINEMEX_WORKERS", "3"))
 CINETECA_CARTELERA_URL = os.environ.get("CINETECA_CARTELERA_URL", "https://www.cinetecanacional.net/obtener_cartelera.php")
 CINETECA_VISTA_BASE_URL = os.environ.get("CINETECA_VISTA_BASE_URL", "https://rbvfcn.cinetecanacional.net/WSVistaWebClient")
 CINETECA_CONNECT_TOKEN = os.environ.get("CINETECA_CONNECT_TOKEN", "00Hce1yZxXdQtA9ZgvQR69ElXrBgLT")
-CINETECA_DAYS_AHEAD = 14           # días hacia adelante a pedir (cubre la semana de cine siguiente, como Cinemex)
+# Días hacia adelante a pedir (cubre la semana de cine siguiente, como Cinemex).
+CINETECA_DAYS_AHEAD = 14
 
 # --- Cineteca FICG y Cineforo (Guadalajara, chain="cineteca_gdl", ver project.md) ---
 # Las dos venden en Veezi; la página pública de horarios de cada sede se pide con su siteToken (verificado 2026-09-30).
@@ -127,8 +134,10 @@ REMOVED_GRACE_MINUTES = 30
 
 # Muestreo de asientos (scraper/sample.py). La API de Vista detrás de Cinépolis responde errores
 # transitorios (116, 101305) si se le pide plano tras plano sin pausa.
-SAMPLE_PAUSE = 0.6        # segundos entre planos (por hilo)
-SAMPLE_BACKOFF = 5        # segundos tras un error
+# Segundos entre planos (por hilo).
+SAMPLE_PAUSE = 0.6
+# Segundos tras un error.
+SAMPLE_BACKOFF = 5
 # Parte de planos fallidos que una pasada tolera sin salir con error. Cinemex falla planos sueltos en rachas
 # (redirección sin destino, visto 2026-09-28); un fallo aislado no merece la alerta del timer.
 SAMPLE_MAX_FAIL_SHARE = float(os.environ.get("AC_SAMPLE_MAX_FAIL_SHARE", "0.25"))
@@ -138,12 +147,12 @@ SAMPLE_MAX_FAIL_SHARE = float(os.environ.get("AC_SAMPLE_MAX_FAIL_SHARE", "0.25")
 SAMPLE_WORKERS = int(os.environ.get("AC_SAMPLE_WORKERS", "1"))
 
 # Planos post-inicio (sample --post-start): la asistencia final de cada función. El plano existe ~2.5 h después
-# del inicio, así que una corrida por hora con ventana de 15 a 75 min cubre todas las funciones (decisión 2026-09-09:
-# solo post-inicio, sin la lectura de preventa a T−60, que aportaba poco).
+# del inicio. Una corrida por hora con ventana de 15 a 75 min cubre todas las funciones. Decisión 2026-09-09: solo
+# post-inicio, sin la lectura de preventa a T−60, que aportaba poco.
 POST_START_AFTER_MIN = 45
 POST_START_TOLERANCE_MIN = 30
 
-# Preventas de Cinemex (scraper/presale.py). Los títulos son los de la landing `preventas` de `GET landings/` y el
+# Preventas de Cinemex (scraper/presale.py). Los títulos salen de la landing `preventas` de `GET landings/`. El
 # estreno sale de `upcoming`, incrustado en el HTML del sitio (verificado 2026-09-25). Cada título lleva un panel fijo
 # de funciones que se releen a diario hasta que empiezan: da la curva de venta (decisión 2026-09-25: 30 por título).
 CINEMEX_SITE_URL = os.environ.get("CINEMEX_SITE_URL", "https://cinemex.com/landing/preventas/peliculas/")
@@ -152,8 +161,8 @@ PRESALE_LANDING_SLUG = "preventas"
 # Página de compra (verificado 2026-09-30, en el navegador y en las apps). Cinemex abre el checkout de la función, en el
 # sitio y en su app: la app reclama `cinemex.com` y con `/cine/…` dice "El cine seleccionado no se encuentra disponible".
 # Cinépolis abre el paso "Horario" con el cine y la película elegidos, y no filtra por fecha.
-# La Cineteca Nacional abre la selección de boletos de Vista (si la función se vende solo en taquilla, lo dice ahí) y
-# las salas de la FICG la compra de Veezi. `session_id` es el id de la función en su sistema de venta y `site_token` el
+# La Cineteca Nacional abre la selección de boletos de Vista. Si la función se vende solo en taquilla, Vista lo dice
+# ahí. Las salas de la FICG abren la compra de Veezi. `session_id` es el id de la función en su sistema de venta y `site_token` el
 # de la sede en Veezi. Epic abre los boletos de Vista, como la Cineteca. WTC y Cinery abren los asientos de la
 # función. Tonalá abre el evento: su página de asientos manda a la portada si no se llega desde ahí. Papalote abre el
 # plan de Fever y Cinemanía el evento de Passline (verificado 2026-10-02).
@@ -194,16 +203,21 @@ RAPPI_CITY = "ciudad-de-mexico"
 RAPPI_BRANDS = {"cinemex": (51760, "cinemex"), "cinepolis": (96681, "cinepolis-tradicional")}
 DIDI_BASE_URL = os.environ.get("DIDI_BASE_URL", "https://web.didiglobal.com")
 DIDI_CITY = "ciudad-de-mexico-cdmx"
-DIDI_CATEGORY = "pasaboca"        # categoría de botanas: ahí lista los cines (2026-09-09)
+# Categoría de botanas: ahí lista los cines (2026-09-09).
+DIDI_CATEGORY = "pasaboca"
 DIDI_MAX_PAGES = 60
 
-SNAPSHOT_STALE_HOURS = 2                                    # snapshot sin finish_snapshot más viejo que esto: se da por fallido
+# Snapshot sin finish_snapshot más viejo que esto: se da por fallido.
+SNAPSHOT_STALE_HOURS = 2
 
 # --- Acceso al dashboard (auth/) ---
 # Cuentas, sesiones, enlaces y auditoría en su propia base SQLite: la escribe solo auth/ (dashboard y auth.cli), nunca
 # la captura; snapshots.db sigue siendo solo de la captura (decisión 2026-09-25: sin Postgres ni RDS).
 APP_DB_PATH = Path(os.environ.get("AC_APP_DB", DATA_DIR / "app.db"))
-MAIL_BACKEND = os.environ.get("AC_MAIL_BACKEND", "console")      # console: escribe data/logs/mail.log; ses: Amazon SES
-MAIL_FROM = os.environ.get("AC_MAIL_FROM", "Absolut Cinema <no-responder@localhost>")   # en SES, identidad verificada
-BASE_URL = os.environ.get("AC_BASE_URL", "http://localhost:8501").rstrip("/")            # base de los enlaces del correo
+# `console` escribe data/logs/mail.log; `ses` envía por Amazon SES.
+MAIL_BACKEND = os.environ.get("AC_MAIL_BACKEND", "console")
+# En SES, identidad verificada.
+MAIL_FROM = os.environ.get("AC_MAIL_FROM", "Absolut Cinema <no-responder@localhost>")
+# Base de los enlaces del correo.
+BASE_URL = os.environ.get("AC_BASE_URL", "http://localhost:8501").rstrip("/")
 MAIL_LOG_PATH = LOG_DIR / "mail.log"

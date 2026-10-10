@@ -47,6 +47,6 @@ else:
     # El enlace del correo debe abrir aunque haya una sesión (p. ej. otra persona en el mismo navegador).
     pages.append(st.Page("views/restablecer.py", title=AUTH_TEXT["reset_title"], url_path="restablecer", visibility="hidden"))
     session.account_sidebar(user)
-    # Navegación arriba en escritorio; en pantallas chicas el CSS de ui/common.py la fija abajo, al alcance del
-    # pulgar (Streamlit no conoce el tamaño de pantalla del lado del servidor, así que la condición es una regla @media).
+    # Navegación arriba en escritorio. En pantallas chicas el CSS de ui/common.py la fija abajo, al alcance del pulgar.
+    # Streamlit no conoce el tamaño de pantalla en el servidor, por eso la condición es una regla @media.
     st.navigation(pages, position="top").run()

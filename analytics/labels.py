@@ -1,9 +1,11 @@
 """Textos para directivos. Cualquier cosa que se muestre a un usuario sale de aquí, no de los
 nombres internos (chain, kind, franjas, buckets)."""
 
-US = "cinemex"            # la cadena del cliente: en las frases hablamos en primera persona
+# La cadena del cliente: en las frases hablamos en primera persona.
+US = "cinemex"
 THEM = "cinepolis"
-COMPARED = (US, THEM)      # las cadenas del head-to-head; la Cineteca se captura pero no entra a los shares
+# Las cadenas del head-to-head; la Cineteca se captura pero no entra a los shares.
+COMPARED = (US, THEM)
 
 CHAIN_LABEL = {"cinemex": "Cinemex", "cinepolis": "Cinépolis", "cineteca": "Cineteca Nacional", "cineteca_gdl": "Cineteca FICG",
                "cineteca_mty": "Cineteca Nuevo León", "wtc": "Cinemas WTC", "tonala": "Cine Tonalá", "cinemania": "Cinemanía",
@@ -13,25 +15,41 @@ CHAIN_LABEL = {"cinemex": "Cinemex", "cinepolis": "Cinépolis", "cineteca": "Cin
 
 # Paleta (ver DESIGN.md). El rojo significa Cinemex o acción; Cinépolis va en tinta (casi negro) para
 # no competir con él. Cinemex siempre primero en las escalas, nunca se ciclan.
-RED = "#E31837"            # rojo Cinemex
-RED_DARK = "#9E0F26"       # hover / activo; primer tono de la rampa
-RED_SOFT = "#FDEDF0"       # fondo suave para chips y hover
-INK = "#191A1E"            # texto fuerte; serie Cinépolis
-GRAY_DARK = "#3A3C42"      # texto de etiquetas en gráficas
-GRAY = "#5C6068"           # texto secundario
-GRAY_LIGHT = "#F6F6F4"     # fondo de página
-LINE = "#E4E5E9"           # bordes y divisores
-PAPER = "#FFFFFF"          # tarjetas
-INDEP = "#8C8E95"          # gris medio: serie de la Cineteca, cine independiente (el centro de DIVERGING)
+# Rojo Cinemex.
+RED = "#E31837"
+# Hover / activo; primer tono de la rampa.
+RED_DARK = "#9E0F26"
+# Fondo suave para chips y hover.
+RED_SOFT = "#FDEDF0"
+# Texto fuerte; serie Cinépolis.
+INK = "#191A1E"
+# Texto de etiquetas en gráficas.
+GRAY_DARK = "#3A3C42"
+# Texto secundario.
+GRAY = "#5C6068"
+# Fondo de página.
+GRAY_LIGHT = "#F6F6F4"
+# Bordes y divisores.
+LINE = "#E4E5E9"
+# Tarjetas.
+PAPER = "#FFFFFF"
+# Gris medio: serie de la Cineteca, cine independiente (el centro de DIVERGING).
+INDEP = "#8C8E95"
 CHAIN_COLOR = {"cinemex": RED, "cinepolis": INK, "cineteca": INDEP, "cineteca_gdl": INDEP, "cineteca_mty": INDEP,
                "wtc": INDEP, "tonala": INDEP, "cinemania": INDEP, "papalote_mty": INDEP,
                "cinery": INDEP, "epic": INDEP, "raly": INDEP, "cabanas": INDEP}
-NEUTRAL = "#C9CBD0"        # líneas de referencia (la barra del dumbbell)
-GRID = "#ECEDEF"           # rejilla de gráficas
-RED_RAMP = [RED_DARK, RED, "#F08497", "#F7CDD5"]                 # ordinal de un solo tono para cubetas ordenadas
-DIVERGING = [INK, INDEP, "#EFEFEF", "#F6B7C2", RED]          # Cinépolis (tinta) ↔ centro ↔ Cinemex (rojo)
-WARN = "#B45309"           # ámbar: estado con problema, solo en la página de operaciones (el rojo es Cinemex)
-OK = "#2F6F4E"             # verde apagado: estado sano, solo en la página de operaciones
+# Líneas de referencia (la barra del dumbbell).
+NEUTRAL = "#C9CBD0"
+# Rejilla de gráficas.
+GRID = "#ECEDEF"
+# Ordinal de un solo tono para cubetas ordenadas.
+RED_RAMP = [RED_DARK, RED, "#F08497", "#F7CDD5"]
+# Cinépolis (tinta) ↔ centro ↔ Cinemex (rojo).
+DIVERGING = [INK, INDEP, "#EFEFEF", "#F6B7C2", RED]
+# Ámbar: estado con problema, solo en la página de operaciones (el rojo es Cinemex).
+WARN = "#B45309"
+# Verde apagado: estado sano, solo en la página de operaciones.
+OK = "#2F6F4E"
 
 # Franjas horarias: (clave, hora inicio, hora fin exclusiva, etiqueta). La matiné 10–12 va aparte
 # porque existe en fin de semana y es donde una cadena puede ganar barato.
@@ -50,7 +68,8 @@ PRIME_START_HOUR = 18
 # Filtro global de franja: solo se puede cortar en los límites de SLOTS, así ninguna franja queda partida.
 HOUR_MARKS = sorted({lo for _, lo, _, _ in SLOTS} | {hi for _, _, hi, _ in SLOTS})
 FULL_DAY = (0, 24)
-HOUR_PRESETS = {"Todo el día": FULL_DAY, "Después de las 6 PM": (PRIME_START_HOUR, 24), "Matiné, antes de las 12 PM": (0, 12)}            # horario prime: vie–dom de 6:00 P.M. en adelante
+# Horario prime: vie–dom de 6:00 P.M. en adelante.
+HOUR_PRESETS = {"Todo el día": FULL_DAY, "Después de las 6 PM": (PRIME_START_HOUR, 24), "Matiné, antes de las 12 PM": (0, 12)}
 PRIME_LABEL = "viernes a domingo, de 6:00 P.M. en adelante"
 
 WEEKDAY_LABEL = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -419,7 +438,8 @@ COLUMN_LABEL.update({
 # --- Mapa de cines (analytics/cinema_locations.py, views/mapa.py) ---
 MAP_ATTRIBUTION = '© <a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 
-MAP_METRIC = {    # métrica → (etiqueta, formato del valor, qué destaca)
+# Métrica → (etiqueta, formato del valor, qué destaca).
+MAP_METRIC = {
     "shows": ("Funciones", "{:,.0f}", "Más funciones"),
     "screens": ("Salas", "{:,.0f}", "Más salas"),
     "seats": ("Butacas", "{:,.0f}", "Más butacas"),
@@ -481,12 +501,14 @@ RECOMMEND_SORT = {"distance": "Más cerca", "price": "Más barato", "time": "Má
 SNACK_LABEL = {"none": "Sin dulcería", "best": "Lo más barato para el grupo", "popcorn": "Palomitas y refresco por persona",
                "combo_1": "Un combo por persona", "combo_2": "Un combo cada dos", "combo_3": "Un combo cada tres",
                "combo_4": "Un combo cada cuatro"}
-SNACK_SINGLE = "Palomitas y refresco"      # el relleno de una persona en el desglose
+# El relleno de una persona en el desglose.
+SNACK_SINGLE = "Palomitas y refresco"
 _TWO_FOR_ONE = "2 boletos al precio de adulto más alto de la semana"
 _LOOP_PAIR = "2 boletos 2D, palomitas grandes y 2 refrescos grandes"
 _LOOP_SOLO = "1 boleto 2D, palomitas medianas, refresco mediano y nachos con queso"
 _ONE_PER_ACCOUNT = "Uno por cuenta."
-PROMO = {    # llave → (nombre, "combo" o "2x1", qué incluye, programa o None, qué más pide), de los términos de cada cadena
+# Llave → (nombre, "combo" o "2x1", qué incluye, programa o None, qué más pide), de los términos de cada cadena.
+PROMO = {
     "cmx_lunes": ("Combo Lunes", "combo", _LOOP_PAIR, "loop", _ONE_PER_ACCOUNT),
     "cmx_individual_lunes": ("Combo Individual Lunes", "combo", _LOOP_SOLO, "loop", _ONE_PER_ACCOUNT),
     "cmx_martes_2x1": ("Martes 2x1", "2x1", "Un boleto gratis por cada boleto igual que compras", "loop",
@@ -505,12 +527,14 @@ PROMO = {    # llave → (nombre, "combo" o "2x1", qué incluye, programa o None
     "cp_martes_2x1": ("Martes 2x1", "2x1", _TWO_FOR_ONE, "club", "Se compra el mismo martes."),
     "cp_miercoles_2x1": ("Miércoles 2x1", "2x1", _TWO_FOR_ONE, None, "Solo en la app o la web de Cinépolis, el mismo miércoles."),
 }
-PROMO_PROGRAM = {    # programa → (nombre corto, qué es), de los términos de cada programa
+# Programa → (nombre corto, qué es), de los términos de cada programa.
+PROMO_PROGRAM = {
     "loop": ("Loop", "Cinemex Loop es el programa de lealtad de Cinemex. El nivel One es gratis y tiene los mismos "
                      "combos y precios que los de pago."),
     "club": ("Club Cinépolis", "Club Cinépolis es el programa de lealtad de Cinépolis. Registrarse es gratis."),
 }
-GROUP_LABEL = {    # tipo de boleto → (singular, plural)
+# Tipo de boleto → (singular, plural).
+GROUP_LABEL = {
     "adults": ("adulto", "adultos"), "children": ("niño", "niños"), "seniors": ("adulto mayor", "adultos mayores"),
 }
 RECOMMEND_TEXT = {

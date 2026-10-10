@@ -36,8 +36,10 @@ def _cinepolis_raw(cinemas, city_id=None):
 def test_cinepolis_national_raw_has_city_timezone_and_utc():
     raw = _cinepolis_raw([{"id": "cinepolis-carrousel-tijuana", "cityId": "tijuana", "name": "Carrousel", "vistaId": "9", "timezone": "America/Tijuana"}])
     (r,) = normalize.rows("cinepolis", raw)
-    assert (r["city_id"], r["state_id"], r["state_code"]) == ("tijuana", None, "02")      # Baja California (INEGI)
-    assert r["datetime_local"] == "2026-09-11T15:00:00" and r["datetime_utc"] == "2026-09-11T22:00:00+00:00"   # Tijuana en UTC−7 (horario de verano)
+    # Baja California (INEGI).
+    assert (r["city_id"], r["state_id"], r["state_code"]) == ("tijuana", None, "02")
+    # Tijuana en UTC−7 (horario de verano).
+    assert r["datetime_local"] == "2026-09-11T15:00:00" and r["datetime_utc"] == "2026-09-11T22:00:00+00:00"
     (c,) = normalize.cinemas("cinepolis", raw)
     assert c == {"chain": "cinepolis", "cinema_id": "cinepolis-carrousel-tijuana", "name": "Carrousel", "lat": None, "lng": None,
                  "city_id": "tijuana", "state_id": None, "state_code": "02", "timezone": "America/Tijuana", "vista_id": "9"}
@@ -46,7 +48,8 @@ def test_cinepolis_national_raw_has_city_timezone_and_utc():
 def test_cinepolis_pilot_raw_uses_capture_city_and_reference_timezone():
     raw = _cinepolis_raw([{"id": "cinepolis-ajusco-cdmx", "name": "Ajusco", "vistaId": 236}], city_id="cdmx")
     (r,) = normalize.rows("cinepolis", raw)
-    assert r["city_id"] == "cdmx" and r["datetime_utc"] == "2026-09-11T21:00:00+00:00"                          # CDMX es UTC−6 todo el año
+    # CDMX es UTC−6 todo el año.
+    assert r["city_id"] == "cdmx" and r["datetime_utc"] == "2026-09-11T21:00:00+00:00"
 
 
 def _cinemex_raw(unit_key, unit):
@@ -61,7 +64,8 @@ def test_cinemex_national_raw_by_state():
     raw = _cinemex_raw("states", {"state_id": 2})
     (r,) = normalize.rows("cinemex", raw)
     assert (r["cinema_id"], r["city_id"], r["state_id"], r["state_code"]) == ("300", "3", "2", "02")
-    assert r["datetime_local"] == "2026-09-11T13:00:00" and r["datetime_utc"] == "2026-09-11T20:00:00+00:00"    # el offset viene en el propio datetime
+    # El offset viene en el propio datetime.
+    assert r["datetime_local"] == "2026-09-11T13:00:00" and r["datetime_utc"] == "2026-09-11T20:00:00+00:00"
     (c,) = normalize.cinemas("cinemex", raw)
     assert (c["city_id"], c["state_id"], c["timezone"], c["vista_id"]) == ("3", "2", None, None)
 
@@ -79,7 +83,8 @@ def test_state_code_is_per_cinema_not_per_city():
     # La "ciudad" cdmx de Cinépolis cruza la frontera: Zona Esmeralda está en el Estado de México.
     assert states.state_code("cinepolis", "cinepolis-city-center-zona-esmeralda-cdmx", "cdmx") == "15"
     assert states.state_code("cinepolis", "cinepolis-ajusco-cdmx", "cdmx") == "09"
-    assert states.state_code("cinepolis", "cine-que-aun-no-existe", "cdmx") == "09"          # cine nuevo: el de su ciudad
+    # Cine nuevo: el de su ciudad.
+    assert states.state_code("cinepolis", "cine-que-aun-no-existe", "cdmx") == "09"
     assert states.state_code("cinepolis", "cine-que-aun-no-existe", "ciudad-nueva") is None
 
 
@@ -97,10 +102,14 @@ def test_cineteca_rows_carry_sede_language_and_cdmx_utc():
     cars = rows["003:50011"]
     # show_id lleva la sede porque el sessionId de Vista solo es único por cine; el idioma sale del título (DOB = doblada).
     assert (cars["cinema_id"], cars["language"], cars["premium_tier"], cars["format"]) == ("003", "spanish", "traditional", "2D")
-    assert cars["state_code"] == "09" and cars["screen"] is None       # CDMX; la sala llega del plano, no de la cartelera
-    assert cars["datetime_local"] == "2026-09-27T16:00:00" and cars["datetime_utc"] == "2026-09-27T22:00:00+00:00"   # CDMX es UTC−6
-    assert set(cars) == set(normalize.COLUMNS)                          # una fila completa, sin columnas de más ni de menos
-    assert rows["001:15061"]["language"] == "other"                    # sin marca de idioma: lengua original de cine de autor
+    # CDMX; la sala llega del plano, no de la cartelera.
+    assert cars["state_code"] == "09" and cars["screen"] is None
+    # CDMX es UTC−6.
+    assert cars["datetime_local"] == "2026-09-27T16:00:00" and cars["datetime_utc"] == "2026-09-27T22:00:00+00:00"
+    # Una fila completa, sin columnas de más ni de menos.
+    assert set(cars) == set(normalize.COLUMNS)
+    # Sin marca de idioma: lengua original de cine de autor.
+    assert rows["001:15061"]["language"] == "other"
 
 
 def test_cineteca_cinemas_are_the_three_cdmx_sedes():
