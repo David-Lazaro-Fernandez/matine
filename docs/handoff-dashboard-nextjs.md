@@ -45,7 +45,10 @@ llaves, no frases (salvo las de `findings.py` y `conclusions`).
 | `GET /api/independientes` | `plaza`, `d0`, `d1` | Solo Cineteca (`chain="cineteca"`). Plaza distinta de CDMX: `supported=false` |
 | `GET /api/recomendador` | `lat`, `lng`, `d0`, grupo, `budget`, `snacks`, `h0`, `h1`, `radius_km`, `sort`, `title_norm`, `formats` | Sin ubicación devuelve solo los límites del formulario |
 | `GET /api/recomendador/geocodificar` | `q` | Nominatim con `lru_cache` propia; 502 si no responde |
-| `GET /api/cartelera` | `plaza`, `d0`, `d1`, `h0`, `h1` | Las tres capas con los controles en su valor por defecto |
+| `GET /api/cartelera` | `plaza`, `d0`, `d1`, `h0`, `h1` | Encabezado, cobertura, captura y `kpis` |
+| `GET /api/cartelera/hallazgos` | los mismos | La Capa 1 |
+| `GET /api/cartelera/seccion/{slug}` | los mismos | Datos y conclusión de una sección de la Capa 2 |
+| `GET /api/cartelera/apendice/{slug}` | los mismos | Datos de un apéndice de la Capa 3 |
 | `GET /api/cartelera/curva`, `/cambios`, `/historia` | ver el módulo | Controles dentro de una sección, sin recalcular las tres capas |
 
 **Convención de zona:** sin `plaza` en la consulta = nacional. El frontend manda `plaza=cdmx` por defecto

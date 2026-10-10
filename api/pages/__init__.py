@@ -20,7 +20,8 @@ import analytics
 # Los planos de asientos escriben cada 15 min y la cartelera tres veces al día.
 TTL = 60
 # ponytail: tope por número de llaves, no por memoria. Un conjunto de Datos pesa hasta MAX_ROWS renglones.
-_CACHE_SIZE = 32
+# La Cartelera usa doce llaves por combinación de filtros: encabezado, hallazgos, secciones y apéndices.
+_CACHE_SIZE = 64
 
 _cache = OrderedDict()
 _cache_lock = threading.Lock()

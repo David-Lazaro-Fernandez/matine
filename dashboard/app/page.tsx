@@ -1,8 +1,9 @@
 'use client';
 
 // Cartelera, como views/cartelera.py: Cinemex frente a Cinépolis en tres capas (hallazgos, evidencia y apéndice).
-// Los datos salen de `GET /api/cartelera`. Los controles dentro de una sección piden su sub-endpoint
-// (`/cartelera/curva`, `/cambios`, `/historia`) y no recalculan las tres capas.
+// El encabezado (`GET /api/cartelera`) y los hallazgos (`/cartelera/hallazgos`) se piden al entrar. Cada sección y
+// cada apéndice pide su endpoint (`/cartelera/seccion/{slug}`, `/cartelera/apendice/{slug}`) cuando se acerca a la
+// pantalla. Los controles dentro de una sección piden su sub-endpoint (`/cartelera/curva`, `/cambios`, `/historia`).
 import * as React from 'react';
 import {
   Accordion,
@@ -32,6 +33,7 @@ import {
   Capa,
   type Cell,
   type CellClass,
+  Diferido,
   type Finding,
   Hallazgo,
   Leerla,
@@ -42,8 +44,13 @@ import {
   Pregunta,
   Seccion,
   Table,
+  SkeletonApendice,
   SkeletonCapas,
+  SkeletonHallazgo,
+  SkeletonSeccion,
   SkeletonTable,
+  errorText,
+  useApi,
 } from '@/components/common';
 import { MixBars, type MixRow } from '@/components/cartelera/mix-bars';
 import { PresaleBars, type PresaleRow } from '@/components/cartelera/presale-bars';
@@ -127,24 +134,23 @@ type Cartelera = {
   coverage: Row[];
   capture: Capture[];
   kpis: Kpi[];
-  findings: (Finding & { topic: string })[];
-  conclusions: Record<string, string>;
-  general_summary: { hours: [number, number]; rows: SummaryRow[] }[];
-  movie_gaps: Gap[];
-  heatmap: Heat[];
-  mix: MixRow[];
-  presale_compare: PresaleCompare[];
-  presale_by_chain: PresaleRow[];
-  presale_curve: Curves;
-  offered_seats: Offered[];
-  concentration: Concentration[];
-  events_by_kind: { chain: Chain; kind: string; n: number }[];
-  recent_events: Row[];
+};
+type Hallazgos = { findings: (Finding & { topic: string })[] };
+// Cada sección trae su conclusión: la llave de `analytics.conclusions` que la abre.
+type Conclusions = { conclusions: Record<string, string> };
+type ResumenData = Conclusions & { general_summary: { hours: [number, number]; rows: SummaryRow[] }[] };
+type PeliculasData = Conclusions & { movie_gaps: Gap[] };
+type HorariosData = Conclusions & { heatmap: Heat[] };
+type FormatosData = Conclusions & { mix: MixRow[] };
+type PreventaData = Conclusions & { presale_compare: PresaleCompare[]; presale_by_chain: PresaleRow[]; presale_curve: Curves };
+type IndicadoresData = { offered_seats: Offered[]; concentration: Concentration[] };
+type CambiosData = { events_by_kind: { chain: Chain; kind: string; n: number }[]; recent_events: Row[] };
+type PreciosData = {
   prices: (Price & Row)[];
   price_summary: { cinemas: Record<string, number>; markup_min_pct: number | null; markup_max_pct: number | null };
-  capacity_summary: Capacity[];
-  offered_by_title: Record<Chain, OfferedByTitle[]>;
-  capacity_by_cinema: Record<Chain, Row[]>;
+};
+type ButacasData = { capacity_summary: Capacity[]; offered_by_title: Record<Chain, OfferedByTitle[]>; capacity_by_cinema: Record<Chain, Row[]> };
+type OcupacionData = {
   occupancy_summary: Row[];
   semaphore_calibration: Row[];
   occupancy_total: { samples: number; sold_pct: number; levels: number };
@@ -352,13 +358,15 @@ export default function Page() {
   const [loaded, setLoaded] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  const request = `/cartelera${query({ plaza, d0, d1, h0: fullDay ? null : h0, h1: fullDay ? null : h1 })}`;
+  const params = query({ plaza, d0, d1, h0: fullDay ? null : h0, h1: fullDay ? null : h1 });
+  const request = `/cartelera${params}`;
+  const hallazgos = useApi<Hallazgos>(`/cartelera/hallazgos${params}`);
   React.useEffect(() => {
     let live = true;
     setError(null);
     api<Cartelera>(request).then(
       (body) => { if (live) { setData(body); setLoaded(request); } },
-      (e) => live && setError(e instanceof ApiError && e.status === 503 ? T.no_db_web : (e instanceof ApiError && e.detail) || String(e)),
+      (e) => live && setError(apiError(e)),
     );
     return () => { live = false; };
   }, [request]);
@@ -370,7 +378,7 @@ export default function Page() {
     if (!data || loaded !== request) return <SkeletonCapas findings={3} sections={5} appendices={4} />;
     if (!data.coverage.length) return <Info text={T.no_shows} />;
     if (data.kpis.length < 2) return <Info text={fill(T.no_board, { range: range_es(d0, d1) })} />;
-    return <Contenido key={request} data={data} />;
+    return <Contenido key={request} data={data} params={params} hallazgos={hallazgos} />;
   };
 
   return (
@@ -385,6 +393,10 @@ export default function Page() {
       {body()}
     </>
   );
+}
+
+function apiError(e: unknown): string {
+  return e instanceof ApiError && e.status === 503 ? T.no_db_web : errorText(e);
 }
 
 function metaItems(data: Cartelera): MetaItem[] {
@@ -431,10 +443,45 @@ function Guia({ data }: { data: Cartelera }) {
   );
 }
 
-function Contenido({ data }: { data: Cartelera }) {
-  const s = useStyles();
+// Una sección de la Capa 2 que pide sus datos al acercarse a la pantalla.
+function Evidencia<T>({ slug, params, table = false, children }: {
+  slug: string; params: string; table?: boolean; children: (data: T) => React.ReactNode;
+}) {
+  return (
+    <Diferido<T> path={`/cartelera/seccion/${slug}${params}`} fallback={<SkeletonSeccion table={table} />} error={apiError}>
+      {children}
+    </Diferido>
+  );
+}
+
+// Un apéndice de la Capa 3 que pide sus datos al acercarse a la pantalla: su resumen va en el encabezado cerrado.
+function Anexo<T>({ slug, params, children }: { slug: string; params: string; children: (data: T) => React.ReactNode }) {
+  return (
+    <Diferido<T> path={`/cartelera/apendice/${slug}${params}`} fallback={<SkeletonApendice />} error={apiError}>
+      {children}
+    </Diferido>
+  );
+}
+
+function CapaHallazgos({ hallazgos }: { hallazgos: { data: Hallazgos | null; error: unknown } }) {
+  if (hallazgos.error) return <MessageBar intent="error"><MessageBarBody>{apiError(hallazgos.error)}</MessageBarBody></MessageBar>;
+  if (!hallazgos.data) return <>{Array.from({ length: 3 }, (_, i) => <SkeletonHallazgo key={i} />)}</>;
+  const { findings } = hallazgos.data;
+  const topics = new Set(findings.map((f) => f.topic));
+  return (
+    <>
+      {!findings.length && <Info text={T.no_findings} />}
+      {findings.map((f) => <Hallazgo key={f.title} f={f} />)}
+      {topics.has('dulceria') && <p><AppLink href="/dulceria">{T.link_dulceria}</AppLink></p>}
+      {topics.has('independientes') && <p><AppLink href="/independientes">{INDEP_TEXT.link}</AppLink></p>}
+    </>
+  );
+}
+
+function Contenido({ data, params, hallazgos }: {
+  data: Cartelera; params: string; hallazgos: { data: Hallazgos | null; error: unknown };
+}) {
   const stale = data.capture.filter((r) => r.stale);
-  const topics = new Set(data.findings.map((f) => f.topic));
   const hoursFilter = data.full_day ? '' : fill(T.footer_filter, { hours: hoursLabel(data.hours) });
   return (
     <>
@@ -447,27 +494,24 @@ function Contenido({ data }: { data: Cartelera }) {
       })}
 
       <Capa num={1} title={T.layer1} desc={T.layer1_desc} />
-      {!data.findings.length && <Info text={T.no_findings} />}
-      {data.findings.map((f) => <Hallazgo key={f.title} f={f} />)}
-      {topics.has('dulceria') && <p><AppLink href="/dulceria">{T.link_dulceria}</AppLink></p>}
-      {topics.has('independientes') && <p><AppLink href="/independientes">{INDEP_TEXT.link}</AppLink></p>}
+      <CapaHallazgos hallazgos={hallazgos} />
 
       <Capa num={2} title={T.layer2} desc={T.layer2_desc} />
-      <Resumen data={data} />
-      <Peliculas data={data} />
-      <Horarios data={data} />
-      <Formatos data={data} />
-      <Preventa data={data} />
+      <Evidencia<ResumenData> slug="resumen" params={params} table>{(sec) => <Resumen sec={sec} />}</Evidencia>
+      <Evidencia<PeliculasData> slug="peliculas" params={params}>{(sec) => <Peliculas data={data} sec={sec} />}</Evidencia>
+      <Evidencia<HorariosData> slug="horarios" params={params}>{(sec) => <Horarios data={data} sec={sec} />}</Evidencia>
+      <Evidencia<FormatosData> slug="formatos" params={params}>{(sec) => <Formatos sec={sec} />}</Evidencia>
+      <Evidencia<PreventaData> slug="preventa" params={params}>{(sec) => <Preventa data={data} sec={sec} />}</Evidencia>
 
       <Capa num={3} title={T.layer3} desc={T.layer3_desc} />
-      <Indicadores data={data} />
-      <Cambios data={data} />
-      <Precios data={data} />
-      <Butacas data={data} />
+      <Anexo<IndicadoresData> slug="indicadores" params={params}>{(ap) => <Indicadores data={data} ap={ap} />}</Anexo>
+      <Anexo<CambiosData> slug="cambios" params={params}>{(ap) => <Cambios data={data} ap={ap} />}</Anexo>
+      <Anexo<PreciosData> slug="precios" params={params}>{(ap) => <Precios ap={ap} />}</Anexo>
+      <Anexo<ButacasData> slug="butacas" params={params}>{(ap) => <Butacas ap={ap} />}</Anexo>
       <Apendice title={T.historia_title} resumen={fill(T.historia_summary, { date: date_es(data.first_snapshot) })}>
         <Historial plaza={data.plaza} />
       </Apendice>
-      <Ocupacion data={data} />
+      <Anexo<OcupacionData> slug="ocupacion" params={params}>{(ap) => <Ocupacion ap={ap} />}</Anexo>
 
       <PageFooter>{fill(T.footer, { filter: hoursFilter, date: date_es(data.first_snapshot) })}</PageFooter>
     </>
@@ -476,10 +520,10 @@ function Contenido({ data }: { data: Cartelera }) {
 
 // --- Capa 2 ---
 
-function Resumen({ data }: { data: Cartelera }) {
+function Resumen({ sec }: { sec: ResumenData }) {
   const labels = Object.keys(HOUR_PRESETS).slice(0, 2);
   const [tab, setTab] = React.useState(0);
-  const rows = data.general_summary[tab]?.rows ?? [];
+  const rows = sec.general_summary[tab]?.rows ?? [];
   let rank = 0;
   const cells = rows.map((r): Cell[] => {
     const title = r.kind === 'title';
@@ -498,7 +542,7 @@ function Resumen({ data }: { data: Cartelera }) {
   });
   return (
     <Seccion slug="resumen">
-      <Pregunta texto={T.q_resumen} conclusion={data.conclusions.resumen} />
+      <Pregunta texto={T.q_resumen} conclusion={sec.conclusions.resumen} />
       <TabList selectedValue={tab} onTabSelect={(_, d) => setTab(d.value as number)}>
         {labels.map((label, i) => <Tab key={label} value={i}>{label}</Tab>)}
       </TabList>
@@ -509,9 +553,9 @@ function Resumen({ data }: { data: Cartelera }) {
   );
 }
 
-function Peliculas({ data }: { data: Cartelera }) {
+function Peliculas({ data, sec }: { data: Cartelera; sec: PeliculasData }) {
   const [showAll, setShowAll] = React.useState(false);
-  const movies = data.movie_gaps.slice(0, showAll ? data.total_movies : data.shown_movies).map((m) => ({
+  const movies = sec.movie_gaps.slice(0, showAll ? data.total_movies : data.shown_movies).map((m) => ({
     ...m,
     title: m.title.trim(),
     delta: m.exclusive ? EXCLUSIVE_LABEL[m.exclusive] : pp(m.gap_pp),
@@ -523,7 +567,7 @@ function Peliculas({ data }: { data: Cartelera }) {
   }));
   return (
     <Seccion slug="peliculas">
-      <Pregunta texto={T.q_peliculas} conclusion={data.conclusions.peliculas} nota={showAll ? null : data.conclusions.peliculas_note} />
+      <Pregunta texto={T.q_peliculas} conclusion={sec.conclusions.peliculas} nota={showAll ? null : sec.conclusions.peliculas_note} />
       <Leyenda items={COMPARED.map((c) => [CHAIN_LABEL[c], CHAIN_COLOR[c]] as const)} />
       <MoviesDumbbell movies={movies} axisTitle={T.peliculas_axis} />
       <Switch checked={showAll} onChange={(_, d) => setShowAll(d.checked)} label={fill(T.peliculas_all, { n: data.total_movies })} />
@@ -532,9 +576,9 @@ function Peliculas({ data }: { data: Cartelera }) {
   );
 }
 
-function Horarios({ data }: { data: Cartelera }) {
+function Horarios({ data, sec }: { data: Cartelera; sec: HorariosData }) {
   const [h0, h1] = data.hours;
-  const cells = data.heatmap.map((c) => {
+  const cells = sec.heatmap.map((c) => {
     const day = WEEKDAY_LABEL[c.weekday];
     const slot = SLOT_SHORT[c.slot];
     return {
@@ -553,28 +597,28 @@ function Horarios({ data }: { data: Cartelera }) {
   const limit = Math.max(1, ...cells.map((c) => Math.abs(c.gap_pp)));
   return (
     <Seccion slug="horarios">
-      <Pregunta texto={T.q_horarios} conclusion={data.conclusions.franjas} />
+      <Pregunta texto={T.q_horarios} conclusion={sec.conclusions.franjas} />
       {cells.length ? <DaySlotHeatmap cells={cells} days={days} slots={slots} limit={limit} /> : <Info text={T.empty_period} />}
       <Leerla>{T.leer_horarios}</Leerla>
     </Seccion>
   );
 }
 
-function Formatos({ data }: { data: Cartelera }) {
+function Formatos({ sec }: { sec: FormatosData }) {
   const s = useStyles();
   const languagePalette = [RED_RAMP[1], RED_RAMP[3]];
   return (
     <Seccion slug="formatos">
-      <Pregunta texto={T.q_formatos} conclusion={data.conclusions.formatos} />
-      {data.mix.length > 0 && (
+      <Pregunta texto={T.q_formatos} conclusion={sec.conclusions.formatos} />
+      {sec.mix.length > 0 && (
         <div className={s.columns}>
           <div className={s.column}>
             <Leyenda square items={FORMAT_BUCKETS.map((b, i) => [FORMAT_LABEL[b], RED_RAMP[i]] as const)} />
-            <MixBars rows={data.mix} dimension="format" />
+            <MixBars rows={sec.mix} dimension="format" />
           </div>
           <div className={s.column}>
             <Leyenda square items={LANGUAGE_BUCKETS.map((b, i) => [LANGUAGE_LABEL[b], languagePalette[i]] as const)} />
-            <MixBars rows={data.mix} dimension="language" />
+            <MixBars rows={sec.mix} dimension="language" />
           </div>
         </div>
       )}
@@ -583,28 +627,28 @@ function Formatos({ data }: { data: Cartelera }) {
   );
 }
 
-function Preventa({ data }: { data: Cartelera }) {
+function Preventa({ data, sec }: { data: Cartelera; sec: PreventaData }) {
   const s = useStyles();
   const [pick, setPick] = React.useState(0);
-  const [curves, setCurves] = React.useState<Curves>(data.presale_curve);
-  const row = data.presale_compare[pick];
+  const [curves, setCurves] = React.useState<Curves>(sec.presale_curve);
+  const row = sec.presale_compare[pick];
   React.useEffect(() => {
     if (!row) return;
-    if (pick === 0) { setCurves(data.presale_curve); return; }
+    if (pick === 0) { setCurves(sec.presale_curve); return; }
     let live = true;
     api<Curves>(`/cartelera/curva${query({
       plaza: data.plaza, title_norm_cinemex: row.title_norm_cinemex, title_norm_cinepolis: row.title_norm_cinepolis,
     })}`).then((body) => live && setCurves(body), () => live && setCurves({}));
     return () => { live = false; };
-  }, [pick, row, data]);
+  }, [pick, row, data, sec]);
 
-  const both = data.presale_by_chain.filter((r) => r.status === 'ambas');
-  const single = data.presale_by_chain.filter((r) => r.status !== 'ambas');
+  const both = sec.presale_by_chain.filter((r) => r.status === 'ambas');
+  const single = sec.presale_by_chain.filter((r) => r.status !== 'ambas');
   const readings = COMPARED.reduce((total, c) => total + (curves[c]?.length ?? 0), 0);
   return (
     <Seccion slug="preventa">
-      <Pregunta texto={T.q_preventa} conclusion={data.conclusions.preventa} />
-      {!data.presale_compare.length ? <Info text={T.preventa_empty} /> : (
+      <Pregunta texto={T.q_preventa} conclusion={sec.conclusions.preventa} />
+      {!sec.presale_compare.length ? <Info text={T.preventa_empty} /> : (
         <>
           <Leyenda items={COMPARED.map((c) => [CHAIN_LABEL[c], CHAIN_COLOR[c]] as const)} />
           {both.length > 0 && (
@@ -625,7 +669,7 @@ function Preventa({ data }: { data: Cartelera }) {
               selectedOptions={[String(pick)]}
               onOptionSelect={(_, o) => setPick(Number(o.optionValue ?? 0))}
             >
-              {data.presale_compare.map((p, i) => <Option key={`${p.title}-${i}`} value={String(i)}>{p.title}</Option>)}
+              {sec.presale_compare.map((p, i) => <Option key={`${p.title}-${i}`} value={String(i)}>{p.title}</Option>)}
             </Dropdown>
           </Field>
           {readings > 1 ? <PresaleCurve curves={curves} /> : <p className={s.caption}>{T.curve_pending}</p>}
@@ -638,11 +682,11 @@ function Preventa({ data }: { data: Cartelera }) {
 
 // --- Capa 3 ---
 
-function Indicadores({ data }: { data: Cartelera }) {
+function Indicadores({ data, ap }: { data: Cartelera; ap: IndicadoresData }) {
   const s = useStyles();
   const [us, them] = COMPARED.map((c) => data.kpis.find((k) => k.chain === c)!);
-  const [cm, cp] = COMPARED.map((c) => data.offered_seats.find((r) => r.chain === c));
-  const [cx, cn] = COMPARED.map((c) => data.concentration.find((r) => r.chain === c));
+  const [cm, cp] = COMPARED.map((c) => ap.offered_seats.find((r) => r.chain === c));
+  const [cx, cn] = COMPARED.map((c) => ap.concentration.find((r) => r.chain === c));
   const withSeats = has(cm?.seats_offered) && has(cp?.seats_offered);
   const K = T.kpi;
   let resumen = fill(T.kpis_summary, { us: fixed(us.shows_per_cinema, 1), them: fixed(them.shows_per_cinema, 1) });
@@ -679,22 +723,22 @@ function Indicadores({ data }: { data: Cartelera }) {
   );
 }
 
-function Cambios({ data }: { data: Cartelera }) {
+function Cambios({ data, ap }: { data: Cartelera; ap: CambiosData }) {
   const s = useStyles();
   const [kinds, setKinds] = React.useState<string[]>([...CARTELERA_KINDS]);
-  const [events, setEvents] = React.useState<Row[]>(data.recent_events);
+  const [events, setEvents] = React.useState<Row[]>(ap.recent_events);
   const all = !kinds.length || kinds.length === CARTELERA_KINDS.length;
   React.useEffect(() => {
-    if (all) { setEvents(data.recent_events); return; }
+    if (all) { setEvents(ap.recent_events); return; }
     let live = true;
     const params = new URLSearchParams(kinds.map((k) => ['kinds', k]));
     if (data.plaza) params.set('plaza', data.plaza);
     api<Row[]>(`/cartelera/cambios?${params}`).then((body) => live && setEvents(body), () => live && setEvents([]));
     return () => { live = false; };
-  }, [kinds, all, data]);
+  }, [kinds, all, data, ap]);
 
-  const g = (c: Chain, k: string) => data.events_by_kind.find((r) => r.chain === c && r.kind === k)?.n ?? 0;
-  const ev = data.events_by_kind.length > 0;
+  const g = (c: Chain, k: string) => ap.events_by_kind.find((r) => r.chain === c && r.kind === k)?.n ?? 0;
+  const ev = ap.events_by_kind.length > 0;
   const resumen = ev ? fill(T.cambios_summary, {
     us_removed: thousands(g('cinemex', 'removed')), them_removed: thousands(g('cinepolis', 'removed')),
     us_moved: thousands(g('cinemex', 'moved')), them_moved: thousands(g('cinepolis', 'moved')),
@@ -727,16 +771,16 @@ function Cambios({ data }: { data: Cartelera }) {
   );
 }
 
-function Precios({ data }: { data: Cartelera }) {
+function Precios({ ap }: { ap: PreciosData }) {
   const s = useStyles();
-  if (!data.prices.length) return null;
+  if (!ap.prices.length) return null;
   const price = (c: Chain, b: string, d: string) =>
-    data.prices.find((r) => r.chain === c && r.format_bucket === b && r.day_type === d)?.median_price;
+    ap.prices.find((r) => r.chain === c && r.format_bucket === b && r.day_type === d)?.median_price;
   const pair = (b: keyof typeof FORMAT_LABEL, d: keyof typeof DAY_TYPE_LABEL) => {
     const [a, c] = [price('cinemex', b, d), price('cinepolis', b, d)];
     return a && c ? fill(T.precios_pair, { format: FORMAT_LABEL[b], day: DAY_TYPE_LABEL[d].toLowerCase(), us: n(a), them: n(c) }) : null;
   };
-  const ps = data.price_summary;
+  const ps = ap.price_summary;
   const bits = [pair('traditional', 'promo'), pair('premium', 'weekend')].filter((x): x is string => Boolean(x));
   if (ps.markup_min_pct != null) {
     bits.unshift(fill(T.precios_markup, { min: fixed(ps.markup_min_pct, 0), max: fixed(ps.markup_max_pct ?? 0, 0) }));
@@ -753,24 +797,24 @@ function Precios({ data }: { data: Cartelera }) {
     <Apendice title={T.precios_title} resumen={bits.join(' · ')}>
       <Table headers={[...T.precios_headers]} rows={rows} numCols={[2, 3, 4]} />
       <p className={s.nota}>{fill(T.precios_note, { cinemas })}</p>
-      <DetailTable rows={data.prices} columns={['chain', 'format_bucket', 'day_type', 'samples', 'cinemas', 'median_price', 'min_price', 'max_price']} />
+      <DetailTable rows={ap.prices} columns={['chain', 'format_bucket', 'day_type', 'samples', 'cinemas', 'median_price', 'min_price', 'max_price']} />
     </Apendice>
   );
 }
 
-function Butacas({ data }: { data: Cartelera }) {
+function Butacas({ ap }: { ap: ButacasData }) {
   const s = useStyles();
   const [chain, setChain] = React.useState<Chain>(COMPARED[0]);
-  if (!data.capacity_summary.length) return null;
-  const resumen = data.capacity_summary.map((r) => fill(T.butacas_summary, {
+  if (!ap.capacity_summary.length) return null;
+  const resumen = ap.capacity_summary.map((r) => fill(T.butacas_summary, {
     chain: CHAIN_LABEL[r.chain], screens: Math.trunc(r.screens), seats: thousands(r.seats), avg: Math.trunc(r.avg_seats),
   })).join(' · ');
-  const byTitle = data.offered_by_title[chain] ?? [];
+  const byTitle = ap.offered_by_title[chain] ?? [];
   return (
     <Apendice title={T.butacas_title} resumen={resumen}>
       <Table
         headers={[...T.butacas_headers]}
-        rows={data.capacity_summary.map((r): Cell[] => [
+        rows={ap.capacity_summary.map((r): Cell[] => [
           chainCell(r.chain), n(r.cinemas), n(r.screens), n(r.seats), n(r.avg_seats), n(r.min_seats), n(r.max_seats), n(r.small),
         ])}
         numCols={[1, 2, 3, 4, 5, 6, 7]}
@@ -792,7 +836,7 @@ function Butacas({ data }: { data: Cartelera }) {
         <div className={s.column}>
           <p className={s.chartTitle}>{T.butacas_title}</p>
           <div className={s.scroll}>
-            <DetailTable rows={data.capacity_by_cinema[chain] ?? []} columns={['cinema_name', 'screens', 'seats', 'avg_seats', 'min_seats', 'max_seats']} />
+            <DetailTable rows={ap.capacity_by_cinema[chain] ?? []} columns={['cinema_name', 'screens', 'seats', 'avg_seats', 'min_seats', 'max_seats']} />
           </div>
         </div>
       </div>
@@ -917,23 +961,23 @@ function Historial({ plaza }: { plaza: string | null }) {
   );
 }
 
-function Ocupacion({ data }: { data: Cartelera }) {
+function Ocupacion({ ap }: { ap: OcupacionData }) {
   const s = useStyles();
-  const { samples, sold_pct: weighted, levels } = data.occupancy_total;
-  const calibrated = data.semaphore_calibration.length > 0;
+  const { samples, sold_pct: weighted, levels } = ap.occupancy_total;
+  const calibrated = ap.semaphore_calibration.length > 0;
   const resumen = fill(T.ocupacion_summary, {
     n: samples, pct: fixed(weighted, 1),
     levels: levels ? fill(T.ocupacion_levels, { levels }) : T.ocupacion_no_levels,
     calibrated: calibrated ? T.ocupacion_calibrated : T.ocupacion_uncalibrated,
   });
-  const est = data.estimated_occupancy[0];
-  const calibration = data.semaphore_calibration.map((r) => ({ ...r, availability: r.level }));
+  const est = ap.estimated_occupancy[0];
+  const calibration = ap.semaphore_calibration.map((r) => ({ ...r, availability: r.level }));
   return (
     <Apendice title={T.ocupacion_title} resumen={resumen}>
       {samples === 0 ? <Info text={T.ocupacion_empty} /> : (
         <>
           <p>{bold(fill(T.ocupacion_cinepolis, { n: samples, pct: fixed(weighted, 1) }))}</p>
-          <DetailTable rows={data.occupancy_summary} columns={['availability', 'samples', 'avg_sold_pct', 'min_sold_pct', 'max_sold_pct']} />
+          <DetailTable rows={ap.occupancy_summary} columns={['availability', 'samples', 'avg_sold_pct', 'min_sold_pct', 'max_sold_pct']} />
         </>
       )}
       {!calibrated ? <p>{bold(T.ocupacion_cinemex_pending)}</p> : (
@@ -950,7 +994,7 @@ function Ocupacion({ data }: { data: Cartelera }) {
       {samples > 0 && (
         <>
           <p className={s.chartTitle}>{T.ocupacion_recent}</p>
-          <div className={s.scroll}><DetailTable rows={data.occupancy_recent} /></div>
+          <div className={s.scroll}><DetailTable rows={ap.occupancy_recent} /></div>
         </>
       )}
       <p className={s.nota}>{T.ocupacion_note}</p>

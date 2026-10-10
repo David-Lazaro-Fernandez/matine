@@ -18,6 +18,8 @@ import {
   DataGridHeaderCell,
   DataGridRow,
   Link,
+  MessageBar,
+  MessageBarBody,
   Subtitle1,
   Subtitle2,
   Title3,
@@ -31,6 +33,7 @@ import {
   motionTokens,
 } from '@fluentui/react-components';
 import { useRouter } from 'next/navigation';
+import { ApiError, api } from '@/lib/api';
 import { fill } from '@/lib/format';
 import { AUTH_TEXT, LAYER_TEXT, RED, RED_SOFT, WARN } from '@/lib/labels.generated';
 
@@ -524,4 +527,60 @@ export function SkeletonCapas({ findings = 2, sections = 1, appendices = 0 }: { 
       {Array.from({ length: appendices }, (_, i) => <SkeletonApendice key={i} />)}
     </>
   );
+}
+
+// --- Carga de datos por partes ---
+
+// El texto de un error de la API para el usuario: el `detail` que manda la API, o el error tal cual.
+export function errorText(e: unknown): string {
+  return (e instanceof ApiError && e.detail) || String(e);
+}
+
+type Loaded<T> = { data: T | null; error: unknown };
+
+// GET a `path`; con null no pide nada. `data` y `error` siempre son de este `path`: al cambiar vuelven a null.
+export function useApi<T>(path: string | null): Loaded<T> {
+  const [state, setState] = React.useState<Loaded<T> & { path: string | null }>({ path: null, data: null, error: null });
+  React.useEffect(() => {
+    if (path === null) return;
+    let live = true;
+    api<T>(path).then(
+      (data) => live && setState({ path, data, error: null }),
+      (error) => live && setState({ path, data: null, error }),
+    );
+    return () => { live = false; };
+  }, [path]);
+  return state.path === path ? state : { data: null, error: null };
+}
+
+// Se pide antes de que el bloque entre en pantalla, para que ya esté al verse.
+const LAZY_MARGIN = '600px';
+
+// Como useApi, pero pide `path` solo cuando el elemento de `ref` está cerca de la pantalla. Un `path` nuevo lejos de
+// la pantalla espera a que el bloque se acerque.
+export function useLazyApi<T>(path: string): Loaded<T> & { ref: (node: Element | null) => void } {
+  const [node, setNode] = React.useState<Element | null>(null);
+  const [near, setNear] = React.useState(false);
+  const [wanted, setWanted] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting), { rootMargin: LAZY_MARGIN });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [node]);
+  React.useEffect(() => { if (near) setWanted(path); }, [near, path]);
+  const loaded = useApi<T>(wanted);
+  return { ref: setNode, ...(wanted === path ? loaded : { data: null, error: null }) };
+}
+
+// Un bloque que pide `path` al acercarse a la pantalla: `fallback` mientras llega y el error en su lugar si falla,
+// sin tumbar el resto de la página. `children` pinta la respuesta.
+export function Diferido<T>({ path, fallback, error = errorText, children }: {
+  path: string; fallback: React.ReactNode; error?: (e: unknown) => string; children: (data: T) => React.ReactNode;
+}) {
+  const loaded = useLazyApi<T>(path);
+  let body = fallback;
+  if (loaded.error) body = <MessageBar intent="error"><MessageBarBody>{error(loaded.error)}</MessageBarBody></MessageBar>;
+  else if (loaded.data) body = children(loaded.data);
+  return <div ref={loaded.ref}>{body}</div>;
 }

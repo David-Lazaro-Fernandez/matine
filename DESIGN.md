@@ -170,6 +170,12 @@ capas, `SkeletonSeccion`, `SkeletonTable`, `SkeletonApendice`, `SkeletonHallazgo
 `CinemaMap` muestran su propio bloque hasta que la gráfica o el mapa terminan de cargar, y el marco pinta riel y panel
 mientras se valida la sesión. Una página nueva arma su esqueleto con estas piezas.
 
+Una página larga pide sus datos por partes. Lo de arriba se pide al entrar (`useApi`); cada sección o apéndice va dentro
+de `Diferido`, que pide su endpoint cuando el bloque está a 600 px de la pantalla y pinta su esqueleto mientras llega.
+Si un bloque falla, el error se muestra en ese bloque y el resto de la página sigue. La Cartelera lo usa así: encabezado
+y hallazgos al entrar, cada sección de la Capa 2 y cada apéndice de la Capa 3 al acercarse. Los apéndices se piden al
+acercarse y no al abrirse porque su resumen va en el encabezado cerrado.
+
 ## Movimiento
 
 Las animaciones de Fluent, no unas propias. Los componentes de Fluent ya traen las suyas (`NavDrawer`, `Accordion`,

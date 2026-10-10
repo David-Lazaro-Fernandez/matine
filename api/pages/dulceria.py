@@ -49,7 +49,7 @@ def dulceria(plaza: Literal[tuple(plazas.PLAZAS)] | None = None,
     def compute(conn):
         basket = analytics.concession_basket(conn, plaza=plaza)
         chosen = product or (basket[0]["product_name"] if basket else None)
-        concl = analytics.conclusions(conn, d0=w0, d1=w1, plaza=plaza)
+        concl = analytics.conclusions(conn, d0=w0, d1=w1, plaza=plaza, sections=("dulceria",))
         return {
             "plaza": plaza, "platform": platform, "chain": chain, "product": chosen, "first_snapshot": FIRST_SNAPSHOT,
             "conclusion": concl.get("dulceria", ""),

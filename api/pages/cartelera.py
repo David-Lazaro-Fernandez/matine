@@ -1,9 +1,16 @@
 """Página Cartelera: Cinemex frente a Cinépolis en tres capas (hallazgos, evidencia y apéndice).
 
-`GET /api/cartelera` devuelve lo que la página pinta al abrir, con los filtros de la barra lateral: zona (`plaza`,
-nacional si falta), periodo (`d0`, `d1`; por defecto de hoy al miércoles de la semana de cine) y franja (`h0`, `h1`,
-horas de inicio en `HOUR_MARKS`). Los controles dentro de una sección piden sus datos aparte, con los valores por
-defecto ya incluidos en la respuesta principal:
+La página pide sus datos por partes, para pintar lo de arriba sin esperar lo de abajo. Todos los endpoints reciben los
+filtros de la barra lateral: zona (`plaza`, nacional si falta), periodo (`d0`, `d1`; por defecto de hoy al miércoles de
+la semana de cine) y franja (`h0`, `h1`, horas de inicio en `HOUR_MARKS`).
+
+- `GET /api/cartelera`: encabezado, cobertura, estado de la captura y `kpis`. Se pide al entrar.
+- `GET /api/cartelera/hallazgos`: la Capa 1. Se pide al entrar, en paralelo.
+- `GET /api/cartelera/seccion/{slug}`: los datos y la conclusión de una sección de la Capa 2.
+- `GET /api/cartelera/apendice/{slug}`: los datos de un apéndice de la Capa 3.
+
+Los controles dentro de una sección piden sus datos aparte, con los valores por defecto ya incluidos en la respuesta de
+su sección:
 
 - `GET /api/cartelera/curva`: curva de venta de otro título en preventa.
 - `GET /api/cartelera/cambios`: registro de cambios filtrado por tipo.
@@ -38,9 +45,14 @@ _EVENTS_DAYS = 7
 _OCCUPANCY_RECENT = 30
 # El Resumen general muestra siempre todo el día y desde las 6 PM, sin el filtro de franja.
 _SUMMARY_HOURS = (FULL_DAY, (PRIME_START_HOUR, 24))
+# La llave de `analytics.conclusions` de cada sección de la Capa 2.
+_CONCLUSION = {"resumen": "resumen", "peliculas": "peliculas", "horarios": "franjas", "formatos": "formatos",
+               "preventa": "preventa"}
 
 Plaza = Literal[tuple(plazas.PLAZAS)]
 Chain = Literal[COMPARED]
+Section = Literal[tuple(_CONCLUSION)]
+Appendix = Literal["indicadores", "cambios", "precios", "butacas", "ocupacion"]
 Rows = list[dict[str, Any]]
 
 
@@ -67,8 +79,14 @@ class Cartelera(TypedDict):
     coverage: Rows
     capture: Rows
     kpis: Rows
+
+
+class Hallazgos(TypedDict):
     findings: Rows
-    conclusions: dict[str, Any]
+
+
+class Seccion(TypedDict, total=False):
+    conclusions: dict[str, str]
     general_summary: list[SummaryCut]
     movie_gaps: Rows
     heatmap: Rows
@@ -76,6 +94,9 @@ class Cartelera(TypedDict):
     presale_compare: Rows
     presale_by_chain: Rows
     presale_curve: dict[str, Rows]
+
+
+class Apendice(TypedDict, total=False):
     offered_seats: Rows
     concentration: Rows
     events_by_kind: Rows
@@ -116,67 +137,127 @@ def _next_week(today):
     return analytics.cinema_week((date.fromisoformat(w1) + timedelta(days=1)).isoformat())
 
 
-@router.get("/cartelera")
-def cartelera(plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
-              h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Cartelera:
-    """Las tres capas de la cartelera para la zona, el periodo y la franja. 422 si `d0 > d1`, `h0 >= h1` o una hora no está en `HOUR_MARKS`."""
+def _scope(plaza, d0, d1, h0, h1):
+    """Los filtros con sus valores por defecto, como argumentos de `analytics/`. 422 si `d0 > d1`, `h0 >= h1` o una
+    hora no está en `HOUR_MARKS`."""
     today = analytics.today()
-    week = analytics.cinema_week(today)
     d0 = d0.isoformat() if d0 else today
-    d1 = d1.isoformat() if d1 else week[1]
+    d1 = d1.isoformat() if d1 else analytics.cinema_week(today)[1]
     # Solo corta en los límites de las franjas, así ninguna queda partida.
     if d0 > d1 or h0 >= h1 or not {h0, h1} <= set(HOUR_MARKS):
         raise HTTPException(422)
-    hours = (h0, h1)
-    scope = {"d0": d0, "d1": d1, "hours": hours, "plaza": plaza}
+    return {"d0": d0, "d1": d1, "hours": (h0, h1), "plaza": plaza}
+
+
+def _key(name, scope):
+    return (name, analytics.today(), scope["d0"], scope["d1"], scope["hours"], scope["plaza"])
+
+
+@router.get("/cartelera")
+def cartelera(plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
+              h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Cartelera:
+    """Encabezado de la cartelera: periodo, publicación de la semana siguiente, cobertura, captura y `kpis`."""
+    scope = _scope(plaza, d0, d1, h0, h1)
+    today = analytics.today()
 
     def compute(conn):
         next_week = _next_week(today)
-        presale_compare = analytics.presale_compare(conn, plaza=plaza)
-        first = presale_compare[0] if presale_compare else {}
-        calibration = analytics.semaphore_calibration(conn, chain="cinemex")
-        occupancy_total = analytics.occupancy_total(conn, plaza=plaza)[0]
         return {
-            "plaza": plaza, "d0": d0, "d1": d1, "hours": list(hours), "full_day": analytics.is_full_day(hours),
-            "includes_today": d0 <= today <= d1, "today": today, "week": list(week), "next_week": list(next_week),
+            "plaza": plaza, "d0": scope["d0"], "d1": scope["d1"], "hours": list(scope["hours"]),
+            "full_day": analytics.is_full_day(scope["hours"]), "includes_today": scope["d0"] <= today <= scope["d1"],
+            "today": today, "week": list(analytics.cinema_week(today)), "next_week": list(next_week),
             "next_week_publication": analytics.week_publication(conn, *next_week, plaza=plaza),
             "snapshot_times": job_registry.daily_times(job_keys.SNAPSHOT), "first_snapshot": FIRST_SNAPSHOT,
             "shown_movies": SHOWN_MOVIES, "total_movies": TOTAL_MOVIES,
             "coverage": analytics.coverage(conn, plaza=plaza),
             "capture": analytics.capture_status(conn, limit=12),
             "kpis": analytics.kpis(conn, **scope),
-            "findings": analytics.findings(conn, **scope),
-            "conclusions": analytics.conclusions(conn, shown=SHOWN_MOVIES, total=TOTAL_MOVIES, **scope),
-            "general_summary": [{"hours": list(h), "rows": analytics.general_summary(conn, d0=d0, d1=d1, hours=h,
-                                                                                     plaza=plaza)}
-                                for h in _SUMMARY_HOURS],
-            "movie_gaps": analytics.movie_gaps(conn, limit=TOTAL_MOVIES, **scope),
-            "heatmap": analytics.heatmap_day_slot(conn, **scope),
-            "mix": analytics.mix(conn, **scope),
-            "presale_compare": presale_compare,
-            "presale_by_chain": analytics.presale_by_chain(conn, plaza=plaza),
-            "presale_curve": _curves(conn, {c: first.get(f"title_norm_{c}") for c in COMPARED}, plaza),
-            "offered_seats": analytics.offered_seats(conn, **scope),
-            "concentration": analytics.concentration(conn, **scope),
-            "events_by_kind": analytics.events_by_kind(conn, since_hours=24 * _EVENTS_DAYS, plaza=plaza),
-            "recent_events": analytics.recent_events(conn, limit=_EVENTS_LIMIT, kinds=list(CARTELERA_KINDS),
-                                                     plaza=plaza),
-            "prices": analytics.prices(conn, plaza=plaza),
-            "price_summary": analytics.price_summary(conn, plaza=plaza),
-            "capacity_summary": analytics.capacity_summary(conn, plaza=plaza),
-            "offered_by_title": {c: analytics.offered_by_title(conn, limit=TOTAL_MOVIES, chain=c, **scope)
-                                 for c in COMPARED},
-            "capacity_by_cinema": {c: analytics.capacity_by_cinema(conn, chain=c, plaza=plaza) for c in COMPARED},
-            "occupancy_summary": analytics.occupancy_summary(conn, plaza=plaza),
+        }
+
+    return read(_key("cartelera", scope), compute)
+
+
+@router.get("/cartelera/hallazgos")
+def hallazgos(plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
+              h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Hallazgos:
+    """Los hallazgos de la Capa 1 (`analytics.findings`), con los mismos filtros y validaciones que `/cartelera`."""
+    scope = _scope(plaza, d0, d1, h0, h1)
+    return read(_key("cartelera/hallazgos", scope), lambda conn: {"findings": analytics.findings(conn, **scope)})
+
+
+def _section(conn, slug, scope):
+    plaza = scope["plaza"]
+    sections = (_CONCLUSION[slug],)
+    out = {"conclusions": analytics.conclusions(conn, shown=SHOWN_MOVIES, total=TOTAL_MOVIES, sections=sections,
+                                                **scope)}
+    if slug == "resumen":
+        out["general_summary"] = [{"hours": list(h), "rows": analytics.general_summary(conn, d0=scope["d0"],
+                                                                                        d1=scope["d1"], hours=h,
+                                                                                        plaza=plaza)}
+                                  for h in _SUMMARY_HOURS]
+    elif slug == "peliculas":
+        out["movie_gaps"] = analytics.movie_gaps(conn, limit=TOTAL_MOVIES, **scope)
+    elif slug == "horarios":
+        out["heatmap"] = analytics.heatmap_day_slot(conn, **scope)
+    elif slug == "formatos":
+        out["mix"] = analytics.mix(conn, **scope)
+    else:
+        presale_compare = analytics.presale_compare(conn, plaza=plaza)
+        first = presale_compare[0] if presale_compare else {}
+        out["presale_compare"] = presale_compare
+        out["presale_by_chain"] = analytics.presale_by_chain(conn, plaza=plaza)
+        out["presale_curve"] = _curves(conn, {c: first.get(f"title_norm_{c}") for c in COMPARED}, plaza)
+    return out
+
+
+@router.get("/cartelera/seccion/{slug}")
+def seccion(slug: Section, plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
+            h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Seccion:
+    """Una sección de la Capa 2: su conclusión (`conclusions`, una llave de `analytics.conclusions`) y sus datos.
+
+    `resumen` trae `general_summary`; `peliculas`, `movie_gaps`; `horarios`, `heatmap`; `formatos`, `mix`; y
+    `preventa`, `presale_compare`, `presale_by_chain` y la `presale_curve` del primer título.
+    """
+    scope = _scope(plaza, d0, d1, h0, h1)
+    return read(_key(f"cartelera/seccion/{slug}", scope), lambda conn: _section(conn, slug, scope))
+
+
+def _appendix(conn, slug, scope):
+    plaza = scope["plaza"]
+    if slug == "indicadores":
+        return {"offered_seats": analytics.offered_seats(conn, **scope),
+                "concentration": analytics.concentration(conn, **scope)}
+    if slug == "cambios":
+        return {"events_by_kind": analytics.events_by_kind(conn, since_hours=24 * _EVENTS_DAYS, plaza=plaza),
+                "recent_events": analytics.recent_events(conn, limit=_EVENTS_LIMIT, kinds=list(CARTELERA_KINDS),
+                                                         plaza=plaza)}
+    if slug == "precios":
+        return {"prices": analytics.prices(conn, plaza=plaza), "price_summary": analytics.price_summary(conn, plaza=plaza)}
+    if slug == "butacas":
+        return {"capacity_summary": analytics.capacity_summary(conn, plaza=plaza),
+                "offered_by_title": {c: analytics.offered_by_title(conn, limit=TOTAL_MOVIES, chain=c, **scope)
+                                     for c in COMPARED},
+                "capacity_by_cinema": {c: analytics.capacity_by_cinema(conn, chain=c, plaza=plaza) for c in COMPARED}}
+    calibration = analytics.semaphore_calibration(conn, chain="cinemex")
+    occupancy_total = analytics.occupancy_total(conn, plaza=plaza)[0]
+    return {"occupancy_summary": analytics.occupancy_summary(conn, plaza=plaza),
             "semaphore_calibration": calibration,
             "occupancy_total": occupancy_total,
             "estimated_occupancy": (analytics.estimated_occupancy(conn, chain="cinemex", **scope)
                                     if calibration else []),
             "occupancy_recent": (analytics.occupancy_recent(conn, limit=_OCCUPANCY_RECENT, plaza=plaza)
-                                 if occupancy_total["samples"] else []),
-        }
+                                 if occupancy_total["samples"] else [])}
 
-    return read(("cartelera", today, d0, d1, hours, plaza), compute)
+
+@router.get("/cartelera/apendice/{slug}")
+def apendice(slug: Appendix, plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
+             h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Apendice:
+    """Un apéndice de la Capa 3. `indicadores` trae `offered_seats` y `concentration`; `cambios`, `events_by_kind` y
+    `recent_events`; `precios`, `prices` y `price_summary`; `butacas`, `capacity_summary`, `offered_by_title` y
+    `capacity_by_cinema`; y `ocupacion`, los `occupancy_*`, `semaphore_calibration` y `estimated_occupancy`.
+    """
+    scope = _scope(plaza, d0, d1, h0, h1)
+    return read(_key(f"cartelera/apendice/{slug}", scope), lambda conn: _appendix(conn, slug, scope))
 
 
 @router.get("/cartelera/curva")
