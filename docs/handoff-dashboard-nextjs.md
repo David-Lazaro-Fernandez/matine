@@ -21,8 +21,8 @@ Todo está en la rama **`dashboard-nextjs`**, sin push. Sale de `independientes-
 | 1. Lógica de pandas de las vistas a `analytics/` | Hecha | `capture_status`, `movie_gaps`, `week_publication`, `presale_by_chain`, `price_summary`, `occupancy_total`, `occupancy_readable` |
 | 2a. API interna y sesión por cookie | Hecha | `api/internal.py`, `api/session.py`, `api/pages/` (con `/api/datos` de referencia) |
 | Gráficas en Vega-Lite | Hechas todas | `dashboard/components/**` sobre `components/vega-chart.tsx` |
-| 2b. Un endpoint por página | Falta | `api/pages/<pagina>.py` |
-| 3. Cascarón: navegación por rol, acceso, filtros, componentes compartidos | Falta | `dashboard/app/`, `dashboard/components/` |
+| 2b. Un endpoint por página | Hecha | `api/pages/<pagina>.py`, más `/api/plazas`; sin `plaza` = nacional |
+| 3. Cascarón: navegación por rol, acceso, filtros, componentes compartidos | Hecha, falta probar la cookie en navegador | `components/shell.tsx`, `components/filters.tsx`, `components/common.tsx`, `lib/api.ts`, `lib/format.ts` |
 | 4–6. Páginas | Falta | Datos, Mapa, Usuarios, Operaciones → Dulcería, Independientes, Recomendador → Cartelera |
 | 7. Corte | Falta | Servicio, Caddy, borrar Streamlit, docs |
 
