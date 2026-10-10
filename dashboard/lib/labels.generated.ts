@@ -280,6 +280,27 @@ export const VS_NOW_LABEL = {
   "gone": "Ya no está publicada"
 } as const;
 
+export const EXCLUSIVE_LABEL = {
+  "cinemex": "solo Cinemex",
+  "cinepolis": "solo Cinépolis"
+} as const;
+
+export const PUBLICATION_LABEL = {
+  "partial": " · publicada parcialmente",
+  "published": " · publicada"
+} as const;
+
+export const PRESALE_OTHER_LABEL = {
+  "presale": "también en preventa",
+  "absent": "{other} no lo exhibe",
+  "shown": "{other} lo exhibe, fuera de su preventa"
+} as const;
+
+export const PRESALE_TAG = {
+  "absent": "exclusiva",
+  "shown": "la otra lo exhibe"
+} as const;
+
 export const KIND_HELP = {
   "added": "Apareció una función que no estaba en la cartelera publicada.",
   "removed": "Una función publicada desapareció cuando faltaban más de 30 minutos para empezar.",

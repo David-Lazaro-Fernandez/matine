@@ -255,6 +255,10 @@ el timer lo note. Si añades un flujo de captura, añade su cobertura ahí y su 
 - `deploy/*.sh` son bash con `set -euo pipefail`: instalar o respaldar a medias es peor que fallar.
 - Los pasos de un trabajo del registro corren todos aunque uno falle (`jobs.run`, igual que `make -k`): cada paso escribe
   su log y una captura que falla no debe cancelar las siguientes del mismo tick. El trabajo sí sale con error.
+- **Node se maneja con `pnpm`, nunca con `npm`** (`pnpm install`, `pnpm run build`, `pnpm dlx` en vez de `npx`). El
+  lockfile versionado es `pnpm-lock.yaml`; no se commitea un `package-lock.json`.
+- **El registro es siempre el público, `https://registry.npmjs.org/`, nunca Shadowbox.** El servidor, Vercel y CI no
+  ven el registro privado. Un lockfile que apunta a Shadowbox rompe la instalación fuera de esta máquina.
 - Nada de secretos en el repo. Van en `deploy/absolut-cinema.env` (con `.example` versionado).
 - **Un trabajo programado nuevo es una llave en `jobs/keys.py` y una entrada en `jobs/registry.py`**, seguido de
   `make units`. No se escriben unidades de systemd ni plists a mano: cada una ejecuta `make job KEY=llave`, así
