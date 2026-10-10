@@ -58,13 +58,16 @@ de marca; Cinépolis sigue en tinta. Ningún hex ni texto de usuario se escribe 
 | `st.navigation` arriba; abajo en celular | `NavDrawer` en escritorio; `TabList` fija abajo en celular |
 | filtros de la barra lateral | `Dropdown`, `DatePicker`, `Field` en un panel de filtros |
 | `st.info` / `st.warning` / `st.error` | `MessageBar` |
-| Altair (~25 gráficos: 11 en cartelera) | `@fluentui/react-charts`: `HeatMapChart`, `VerticalBarChart`, `HorizontalBarChart`, `LineChart` |
+| Altair (~25 gráficos: 11 en cartelera) | Vega-Lite (`vega-embed`) con el mismo spec, en `components/vega-chart.tsx` y el estilo de `lib/vega-theme.ts` |
 | `st.dataframe` / `table()` | `DataGrid`; el explorador de Datos probablemente necesita la versión virtualizada de `@fluentui-contrib` |
 | pydeck (mapa) y folium (recomendador, clic) | `maplibre-gl`, ya usado en `marketing/` |
 | `capa`, `seccion`, `pregunta`, `leerla`, `apendice`, `leyenda`, `hallazgo` | componentes React con el mismo nombre en `dashboard/components/` |
 
-**Riesgo principal: gráficos.** Algunos de Altair usan escalas y anotaciones propias. Si uno no cabe en Fluent Charts, el
-respaldo es Vega-Lite (`react-vega`) con el mismo spec, tematizado con los tokens. Se decide en la fase 0.
+**Gráficos en Vega-Lite, no en Fluent Charts (decisión 2026-10-10, tras la fase 0).** Altair genera specs de Vega-Lite,
+así que cada gráfico se traduce casi 1:1, con sus escalas, capas y anotaciones. Fluent Charts no tiene dumbbell ni eje de
+categorías en `LineChart`, y su heatmap quita el signo de las etiquetas ("+0.8" sale "0.8"). Chart.js obliga a rediseñar
+cada gráfico y pinta en canvas. El resto de la UI sí es Fluent. `vega-embed` se importa dentro de un efecto porque Vega
+lee `document`; el contenedor reserva la altura para que la página no salte.
 
 ## 4. Fases
 
@@ -105,7 +108,8 @@ Ola 4:  [7 corte]
 - **[DECIDIR] Dónde se hace `next build`.** El servidor tiene 2 GB y hoy no tiene Node. Opciones:
   (a) Node en el servidor y `deploy/update.sh` construye si cambió `dashboard/` — no toca más infra, pero hay que medir
   la RAM del build (fase 0); (b) el workflow de GitHub construye `out/` y `deploy/update.sh` lo descarga como artefacto.
-  Recomendación: (a) si el build cabe con los timers corriendo; si no, (b).
+  Medido en la fase 0 (Mac arm64, dos gráficos): ~1.6 GB de pico con 4 workers; ~0.8 GB con `experimental.cpus: 1` y
+  `--max-old-space-size=512`. Con el dashboard completo será más. Recomendación: (b).
 - **[DECIDIR] Versión de Next.** Recomendación: la misma de `marketing/` (16.x, React 19.2.0 fijo por el problema de
   `scheduler`), para no mantener dos.
 - **Pruebas de frontend.** Recomendación: solo `tsc` + `next build` en CI al principio. Playwright se agrega si una
@@ -130,7 +134,7 @@ Hay que reescribirlas en la fase 7, no antes:
 | --- | --- |
 | `analytics/` ya son funciones puras que devuelven dicts | Acorta: la API interna es envolver, no reescribir |
 | La cartelera tiene lógica de pandas en la vista | Alarga: fase 1 nueva, antes de portar nada |
-| ~25 gráficos de Altair, algunos con anotaciones | Riesgo principal; la fase 0 lo resuelve antes de comprometer fechas |
+| ~25 gráficos de Altair, algunos con anotaciones | Acorta: Vega-Lite usa el mismo spec que Altair, se traducen casi 1:1 |
 | `auth/` no conoce Streamlit | Acorta: la sesión se porta sin tocar cuentas ni `app.db` |
 | El servidor no tiene Node y tiene 2 GB | Trabajo nuevo: decisión de build (§5) |
 | `marketing/` ya usa Next 16 y maplibre | Acorta: misma versión y mismo mapa |

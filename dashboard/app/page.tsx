@@ -3,11 +3,8 @@
 // Spike de la fase 0: las dos gráficas de la cartelera con datos reales de `dashboard/scripts/spike_data.py`.
 import { Subtitle1, makeStyles, tokens } from '@fluentui/react-components';
 import data from '@/.spike-data/cartelera.json';
-import dynamic from 'next/dynamic';
-
-// Fluent Charts lee `document` al renderizar, así que no puede pasar por el prerender de la exportación estática.
-const DaySlotHeatmap = dynamic(() => import('@/components/day-slot-heatmap').then((m) => m.DaySlotHeatmap), { ssr: false });
-const MoviesDumbbell = dynamic(() => import('@/components/movies-dumbbell').then((m) => m.MoviesDumbbell), { ssr: false });
+import { DaySlotHeatmap } from '@/components/day-slot-heatmap';
+import { MoviesDumbbell } from '@/components/movies-dumbbell';
 
 const useStyles = makeStyles({
   page: { maxWidth: '1100px', margin: '0 auto', padding: tokens.spacingHorizontalXXL },
