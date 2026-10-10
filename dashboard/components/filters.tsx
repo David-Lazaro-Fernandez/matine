@@ -6,14 +6,12 @@ import * as React from 'react';
 import { Field, Input, Radio, RadioGroup, makeStyles, tokens } from '@fluentui/react-components';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
-import { addDays, cinemaWeek, date_es, fill } from '@/lib/format';
+import { PILOT_TIMEZONE, addDays, cinemaWeek, date_es, fill } from '@/lib/format';
 import { NATIONAL_LABEL, PERIOD_TEXT, PLAZA_LABEL, ZONE_TEXT } from '@/lib/labels.generated';
 
 // Valor de `?plaza=` para todo el país. `usePlaza` lo devuelve como null: los endpoints toman nacional sin `plaza`.
 const NATIONAL = 'nacional';
 const DEFAULT_PLAZA = 'cdmx';
-// La zona horaria de `analytics.today()` (config.PILOT_TIMEZONE).
-const PILOT_TIMEZONE = 'America/Mexico_City';
 type PeriodKey = 'hoy' | 'manana' | 'semana' | 'siguiente' | 'fechas';
 const DEFAULT_PERIOD = 'semana';
 
@@ -21,7 +19,7 @@ const useStyles = makeStyles({
   dates: { display: 'flex', gap: tokens.spacingHorizontalS },
 });
 
-function useSetParams() {
+export function useSetParams() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -35,7 +33,7 @@ function useSetParams() {
   };
 }
 
-function today(): string {
+export function today(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: PILOT_TIMEZONE }).format(new Date());
 }
 

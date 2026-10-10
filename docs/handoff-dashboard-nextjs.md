@@ -36,7 +36,7 @@ llaves, no frases (salvo las de `findings.py` y `conclusions`).
 | --- | --- | --- |
 | `GET /api/plazas` | — | Lista del selector de zona (`analytics.plazas`), sin la opción nacional |
 | `GET /api/datos` | `dataset`, filtros de `DATASETS` | El patrón de referencia |
-| `GET /api/mapa` | `plaza`, `chains`, `cinema_ids` | En nacional, `cinemas` y `sites[].cinemas` repiten los 793 cines |
+| `GET /api/mapa` | `plaza`, `chains`, `cinema_ids` | `sites[].cinema_ids` apunta a las filas de `cinemas`, sin repetirlas |
 | `GET /api/dulceria` | `plaza`, `platform`, `chain`, `product` | En sala y a domicilio |
 | `GET /api/operaciones` | `job_days`, `run_days`, `unit_days`, `log`, `lines` | Solo admin. Lo de `snapshots.db` va con caché; lo de `data/` en vivo |
 | `GET /api/independientes` | `plaza`, `d0`, `d1` | Solo Cineteca (`chain="cineteca"`). Plaza distinta de CDMX: `supported=false` |
@@ -84,14 +84,12 @@ texto en español y el rango libre necesita dos horas.
   se hace en el componente.
 - **Ningún texto ni hex escrito a mano en `dashboard/`.** Salen de `dashboard/lib/labels.generated.ts`, generado desde
   `analytics/labels.py` con `make labels`. `make check` falla si no coincide.
+- **`next build` en GitHub Actions** (2026-10-10). El workflow construye `out/` y `deploy/update.sh` lo descarga. Se
+  arma en el corte. Si CI instala Node ≥ 22.6, la prueba de paridad de formato deja de omitirse.
+- **Pruebas de frontend** (2026-10-10): Mocha, Sinon para los stubs de `lib/api.ts`, React Testing Library para los
+  componentes y Playwright para los recorridos en navegador. Por ahora no se escriben.
+- **La ola 3 va rápido: sin pruebas ni `pnpm run build` por página.** El usuario prueba y reporta los errores.
 - **ruff no revisa `.claude/`** (`pyproject.toml`): los worktrees de agentes tienen código a medias.
-
-## Decisiones abiertas
-
-1. **Dónde se hace `next build`.** El build pide ~1.6 GB con dos gráficas (medido en Mac) y el servidor tiene 2 GB. Se
-   recomienda construir en GitHub Actions y que `deploy/update.sh` descargue `out/`. Falta que el usuario lo confirme.
-   Si CI instala Node ≥ 22.6, la prueba de paridad de formato deja de omitirse.
-2. **Pruebas de frontend.** La recomendación es solo `pnpm run build` en CI al principio.
 
 ## Antes de la ola 3
 
@@ -119,9 +117,6 @@ una necesita cambiar un componente compartido, se hace primero en `dashboard-nex
 
 ### Por página
 
-- **Mapa:** en nacional, la respuesta repite los cines en `cinemas` y en `sites[].cinemas`: agregar GZip a la API
-  interna o aplanar `sites`. El círculo de cines del mismo edificio, el radio por métrica y el tooltip van en el
-  frontend.
 - **Datos:** necesita el `DataGrid` virtualizado (marcado con `ponytail:` en `common.tsx`).
 - **Dulcería:** el melt de la gráfica de domicilio y la etiqueta VIP van en el frontend, como ya hacen
   `components/dulceria/`. El filtro "mediana no nula" de la vista sobra: `delivery_compare` ya omite cubetas sin dato.
@@ -132,15 +127,16 @@ una necesita cambiar un componente compartido, se hace primero en `dashboard-nex
   `(chain, cinema_id)` en el frontend. Nada limita Nominatim a 1 petición por segundo entre usuarios; si importa, un lock
   con pausa de 1 s en `_geocode`. La prueba es delgada: la captura grabada no trae precios.
 - **Cartelera:**
-  - `movies-dumbbell.tsx` y `day-slot-heatmap.tsx` esperan campos que armaba el spike (`delta`, `winner`, `tooltip`,
-    `day`, `slot_label`, `label`); deben armarlos desde las filas crudas de `movie_gaps` y `heatmap_day_slot`.
-  - La franja (`h0`/`h1`) no está en el cascarón: va en esta página.
+  - Los campos que esperan `movies-dumbbell.tsx` y `day-slot-heatmap.tsx` (`delta`, `winner`, `tooltip`, `day`,
+    `slot_label`, `label`) se arman en `app/page.tsx` desde `movie_gaps` y `heatmap_day_slot`.
+  - `hour_mark`, `hours_label`, `range_short` y `plaza_title` tienen su equivalente en `app/page.tsx`. Si otra página
+    los necesita, pasan a `lib/format.ts`.
   - En frío tarda ~7.5 s con CDMX y ~9.5 s nacional (157 y 245 KB); con caché, 2 ms. `findings` se lleva 4.6 s. Si
     molesta, la optimización va en `analytics/findings.py`.
   - `SHOWN_MOVIES`, `TOTAL_MOVIES` y `FIRST_SNAPSHOT` están copiados de `ui/common.py` en `api/pages/cartelera.py`,
     porque `api/` no puede importar `ui/`. La copia de `ui/` se borra en el corte.
-  - `views/cartelera.py` línea ~372 tiene `if True else None`, código muerto.
-  - Quedan textos escritos a mano en `views/cartelera.py` (avisos, textos de sección, encabezados de tabla).
+  - Los textos de la página viven en `CARTELERA_TEXT` y los del filtro de franja en `HOURS_TEXT`.
+    Los títulos de tooltip de Altair en `views/cartelera.py` siguen escritos a mano: se borran en el corte.
 
 ### Generales
 

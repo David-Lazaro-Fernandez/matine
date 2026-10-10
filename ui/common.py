@@ -98,7 +98,7 @@ from scraper.health import MAX_AGE_MIN  # noqa: E402  (umbral de captura vieja, 
 
 # Mapa base de las páginas con mapa: estilo vectorial de OpenFreeMap (sin clave, uso comercial permitido, datos de
 # OpenStreetMap). Los mosaicos raster de CARTO piden clave desde 2026-09 y muestran "API KEY REQUIRED".
-BASEMAP_STYLE = os.environ.get("AC_BASEMAP_STYLE", "https://tiles.openfreemap.org/styles/positron")
+BASEMAP_STYLE = os.environ.get("AC_BASEMAP_STYLE", analytics.labels.BASEMAP_STYLE)
 _MAPLIBRE_JS = "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"
 _MAPLIBRE_CSS = "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css"
 _MAPLIBRE_LEAFLET_JS = "https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"

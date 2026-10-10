@@ -105,15 +105,14 @@ Ola 4:  [7 corte]
 
 ## 5. Decisiones abiertas
 
-- **[DECIDIR] Dónde se hace `next build`.** El servidor tiene 2 GB y hoy no tiene Node. Opciones:
-  (a) Node en el servidor y `deploy/update.sh` construye si cambió `dashboard/` — no toca más infra, pero hay que medir
-  la RAM del build (fase 0); (b) el workflow de GitHub construye `out/` y `deploy/update.sh` lo descarga como artefacto.
-  Medido en la fase 0 (Mac arm64, dos gráficos): ~1.6 GB de pico con 4 workers; ~0.8 GB con `experimental.cpus: 1` y
-  `--max-old-space-size=512`. Con el dashboard completo será más. Recomendación: (b).
+- **Decidido 2026-10-10: `next build` se hace en GitHub Actions.** El workflow construye `out/` y `deploy/update.sh` lo
+  descarga como artefacto. El servidor tiene 2 GB y no tiene Node. Medido en la fase 0 (Mac arm64, dos gráficos):
+  ~1.6 GB de pico con 4 workers.
 - **[DECIDIR] Versión de Next.** Recomendación: la misma de `marketing/` (16.x, React 19.2.0 fijo por el problema de
   `scheduler`), para no mantener dos.
-- **Pruebas de frontend.** Recomendación: solo `tsc` + `next build` en CI al principio. Playwright se agrega si una
-  regresión visual se escapa.
+- **Decidido 2026-10-10: pruebas de frontend.** Unitarias con Mocha, Sinon para los stubs de `lib/api.ts` y React
+  Testing Library para los componentes; Playwright para los recorridos en navegador. Por ahora no se escriben: la ola 3
+  va rápido, sin pruebas ni build por página, y el usuario reporta los errores.
 
 ## 6. Reglas de `AGENTS.md` que cambian
 

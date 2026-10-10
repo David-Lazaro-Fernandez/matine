@@ -60,7 +60,7 @@ def _login(client, email):
 def test_without_session_is_401(client):
     for path in ("/api/yo", "/api/usuarios", "/api/datos"):
         res = client.get(path)
-        assert res.status_code == 401 and res.json()["detail"] == AUTH_TEXT["InvalidCredentials"]
+        assert res.status_code == 401 and res.json()["detail"] == AUTH_TEXT["session_expired"]
     client.cookies.set(session.COOKIE, "inventada")
     assert client.get("/api/yo").status_code == 401
 
@@ -249,7 +249,7 @@ def test_mapa_reads_the_recorded_capture(client, viewer, recorded):
     one = body["cinemas"][0]["cinema_id"]
     body = client.get("/api/mapa", params={"chains": ["cinemex", "cinepolis"], "cinema_ids": [one]}).json()
     assert [r["cinema_id"] for r in body["cinemas"]] == [one] and len(body["options"]) > 1
-    assert [c["cinema_id"] for s in body["sites"] for c in s["cinemas"]] == [one]
+    assert [c for s in body["sites"] for c in s["cinema_ids"]] == [one]
     assert client.get("/api/mapa", params={"chains": "nadie"}).status_code == 422
     assert client.get("/api/mapa", params={"plaza": "nadie"}).status_code == 422
 

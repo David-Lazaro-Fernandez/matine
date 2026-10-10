@@ -169,7 +169,8 @@ with seccion("servidor"):
         [OPS_TEXT["app_db_file"], size_h(sto["app_db_bytes"])],
         [OPS_TEXT["raw_dir"], size_h(sto["raw_bytes"])],
         [OPS_TEXT["backups_dir"], size_h(sto["backups_bytes"])],
-        [OPS_TEXT["disk_free"], f'{size_h(sto["disk_free_bytes"])} de {size_h(sto["disk_total_bytes"])} · {sto["data_dir"]}'],
+        [OPS_TEXT["disk_free"], OPS_TEXT["disk_free_value"].format(free=size_h(sto["disk_free_bytes"]),
+                                                                total=size_h(sto["disk_total_bytes"]), dir=sto["data_dir"])],
     ])
 
 # --- logs -------------------------------------------------------------------------------------------------

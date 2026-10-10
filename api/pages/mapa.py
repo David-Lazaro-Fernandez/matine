@@ -2,7 +2,8 @@
 
 `GET /api/mapa` devuelve todo lo que pinta la página, de hoy al miércoles de la semana de cine. Sin `plaza`, todo el
 país. `cinema_ids` acota destacados, puntos y tabla a esos cines; `options` siempre lista los cines de la zona. Las
-filas van tal cual las devuelve `analytics/`. Dónde cae cada punto y su radio los calcula el frontend.
+filas van tal cual las devuelve `analytics/`, salvo `sites`: cada lugar lleva `cinema_ids` y no las filas completas, que
+ya vienen en `cinemas`. Dónde cae cada punto y su radio los calcula el frontend.
 """
 from typing import Annotated, Any, Literal
 
@@ -52,7 +53,9 @@ def mapa(plaza: Literal[tuple(plazas.PLAZAS)] | None = None,
             "options": [{k: r[k] for k in ("chain", "cinema_id", "cinema_name")} for r in zone],
             "cinemas": analytics.cinema_map(conn, **scope, cinema_ids=picked) if picked else zone,
             "highlights": analytics.cinema_highlights(conn, **scope, cinema_ids=picked),
-            "sites": analytics.cinema_sites(conn, **scope, cinema_ids=picked),
+            "sites": [{"site_id": site["site_id"], "chain": site["chain"], "lat": site["lat"], "lng": site["lng"],
+                       "cinema_ids": [r["cinema_id"] for r in site["cinemas"]]}
+                      for site in analytics.cinema_sites(conn, **scope, cinema_ids=picked)],
         }
 
     return read(("mapa", d0, plaza, chains, picked), compute)

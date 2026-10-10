@@ -33,14 +33,14 @@ def current_user(request: Request):
     raw = request.cookies.get(COOKIE)
     user = with_conn(lambda conn: auth.current_session(conn, raw)) if raw else None
     if user is None:
-        raise HTTPException(401, AUTH_TEXT["InvalidCredentials"])
+        raise HTTPException(401, AUTH_TEXT["session_expired"])
     return user
 
 
 def require_admin(user: Annotated[dict, Depends(current_user)]):
     """Dependencia: el usuario si es admin; 403 si no."""
     if user["role"] != "admin":
-        raise HTTPException(403, AUTH_TEXT["SelfChange"])
+        raise HTTPException(403, AUTH_TEXT["admin_only"])
     return user
 
 

@@ -15,6 +15,7 @@ from analytics.labels import COMPARED, PLATFORM_LABEL
 from scraper import plazas
 
 from . import read
+from .cartelera import FIRST_SNAPSHOT
 
 router = APIRouter()
 
@@ -24,6 +25,7 @@ class Dulceria(TypedDict):
     platform: str | None
     chain: str
     product: str | None
+    first_snapshot: str
     conclusion: str
     findings: list[dict[str, Any]]
     concession_summary: list[dict[str, Any]]
@@ -49,7 +51,7 @@ def dulceria(plaza: Literal[tuple(plazas.PLAZAS)] | None = None,
         chosen = product or (basket[0]["product_name"] if basket else None)
         concl = analytics.conclusions(conn, d0=w0, d1=w1, plaza=plaza)
         return {
-            "plaza": plaza, "platform": platform, "chain": chain, "product": chosen,
+            "plaza": plaza, "platform": platform, "chain": chain, "product": chosen, "first_snapshot": FIRST_SNAPSHOT,
             "conclusion": concl.get("dulceria", ""),
             "findings": [f for f in analytics.findings(conn, d0=w0, d1=w1, top=6, plaza=plaza) if f["topic"] == "dulceria"],
             "concession_summary": analytics.concession_summary(conn, plaza=plaza),

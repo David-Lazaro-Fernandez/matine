@@ -3,6 +3,20 @@
 // La extensión `.ts` en el import deja que Node cargue este archivo en esa prueba, sin compilar.
 import { DATE_TEXT } from './labels.generated.ts';
 
+// La zona horaria de `analytics.today()` (config.PILOT_TIMEZONE).
+export const PILOT_TIMEZONE = 'America/Mexico_City';
+
+// Como `local_time` de ui/common.py: '2026-10-09T01:05:00Z' → '8/10 07:05 PM' en hora de CDMX.
+export function localTime(iso: string | null): string {
+  if (!iso) return '';
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: PILOT_TIMEZONE, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true,
+    }).formatToParts(new Date(iso)).map((p) => [p.type, p.value]),
+  );
+  return `${Number(parts.day)}/${parts.month} ${parts.hour}:${parts.minute} ${parts.dayPeriod}`;
+}
+
 // Llena una plantilla de labels.py: fill('{sold} de {seats}', { sold: '3', seats: '9' }) → '3 de 9'.
 export function fill(template: string, values: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ''));

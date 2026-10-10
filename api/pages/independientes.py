@@ -16,6 +16,7 @@ from analytics import independents
 from scraper import plazas
 
 from . import read
+from .cartelera import FIRST_SNAPSHOT
 
 router = APIRouter()
 
@@ -38,6 +39,7 @@ class Independientes(TypedDict):
     d1: str
     min_date: str
     max_date: str
+    first_snapshot: str
     occupancy_confirmed: bool
     thresholds: Thresholds
     venues: list[dict[str, Any]]
@@ -68,6 +70,7 @@ def independientes(d0: date | None = None, d1: date | None = None,
         raise HTTPException(422, f"El periodo debe estar entre {min_date} y {week_end}.")
     supported = plaza in (None, "cdmx")
     base = {"plaza": plaza, "supported": supported, "d0": d0, "d1": d1, "min_date": min_date, "max_date": week_end,
+            "first_snapshot": FIRST_SNAPSHOT,
             "occupancy_confirmed": independents.OCCUPANCY_CONFIRMED,
             "thresholds": {"occupancy_days": independents.OCCUPANCY_DAYS,
                            "occupancy_min_samples": independents.OCCUPANCY_MIN_SAMPLES,
@@ -83,6 +86,8 @@ def independientes(d0: date | None = None, d1: date | None = None,
         window = {"d0": d0, "d1": d1}
         occupancy = analytics.occupancy_by_cinema(conn, days=independents.OCCUPANCY_DAYS, chain=INDEP_CHAIN)
         readable = independents.occupancy_readable(occupancy)
+        by_title = analytics.occupancy_by_title(conn, days=independents.OCCUPANCY_DAYS, chain=INDEP_CHAIN,
+                                                min_samples=independents.INDEP_MIN_SAMPLES) if readable else []
         return {
             **base,
             "venues": analytics.independent_summary(conn, **window, chain=INDEP_CHAIN),
@@ -93,9 +98,7 @@ def independientes(d0: date | None = None, d1: date | None = None,
             "occupancy": occupancy,
             "occupancy_samples": sum(r["samples"] for r in occupancy),
             "occupancy_readable": readable,
-            "occupancy_titles": analytics.occupancy_by_title(
-                conn, days=independents.OCCUPANCY_DAYS, chain=INDEP_CHAIN,
-                min_samples=independents.INDEP_MIN_SAMPLES) if readable else [],
+            "occupancy_titles": sorted(by_title, key=lambda r: (-r["sold_pct"], r["title_norm"])),
             "overlap": analytics.independent_overlap(conn, **window, chain=INDEP_CHAIN),
             "overlap_top": analytics.independent_overlap(conn, **window, chain=INDEP_CHAIN, limit=TOP_TITLES),
             "slots": analytics.independent_slots(conn, **window, chain=INDEP_CHAIN),
