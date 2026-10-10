@@ -1,6 +1,6 @@
 """Página principal: la cartelera en tres capas (hallazgos → evidencia → apéndice) con los filtros de zona, periodo y
 franja horaria en la barra lateral. La dulcería vive en su propia página (views/dulceria.py)."""
-from analytics.labels import EXCLUSIVE_LABEL, PRESALE_OTHER_LABEL, PRESALE_TAG, PUBLICATION_LABEL
+from analytics.labels import EXCLUSIVE_LABEL, PRESALE_OTHER_LABEL, PRESALE_TAG, PUBLICATION_LABEL, RED_RAMP_TEXT
 from ui.common import *  # noqa: F401,F403
 
 # --- barra lateral: zona, periodo y franja ---------------------------------------------------------------
@@ -282,7 +282,7 @@ with seccion("formatos"):
                 labels = alt.Chart(sub).mark_text(fontSize=11.5, fontWeight="bold").encode(
                     y=alt.Y("Cadena:N", sort=CHAIN_DOMAIN), x=alt.X("share:Q", stack="normalize", bandPosition=0.5),
                     order=alt.Order("orden:Q"), text="label:N", detail="Grupo:N",
-                    color=alt.condition("datum.light", alt.value("#7A2233"), alt.value(PAPER)))
+                    color=alt.condition("datum.light", alt.value(RED_RAMP_TEXT), alt.value(PAPER)))
                 chart((bars + labels).properties(height=90))
     leerla("formatos",
            "Cada barra es el 100 % de las funciones de una cadena en el periodo. Premium / VIP agrupa Premium, Platino, VIP y "

@@ -72,6 +72,8 @@ export const RED_RAMP = [
   "#F7CDD5"
 ] as const;
 
+export const RED_RAMP_TEXT = "#7A2233" as const;
+
 export const DIVERGING = [
   "#191A1E",
   "#8C8E95",
@@ -311,6 +313,32 @@ export const PRESALE_OTHER_LABEL = {
 export const PRESALE_TAG = {
   "absent": "exclusiva",
   "shown": "la otra lo exhibe"
+} as const;
+
+export const CARTELERA_CHART_TEXT = {
+  "chain": "Cadena",
+  "group": "Grupo",
+  "mix_share": "% de su programación",
+  "mix_shows": "Funciones",
+  "percent": "{value} %",
+  "presale_title": "Título",
+  "presale_release": "Estreno",
+  "presale_no_release": "—",
+  "presale_shows": "Funciones leídas",
+  "presale_seats": "Butacas vendidas",
+  "presale_seats_value": "{sold} de {seats}",
+  "presale_sold": "% del aforo vendido",
+  "presale_pace": "Ritmo",
+  "presale_pace_value": "{pace} puntos del aforo al día",
+  "presale_pace_pending": "se mide desde la segunda lectura",
+  "presale_other": "En la otra cadena",
+  "presale_tagged": "{sold} · {tag}",
+  "presale_axis": "% de las butacas del panel ya vendidas",
+  "curve_x": "Días antes de la función",
+  "curve_y": "% de las butacas vendidas",
+  "curve_days": "Días antes",
+  "curve_readings": "Lecturas",
+  "curve_sold": "% vendido"
 } as const;
 
 export const KIND_HELP = {
