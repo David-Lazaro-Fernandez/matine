@@ -16,6 +16,7 @@ from api import internal, pages, session  # noqa: E402
 from api.pages import recomendador  # noqa: E402
 from auth import db, flows  # noqa: E402
 from scraper import config  # noqa: E402
+from scraper.plazas import PLAZAS  # noqa: E402
 
 PASSWORD = "contraseña-de-pruebas-123"
 
@@ -280,3 +281,10 @@ def test_operaciones_without_database_still_shows_the_server(client, admin, tmp_
     _login(client, "admin@example.test")
     body = client.get("/api/operaciones").json()
     assert body["report"] is None and body["runs"] is None and body["jobs"] and body["log"]["lines"] == []
+
+
+def test_plazas_lists_the_zones_with_cinemas(client, viewer, recorded):
+    _login(client, "viewer@example.test")
+    body = client.get("/api/plazas").json()
+    assert body == sorted(body, key=lambda p: list(PLAZAS).index(p["plaza"]))
+    assert all(p["cinemas_cinemex"] or p["cinemas_cinepolis"] for p in body)
