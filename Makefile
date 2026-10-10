@@ -5,7 +5,7 @@
 PY ?= /usr/bin/python3
 VENV ?= .venv/bin
 
-.PHONY: help job units units-check tick snapshot seats occupancy post-start health prices concessions delivery capacity capacity-cinemex presale \
+.PHONY: help job units units-check labels tick snapshot seats occupancy post-start health prices concessions delivery capacity capacity-cinemex presale \
         calibrate-cinemex dashboard api backup launchd-load launchd-unload \
         user-create user-list user-reset user-deactivate user-activate auth-prune deploy restart check lint test test-live fixtures hooks \
         marketing-dev marketing-build export-places
@@ -21,6 +21,9 @@ units:              ## regenera deploy/systemd/ y la tabla de ARCHITECTURE.md de
 
 units-check:        ## sale con 1 si deploy/systemd/ o ARCHITECTURE.md no coinciden con el registro
 	$(PY) -m jobs.units check
+
+labels:             ## regenera dashboard/lib/labels.generated.ts desde analytics/labels.py (make check falla si no coincide)
+	$(PY) scripts/export_labels.py
 
 tick: snapshot seats   ## atajo manual: una captura de cartelera y el pase de planos
 
@@ -114,6 +117,8 @@ lint:               ## ruff, que scraper/ y analytics/ importan con el Python de
 	$(PY) -c "import analytics, scraper.run, scraper.sample, scraper.health, scraper.delivery, jobs.run, jobs.units"
 	@! grep -n '"resolved": "' marketing/package-lock.json | grep -v '"resolved": "https://registry.npmjs.org/' \
 		|| { echo "package-lock.json apunta a un registro privado: sed -i '' 's#https://[^/]*/npm/#https://registry.npmjs.org/#' marketing/package-lock.json"; exit 1; }
+	@! grep -n 'tarball: ' dashboard/pnpm-lock.yaml | grep -v 'tarball: https://registry.npmjs.org/' \
+		|| { echo "dashboard/pnpm-lock.yaml apunta a un registro privado: borra el lockfile y corre \`pnpm install\` en dashboard/ (dashboard/.npmrc fija npmjs)"; exit 1; }
 
 test:               ## pruebas (las de pantalla se omiten si no hay data/snapshots.db); la captura corre contra respuestas grabadas
 	$(VENV)/python -m pytest -q tests/
