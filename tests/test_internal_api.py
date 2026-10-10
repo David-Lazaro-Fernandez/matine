@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 import analytics  # noqa: E402
 from analytics.labels import AUTH_TEXT  # noqa: E402
 from api import internal, pages, session  # noqa: E402
+from api.pages import recomendador  # noqa: E402
 from auth import db, flows  # noqa: E402
 from scraper import config  # noqa: E402
 
@@ -176,3 +177,63 @@ def test_datos_reads_the_recorded_capture(client, viewer, capture_db, tmp_path, 
     assert body["rows"] and {r["chain"] for r in body["rows"]} == {"cinemex"}
     assert body["cinemas"] and {c["chain"] for c in body["cinemas"]} == {"cinemex"}
     assert client.get("/api/datos", params={"dataset": "nada"}).status_code == 422
+
+
+def _recorded(capture_db, tmp_path, monkeypatch, *chains):
+    path = tmp_path / "snapshots.db"
+    with sqlite3.connect(path) as disk:
+        capture_db(*chains).backup(disk)
+    monkeypatch.setattr(config, "DB_PATH", path)
+    monkeypatch.setattr(analytics, "today", lambda: "2026-09-26")
+    pages._cache.clear()
+
+
+def test_independientes_reads_only_the_cineteca(client, viewer, capture_db, tmp_path, monkeypatch):
+    _recorded(capture_db, tmp_path, monkeypatch, "cinemex", "cineteca")
+    _login(client, "viewer@example.test")
+    body = client.get("/api/independientes", params={"plaza": "cdmx"}).json()
+    assert body["supported"] and (body["d0"], body["d1"]) == ("2026-09-26", "2026-09-30")
+    assert body["venues"] and body["board"] and body["titles"]
+    assert {r["chain"] for r in body["slots"]} <= {"cinemex", "cineteca"}
+    assert all(f["topic"] == "independientes" for f in body["findings"])
+    other = client.get("/api/independientes", params={"plaza": "gdl"}).json()
+    assert not other["supported"] and other["venues"] == []
+    assert client.get("/api/independientes", params={"d1": "2026-10-01"}).status_code == 422
+
+
+def test_recomendador_reads_the_recorded_capture(client, viewer, capture_db, tmp_path, monkeypatch):
+    _recorded(capture_db, tmp_path, monkeypatch, "cinemex", "cinepolis")
+    _login(client, "viewer@example.test")
+    empty = client.get("/api/recomendador").json()
+    assert empty["summary"] is None and empty["max_date"] == "2026-10-09"
+    forum_tepic = {"lat": 21.493764, "lng": -104.8664, "d0": "2026-09-27"}
+    body = client.get("/api/recomendador", params={**forum_tepic, "snacks": "popcorn"}).json()
+    # La captura grabada no trae lecturas de precio: todas las funciones salen sin precio.
+    assert body["titles"] and body["unpriced"] and body["summary"]["unpriced"]
+    assert len(body["unpriced"]) <= body["limit"]
+    nobody = client.get("/api/recomendador", params={**forum_tepic, "adults": 0}).json()
+    assert nobody["titles"] and nobody["summary"] is None
+    assert client.get("/api/recomendador", params={"lat": 21.49}).status_code == 422
+    assert client.get("/api/recomendador", params={"h0": 20, "h1": 12}).status_code == 422
+
+
+def test_geocodificar_calls_the_geocoder_once(client, viewer, monkeypatch):
+    calls = []
+
+    def fake(address):
+        calls.append(address)
+        if address == "caída":
+            raise recomendador.geocode.ApiError("sin servicio")
+        return {"lat": 19.43, "lng": -99.13, "label": "Zócalo"} if address == "Zócalo" else None
+
+    monkeypatch.setattr(recomendador.geocode, "geocode", fake)
+    recomendador._geocode.cache_clear()
+    _login(client, "viewer@example.test")
+    for _ in range(2):
+        res = client.get("/api/recomendador/geocodificar", params={"q": " Zócalo "})
+        assert res.json() == {"lat": 19.43, "lng": -99.13, "label": "Zócalo"}
+    assert calls == ["Zócalo"]
+    assert client.get("/api/recomendador/geocodificar", params={"q": "nada"}).json() is None
+    assert client.get("/api/recomendador/geocodificar", params={"q": "caída"}).status_code == 502
+    assert client.get("/api/recomendador/geocodificar", params={"q": "x" * 201}).status_code == 422
+    assert client.get("/api/recomendador/geocodificar", params={"q": "   "}).status_code == 422
