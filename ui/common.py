@@ -72,6 +72,7 @@ from analytics.labels import (  # noqa: E402
     RED_SOFT,
     ROLE_HELP,
     ROLE_LABEL,
+    SEATS_CHART_TEXT,
     SLOT_SHORT,
     SLOTS,
     SNACK_LABEL,

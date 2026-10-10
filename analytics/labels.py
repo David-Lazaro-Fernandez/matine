@@ -173,6 +173,14 @@ COLUMN_LABEL = {
 DAY_TYPE_LABEL = {"weekday": "Lunes y jueves", "promo": "Martes y miércoles", "weekend": "Viernes a domingo"}
 AVAILABILITY_LABEL = {"#FFBE06": "Amarillo", "#FF804A": "Naranja", "#A2ACBA": "Gris", "(sin color)": "Sin color",
                       "high": "Alta disponibilidad", "mid": "Media", "low": "Baja"}
+# Gráfica de funciones frente a butacas por película (apéndice "butacas" de la cartelera). Las series y los demás títulos
+# del tooltip salen de COLUMN_LABEL.
+SEATS_CHART_TEXT = {
+    "title": "Funciones frente a butacas por película ({chain})",
+    "axis": "% del total de {chain} en el periodo",
+    "measure": "Medida",
+    "share": "%",
+}
 
 
 def hour_12(hour, minute=0):

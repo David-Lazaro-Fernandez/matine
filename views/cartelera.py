@@ -473,27 +473,28 @@ if not cap.empty:
         c1, c2 = st.columns([3, 2])
         bt = load("offered_by_title", d0=d0, d1=d1, limit=TOTAL_MOVIES, chain=chain_sel, hours=hours, plaza=plaza)
         with c1:
-            st.markdown(f"**Funciones frente a butacas por película ({CHAIN_LABEL[chain_sel]})**")
+            st.markdown(f"**{SEATS_CHART_TEXT['title'].format(chain=CHAIN_LABEL[chain_sel])}**")
             if bt.empty:
                 st.info("Sin funciones con aforo conocido en el periodo.")
             else:
                 bt["title"] = bt["title"].str.strip()
                 longb = bt.melt(id_vars=["title", "shows", "seats", "avg_seats"], value_vars=["share_shows", "share_seats"],
                                 var_name="medida", value_name="share")
-                longb["Medida"] = longb["medida"].map({"share_shows": "% de funciones", "share_seats": "% de butacas"})
+                longb["Medida"] = longb["medida"].map(COLUMN_LABEL)
+                measures = [COLUMN_LABEL["share_shows"], COLUMN_LABEL["share_seats"]]
                 orderb = bt["title"].tolist()
                 yb = alt.Y("title:N", sort=orderb, title=None, axis=alt.Axis(labelLimit=260, labelColor=GRAY_DARK, ticks=False, domain=False))
                 ruleb = alt.Chart(longb).mark_rule(strokeWidth=2, color=NEUTRAL).encode(
-                    y=yb, x=alt.X("min(share):Q", title=f"% del total de {CHAIN_LABEL[chain_sel]} en el periodo"), x2="max(share):Q")
+                    y=yb, x=alt.X("min(share):Q", title=SEATS_CHART_TEXT["axis"].format(chain=CHAIN_LABEL[chain_sel])), x2="max(share):Q")
                 dotsb = alt.Chart(longb).mark_point(size=110, filled=True, opacity=1).encode(
                     y=yb, x="share:Q",
-                    shape=alt.Shape("Medida:N", scale=alt.Scale(domain=["% de funciones", "% de butacas"], range=["circle", "square"]),
+                    shape=alt.Shape("Medida:N", scale=alt.Scale(domain=measures, range=["circle", "square"]),
                                     legend=alt.Legend(orient="top", title=None)),
-                    color=alt.Color("Medida:N", scale=alt.Scale(domain=["% de funciones", "% de butacas"], range=[NEUTRAL, CHAIN_COLOR[chain_sel]]),
+                    color=alt.Color("Medida:N", scale=alt.Scale(domain=measures, range=[NEUTRAL, CHAIN_COLOR[chain_sel]]),
                                     legend=alt.Legend(orient="top", title=None)),
-                    tooltip=[alt.Tooltip("title:N", title="Película"), alt.Tooltip("Medida:N"),
-                             alt.Tooltip("share:Q", title="%", format=".1f"), alt.Tooltip("shows:Q", title="Funciones"),
-                             alt.Tooltip("seats:Q", title="Butacas", format=","), alt.Tooltip("avg_seats:Q", title="Butacas por sala")])
+                    tooltip=[alt.Tooltip("title:N", title=COLUMN_LABEL["title"]), alt.Tooltip("Medida:N", title=SEATS_CHART_TEXT["measure"]),
+                             alt.Tooltip("share:Q", title=SEATS_CHART_TEXT["share"], format=".1f"), alt.Tooltip("shows:Q", title=COLUMN_LABEL["shows"]),
+                             alt.Tooltip("seats:Q", title=COLUMN_LABEL["seats"], format=","), alt.Tooltip("avg_seats:Q", title=COLUMN_LABEL["avg_seats"])])
                 chart((ruleb + dotsb).properties(height=alt.Step(24)))
                 md('<p class="nota">El círculo claro es la parte de las funciones de la cadena que ocupa la película; el cuadro, la parte de '
                    'sus butacas ofertadas. Cuando el cuadro queda a la derecha, la película va en salas más grandes que el promedio.</p>')
