@@ -44,6 +44,8 @@ NEUTRAL = "#C9CBD0"
 GRID = "#ECEDEF"
 # Ordinal de un solo tono para cubetas ordenadas.
 RED_RAMP = [RED_DARK, RED, "#F08497", "#F7CDD5"]
+# Texto sobre los dos tonos claros de `RED_RAMP`.
+RED_RAMP_TEXT = "#7A2233"
 # Cinépolis (tinta) ↔ centro ↔ Cinemex (rojo).
 DIVERGING = [INK, INDEP, "#EFEFEF", "#F6B7C2", RED]
 # Ámbar: estado con problema, solo en la página de operaciones (el rojo es Cinemex).
@@ -130,6 +132,18 @@ PUBLICATION_LABEL = {"partial": " · publicada parcialmente", "published": " · 
 PRESALE_OTHER_LABEL = {"presale": "también en preventa", "absent": "{other} no lo exhibe",
                        "shown": "{other} lo exhibe, fuera de su preventa"}
 PRESALE_TAG = {"absent": "exclusiva", "shown": "la otra lo exhibe"}
+# Ejes y detalles de las gráficas de formatos y preventa de la cartelera. `{…}` son números ya formateados.
+CARTELERA_CHART_TEXT = {
+    "chain": "Cadena", "group": "Grupo", "mix_share": "% de su programación", "mix_shows": "Funciones",
+    "percent": "{value} %",
+    "presale_title": "Título", "presale_release": "Estreno", "presale_no_release": "—",
+    "presale_shows": "Funciones leídas", "presale_seats": "Butacas vendidas", "presale_seats_value": "{sold} de {seats}",
+    "presale_sold": "% del aforo vendido", "presale_pace": "Ritmo", "presale_pace_value": "{pace} puntos del aforo al día",
+    "presale_pace_pending": "se mide desde la segunda lectura", "presale_other": "En la otra cadena",
+    "presale_tagged": "{sold} · {tag}", "presale_axis": "% de las butacas del panel ya vendidas",
+    "curve_x": "Días antes de la función", "curve_y": "% de las butacas vendidas", "curve_days": "Días antes",
+    "curve_readings": "Lecturas", "curve_sold": "% vendido",
+}
 
 KIND_HELP = {
     "added": "Apareció una función que no estaba en la cartelera publicada.",

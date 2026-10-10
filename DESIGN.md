@@ -34,6 +34,7 @@ gris `#333333` de la primera versión.
 - **Contraste alto.** Texto blanco sobre rojo o tinta; texto `#191A1E` sobre blanco o `#F6F6F4`. Gris `#5C6068` solo
   para texto secundario de 13 px o más.
 - **Rampa ordinal** (cubetas ordenadas de formato) a partir del rojo: `#9E0F26`, `#E31837`, `#F08497`, `#F7CDD5`.
+  El texto sobre los dos tonos claros es `#7A2233` (`RED_RAMP_TEXT`).
 - **Divergente** (mapa de calor de Δ pp): lado Cinemex en rojo (`#F6B7C2` → `#E31837`), lado Cinépolis en tinta
   (`#8C8E95` → `#191A1E`), centro `#EFEFEF`. Texto blanco cuando la celda es oscura o saturada.
 
@@ -142,7 +143,7 @@ Compactas, sin fondo en el encabezado: cabecera en gris con borde inferior 1.5 p
 - **Tema Streamlit.** El bloque `[theme]` de `.streamlit/config.toml` fija colores, radios, la familia Archivo y los
   pesos de encabezado. Fondo de página `#F6F6F4`, fondo secundario blanco (tarjetas, barra lateral).
 - **Constantes de color.** Viven en `analytics/labels.py`: `RED`, `RED_DARK`, `RED_SOFT`, `INK`, `GRAY`, `GRAY_DARK`,
-  `GRAY_LIGHT`, `LINE`, `PAPER`, `NEUTRAL`, `GRID`, `INDEP`, `CHAIN_COLOR`, `RED_RAMP`, `DIVERGING`, y los de estado `OK` y `WARN`
+  `GRAY_LIGHT`, `LINE`, `PAPER`, `NEUTRAL`, `GRID`, `INDEP`, `CHAIN_COLOR`, `RED_RAMP`, `RED_RAMP_TEXT`, `DIVERGING`, y los de estado `OK` y `WARN`
   (solo Operaciones). Ningún hex se escribe
   directo en la presentación.
 - **CSS complementario.** `ui/common.py` (`inject_css`, llamado desde `app.py`) inyecta la fuente variable Archivo desde Google Fonts, el ancho de lectura
