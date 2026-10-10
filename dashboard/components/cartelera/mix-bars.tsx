@@ -17,7 +17,6 @@ const DIMENSIONS = {
   format: { buckets: FORMAT_BUCKETS, label: FORMAT_LABEL as Record<string, string>, palette: RED_RAMP, firstLight: 2 },
   language: { buckets: LANGUAGE_BUCKETS, label: LANGUAGE_LABEL as Record<string, string>, palette: [RED_RAMP[1], RED_RAMP[3]], firstLight: 1 },
 };
-// Un segmento más angosto no lleva cifra.
 const MIN_LABELED_SHARE = 7;
 const HEIGHT = 90;
 

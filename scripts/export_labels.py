@@ -1,9 +1,8 @@
 """Exporta los textos y colores de `analytics/labels.py` a `dashboard/lib/labels.generated.ts`, así el dashboard de
 Next.js no escribe ningún hex ni texto de usuario a mano.
 
-Uso:
-  python3 scripts/export_labels.py           # reescribe el archivo generado (`make labels`)
-  python3 scripts/export_labels.py check     # sale con 1 si el archivo no coincide con labels.py (lo corre pytest)
+`python3 scripts/export_labels.py` reescribe el archivo generado (`make labels`). Con `check`, sale con 1 si el archivo
+no coincide con `labels.py`; lo corre pytest.
 
 Exporta cada constante pública de `labels.py`: nombre en mayúsculas, sin `_` inicial y con valor JSON (las tuplas pasan
 a arreglos). Las funciones no se exportan; sus equivalentes van en TypeScript. Solo librería estándar.

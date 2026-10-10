@@ -319,6 +319,12 @@ sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
 
 ## 9. Al terminar
 
+- **Revisa cada comentario que agregaste o tocaste.** Preferimos código que se explica solo, con buenos nombres, a
+  comentarios que repiten lo que ya se lee en el código. Un comentario no explica de más y va en ASD-STE100 (inglés) o
+  en Español Técnico Simplificado. **Nunca escribas un comentario a la derecha de una línea de código.** Detalle en
+  `.claude/rules/comments.md`.
+- **Pasa el linter sobre todo lo que agregaste o cambiaste**: `make lint` (ruff) para Python y `pnpm run build` (que
+  revisa los tipos) para `dashboard/` y `marketing/`.
 - Sigue los patrones de los archivos vecinos antes que cualquier preferencia general.
 - Actualiza la documentación que el cambio invalide, en el archivo que le toca: `project.md`
   (APIs, modelo de datos, decisiones), `ARCHITECTURE.md` (flujo, servicios, cadencias), `DESIGN.md`

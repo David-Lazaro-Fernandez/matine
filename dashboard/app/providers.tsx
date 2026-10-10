@@ -1,8 +1,7 @@
 'use client';
 
 // Proveedores de Fluent para el App Router, según la guía de SSR de Fluent v9 para Next.js.
-// Griffel junta en `renderer` los estilos del prerender y `useServerInsertedHTML` los escribe una sola vez en el HTML
-// exportado. Sin esto, el navegador recalcula las clases al hidratar y la página parpadea.
+// Los estilos van en el HTML exportado. Sin ellos, la página parpadea al hidratar.
 import * as React from 'react';
 import {
   FluentProvider,
