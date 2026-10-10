@@ -51,7 +51,10 @@ def plaza_cinema_where(plaza, alias="", chains=COMPARED):
         params += [chain, *keys]
     if not parts:
         return " AND 0", []
-    return f" AND {alias}cinema_id IN (SELECT cinema_id FROM cinema WHERE {' OR '.join(parts)})", params
+    # La condición sobre `chain` deja que SQLite use los índices que empiezan por `chain`.
+    chain_sql, chain_params = _chain_in([chain for chain, _ in _pairs(plaza, chains)], alias)
+    return f"{chain_sql} AND {alias}cinema_id IN (SELECT cinema_id FROM cinema WHERE {' OR '.join(parts)})", \
+        chain_params + params
 
 
 def plazas(conn):
