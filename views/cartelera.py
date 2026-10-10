@@ -1,5 +1,6 @@
 """Página principal: la cartelera en tres capas (hallazgos → evidencia → apéndice) con los filtros de zona, periodo y
 franja horaria en la barra lateral. La dulcería vive en su propia página (views/dulceria.py)."""
+from analytics.labels import EXCLUSIVE_LABEL, PRESALE_OTHER_LABEL, PRESALE_TAG, PUBLICATION_LABEL
 from ui.common import *  # noqa: F401,F403
 
 # --- barra lateral: zona, periodo y franja ---------------------------------------------------------------
@@ -22,9 +23,7 @@ if cov.empty:
     st.stop()
 this_w0, this_w1 = analytics.cinema_week(today_s)
 next_w0, next_w1 = analytics.cinema_week((date.fromisoformat(this_w1) + timedelta(days=1)).isoformat())
-full_day = cov[(cov.date >= today_s) & (cov.date <= this_w1)].cinemex.max() or 1
-next_cov = cov[(cov.date >= next_w0) & (cov.date <= next_w1)]
-next_state = "" if next_cov.empty else (" · publicada parcialmente" if next_cov.cinemex.mean() < 0.6 * full_day else " · publicada")
+next_state = PUBLICATION_LABEL.get(load_raw("week_publication", d0=next_w0, d1=next_w1, plaza=plaza), "")
 
 periods = {
     "Hoy": (today_s, today_s),
@@ -81,18 +80,8 @@ st.sidebar.caption(f"La cartelera se captura a las {', '.join(time_12(hm) for hm
                    f"asientos cada hora; esta página se refresca cada {TTL} segundos.")
 
 # --- datos del encabezado ---------------------------------------------------------------------------------
-health = load("snapshot_health", limit=12)
-last_ok = health[health.ok == 1].groupby("chain").first()
-# Una cadena está desactualizada si su intento más reciente falló o si su última captura buena tiene más de
-# MAX_AGE_MIN. La cartelera se captura tres veces al día y el hueco nocturno normal es de 11 h.
-# Fallos ya superados por una captura buena no avisan.
-now_utc = datetime.now(ZoneInfo("UTC"))
-stale = []
-for chain, r in health.groupby("chain").first().iterrows():
-    last_good = last_ok.loc[chain].taken_at if chain in last_ok.index else None
-    age_min = (now_utc - datetime.fromisoformat(last_good)).total_seconds() / 60 if last_good else None
-    if r.ok != 1 or age_min is None or age_min > MAX_AGE_MIN:
-        stale.append((CHAIN_LABEL.get(chain, chain), age_min, r.error if r.ok != 1 else None))
+capture = load_raw("capture_status", limit=12)
+stale = [(CHAIN_LABEL.get(r["chain"], r["chain"]), r["age_min"], r["error"]) for r in capture if r["stale"]]
 kp = load("kpis", d0=d0, d1=d1, hours=hours, plaza=plaza)
 if kp.empty or len(kp) < 2:
     md(f'<div class="enc"><h1>{esc(plaza_title(plaza))}: <span>Cinemex</span> frente a Cinépolis</h1></div>')
@@ -100,7 +89,7 @@ if kp.empty or len(kp) < 2:
     st.stop()
 K = kp.set_index("chain")
 us, them = K.loc["cinemex"], K.loc["cinepolis"]
-last_capture = min(datetime.fromisoformat(r.taken_at) for _, r in last_ok.iterrows()) if len(last_ok) else None
+last_capture = min((datetime.fromisoformat(r["last_ok_at"]) for r in capture if r["last_ok_at"]), default=None)
 
 md(f"""
 <div class="enc">
@@ -190,13 +179,7 @@ with seccion("peliculas"):
     show_all = st.session_state.get("all_movies", False)
     pregunta("¿A qué películas les damos más pantalla que Cinépolis?", concl.get("peliculas", ""),
              None if show_all else concl.get("peliculas_note"))
-    battle = load("movies_by_chain", d0=d0, d1=d1, limit=60, hours=hours, plaza=plaza)
-    battle["title"] = battle["title"].str.strip()
-    top = battle.head(TOTAL_MOVIES).copy()
-    # Orden por magnitud de la diferencia; una exclusiva pesa lo que su propio share.
-    top["abs_gap"] = top.apply(lambda r: r.share_cinemex if r.shows_cinepolis == 0 else
-                               r.share_cinepolis if r.shows_cinemex == 0 else abs(r.gap_pp), axis=1)
-    top = top.sort_values("abs_gap", ascending=False).head(TOTAL_MOVIES if show_all else SHOWN_MOVIES)
+    top = load("movie_gaps", d0=d0, d1=d1, hours=hours, plaza=plaza, limit=TOTAL_MOVIES).head(TOTAL_MOVIES if show_all else SHOWN_MOVIES)
     order = top["title"].tolist()
     long = top.melt(id_vars=["title"], value_vars=["share_cinemex", "share_cinepolis"], var_name="chain", value_name="share")
     long["chain"] = long["chain"].str.replace("share_", "", regex=False)
@@ -205,9 +188,7 @@ with seccion("peliculas"):
     long["cinemas"] = [ti.loc[t, f"cinemas_{c}"] for t, c in zip(long["title"], long["chain"])]
     long = long[long["shows"] > 0]
     long["Cadena"] = long["chain"].map(CHAIN_LABEL)
-    top["delta"] = top.apply(lambda r: "solo Cinépolis" if r.shows_cinemex == 0 else
-                             "solo Cinemex" if r.shows_cinepolis == 0 else pp(r.gap_pp), axis=1)
-    top["gana"] = top.apply(lambda r: "cmx" if (r.shows_cinepolis == 0 or (r.shows_cinemex > 0 and r.gap_pp >= 0)) else "cnp", axis=1)
+    top["delta"] = [EXCLUSIVE_LABEL.get(e) or pp(g) for e, g in zip(top["exclusive"], top["gap_pp"])]
     leyenda([("Cinemex", RED), ("Cinépolis", INK)])
     y_axis = alt.Y("title:N", sort=order, title=None, axis=alt.Axis(labelLimit=300, labelColor=GRAY_DARK, labelFontSize=12.5,
                                                                     ticks=False, domain=False, labelPadding=10))
@@ -222,7 +203,7 @@ with seccion("peliculas"):
                  alt.Tooltip("shows:Q", title="Funciones"), alt.Tooltip("cinemas:Q", title="Cines")])
     delta = alt.Chart(top).mark_text(align="left", fontSize=12.5, fontWeight="bold").encode(
         y=alt.Y("title:N", sort=order, axis=None), x=alt.value(4), text="delta:N",
-        color=alt.Color("gana:N", scale=alt.Scale(domain=["cmx", "cnp"], range=[RED, GRAY_DARK]), legend=None),
+        color=alt.Color("leader:N", scale=alt.Scale(domain=["cinemex", "cinepolis"], range=[RED, GRAY_DARK]), legend=None),
         tooltip=[alt.Tooltip("title:N", title="Película"),
                  alt.Tooltip("share_cinemex:Q", title="% programación Cinemex", format=".1f"),
                  alt.Tooltip("share_cinepolis:Q", title="% programación Cinépolis", format=".1f"),
@@ -244,7 +225,6 @@ with seccion("horarios"):
     if hm.empty:
         st.info("Sin funciones en el periodo.")
     else:
-        hm["gap_pp"] = (hm["share_cinemex"].fillna(0) - hm["share_cinepolis"].fillna(0)).round(1)
         hm["Día"] = hm["weekday"].map(lambda i: WEEKDAY_LABEL[int(i)])
         hm["Franja"] = hm["slot"].map(SLOT_SHORT)
         hm["label"] = hm["gap_pp"].map(pp).str.replace(" pp", "")
@@ -316,24 +296,17 @@ with seccion("preventa"):
         st.info("Aún no hay lecturas de preventa en esta zona. El pase corre a diario sobre los títulos en preventa de ambas "
                 "cadenas, en las plazas donde se leen planos.")
     else:
-        pv["Título"] = pv["title"].map(lambda t: t if len(t) <= 42 else t[:41].rstrip() + "…")
-        long = pd.concat([pv.assign(chain=c, sold_pct=pv[f"sold_pct_{c}"], shows=pv[f"shows_{c}"], pace=pv[f"pace_pct_day_{c}"],
-                                    sold=pv[f"sold_{c}"], seats=pv[f"seats_{c}"])
-                          for c in CHAINS], ignore_index=True)
-        long = long[long["shows"] > 0].copy()
+        long = load("presale_by_chain", plaza=plaza)
+        long["Título"] = long["title"].map(lambda t: t if len(t) <= 42 else t[:41].rstrip() + "…")
         long["Cadena"] = long["chain"].map(CHAIN_LABEL)
         long["Estreno"] = long["release_date"].map(lambda d: date_es(d, with_year=False) if isinstance(d, str) else "—")
         long["Vendido"] = long["sold_pct"].map(lambda v: f"{v:.0f} %")
         long["Butacas"] = long.apply(lambda r: f"{int(r.sold):,} de {int(r.seats):,}", axis=1)
-        long["Ritmo"] = long["pace"].map(lambda v: f"{v:+.1f} puntos del aforo al día".replace("-", "−") if pd.notna(v)
+        long["Ritmo"] = long["pace_pct_day"].map(lambda v: f"{v:+.1f} puntos del aforo al día".replace("-", "−") if pd.notna(v)
                                          else "se mide desde la segunda lectura")
         other = {"cinemex": CHAIN_LABEL["cinepolis"], "cinepolis": CHAIN_LABEL["cinemex"]}
-        long["En la otra cadena"] = long.apply(
-            lambda r: "también en preventa" if r.status == "ambas" else
-            f"{other[r.chain]} no lo exhibe" if r.status.startswith("exclusiva") else
-            f"{other[r.chain]} lo exhibe, fuera de su preventa", axis=1)
-        long["Etiqueta"] = long.apply(lambda r: r.Vendido if r.status == "ambas" else
-                                      f"{r.Vendido} · {'exclusiva' if r.status.startswith('exclusiva') else 'la otra lo exhibe'}", axis=1)
+        long["En la otra cadena"] = [PRESALE_OTHER_LABEL[k].format(other=other[c]) for k, c in zip(long["in_other_chain"], long["chain"])]
+        long["Etiqueta"] = [f"{v} · {PRESALE_TAG[k]}" if k in PRESALE_TAG else v for v, k in zip(long["Vendido"], long["in_other_chain"])]
         tooltip = [alt.Tooltip("title:N", title="Título"), alt.Tooltip("Cadena:N"), alt.Tooltip("Estreno:N"),
                    alt.Tooltip("shows:Q", title="Funciones leídas"), alt.Tooltip("Butacas:N", title="Butacas vendidas"),
                    alt.Tooltip("Vendido:N", title="% del aforo vendido"), alt.Tooltip("Ritmo:N"), alt.Tooltip("En la otra cadena:N")]
@@ -464,10 +437,9 @@ if not pr.empty:
         a, c = P.get(("cinemex", b, d)), P.get(("cinepolis", b, d))
         return f"{FORMAT_LABEL[b]} {DAY_TYPE_LABEL[d].lower()}: ${a:,.0f} vs ${c:,.0f}" if a and c else None
     bits = [x for x in (par("traditional", "promo"), par("premium", "weekend")) if x]
-    ratios = [P[("cinepolis", b, d)] / P[("cinemex", b, d)] - 1 for b in ("traditional", "premium", "large") for d in ("weekday", "promo", "weekend")
-              if ("cinemex", b, d) in P and ("cinepolis", b, d) in P and P[("cinemex", b, d)]]
-    if ratios and min(ratios) > 0:
-        bits.insert(0, f"Cinépolis cobra {100 * min(ratios):.0f}–{100 * max(ratios):.0f} % más en tradicional, premium y gran formato")
+    ps = load_raw("price_summary", plaza=plaza)
+    if ps["markup_min_pct"] is not None:
+        bits.insert(0, f"Cinépolis cobra {ps['markup_min_pct']:.0f}–{ps['markup_max_pct']:.0f} % más en tradicional, premium y gran formato")
     with apendice("precios", "Precio del boleto por formato y tipo de día", " · ".join(bits)):
         rows = []
         for b in FORMAT_BUCKETS:
@@ -478,9 +450,8 @@ if not pr.empty:
                 delta = f"{100.0 * (c - a) / a:+.0f} %".replace("-", "−") if a and c else ""
                 rows.append([FORMAT_LABEL[b], DAY_TYPE_LABEL[d], (f"${a:,.0f}" if a else "—", "cmx"), (f"${c:,.0f}" if c else "—", "cnp"), delta])
         table(["Formato", "Tipo de día", "Cinemex", "Cinépolis", "Δ Cinépolis vs Cinemex"], rows, num_cols=(2, 3, 4))
-        n_cin = pr.groupby("chain").cinemas.max()
         md('<p class="nota">Mediana del boleto de adulto regular entre los cines muestreados ('
-           + ", ".join(f"{CHAIN_LABEL[c]}: {int(v)} cines" for c, v in n_cin.items())
+           + ", ".join(f"{CHAIN_LABEL[c]}: {int(v)} cines" for c, v in sorted(ps["cinemas"].items()))
            + "). Una función por cine, formato y tipo de día, renovada cada semana. Martes y miércoles son los días de precio "
              "reducido en ambas cadenas. Precios en pesos, sin cargo por servicio. Se excluyen eventos y matinés.</p>")
         st.dataframe(pretty(pr[["chain", "format_bucket", "day_type", "samples", "cinemas", "median_price", "min_price", "max_price"]]),
@@ -591,9 +562,8 @@ with apendice("historia", "Historial de una función y cartelera tal como estaba
 # --- Ocupación muestreada -----------------------------------------------------------------------------
 occ = load("occupancy_summary", plaza=plaza)
 cal = load("semaphore_calibration", chain="cinemex")
-n_samples = int(occ.samples.sum()) if not occ.empty else 0
-weighted = 100.0 * occ.sold.sum() / occ.seats.sum() if n_samples and occ.seats.sum() else 0.0
-levels = int((occ.availability != "(sin color)").sum()) if n_samples else 0
+occ_total = load_raw("occupancy_total", plaza=plaza)[0]
+n_samples, weighted, levels = occ_total["samples"], occ_total["sold_pct"], occ_total["levels"]
 resumen = (f"{n_samples} funciones medidas de Cinépolis · {weighted:.1f} % de butacas vendidas en promedio · "
            + (f"{levels} niveles de color para calibrar" if levels else "aún sin semáforos de color para calibrar")
            + (" · semáforo de Cinemex calibrado" if not cal.empty else " · semáforo de Cinemex sin calibrar"))

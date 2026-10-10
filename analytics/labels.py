@@ -123,6 +123,14 @@ FIELD_LABEL = {"datetime_local": "Hora", "screen": "Sala", "language": "Idioma",
 STATUS_LABEL = {"current": "Vigente", "removed": "Cancelada", "expired": "Concluida"}
 VS_NOW_LABEL = {"same": "Igual que hoy", "changed": "Cambió después", "gone": "Ya no está publicada"}
 
+# Cartelera: la llave es la que devuelve `analytics/` (movie_gaps, week_publication, presale_by_chain).
+EXCLUSIVE_LABEL = {"cinemex": "solo Cinemex", "cinepolis": "solo Cinépolis"}
+PUBLICATION_LABEL = {"partial": " · publicada parcialmente", "published": " · publicada"}
+# `{other}` es el nombre de la otra cadena.
+PRESALE_OTHER_LABEL = {"presale": "también en preventa", "absent": "{other} no lo exhibe",
+                       "shown": "{other} lo exhibe, fuera de su preventa"}
+PRESALE_TAG = {"absent": "exclusiva", "shown": "la otra lo exhibe"}
+
 KIND_HELP = {
     "added": "Apareció una función que no estaba en la cartelera publicada.",
     "removed": "Una función publicada desapareció cuando faltaban más de 30 minutos para empezar.",

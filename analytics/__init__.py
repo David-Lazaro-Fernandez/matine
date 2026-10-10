@@ -27,8 +27,9 @@ from .headlines import headlines
 from .history import board_as_of, cinemas, dates_known, functions_on, showtime_timeline, snapshot_times
 from .independents import independent_overlap, independent_slots, independent_summary, independent_titles
 from .plaza import plaza_coverage, plazas
-from .presale import presale_compare, presale_curve, presale_ranking
+from .presale import presale_by_chain, presale_compare, presale_curve, presale_ranking
 from .queries import (
+    capture_status,
     cinema_week,
     concentration,
     coverage,
@@ -38,12 +39,14 @@ from .queries import (
     kpis,
     kpis_today,
     mix,
+    movie_gaps,
     movies_by_chain,
     programming_moves,
     recent_events,
     showtimes_by_slot,
     snapshot_health,
     today,
+    week_publication,
 )
 from .recommender import (
     recommend,
@@ -61,8 +64,10 @@ from .seats import (
     occupancy_by_title,
     occupancy_recent,
     occupancy_summary,
+    occupancy_total,
     offered_by_title,
     offered_seats,
+    price_summary,
     prices,
     semaphore_calibration,
 )
@@ -74,12 +79,12 @@ __all__ = [
     "DELIVERY_BUCKETS", "delivery_compare", "delivery_products", "delivery_stores", "delivery_summary",
     "BASKET", "concession_basket", "concession_by_cinema", "concession_categories", "concession_product_by_cinema", "concession_summary",
     "capacity_by_cinema", "capacity_summary", "effective_ticket_price", "estimated_occupancy", "occupancy_by_cinema", "occupancy_by_title", "occupancy_recent", "occupancy_summary",
-    "offered_by_title", "offered_seats", "prices", "semaphore_calibration",
-    "cinema_week", "concentration", "conclusions", "connect", "coverage", "events_by_kind", "findings", "headlines",
-    "heatmap_day_slot", "is_full_day", "kpis", "kpis_today", "labels", "mix", "movies_by_chain", "programming_moves", "recent_events",
-    "showtimes_by_slot", "snapshot_health", "today",
+    "occupancy_total", "offered_by_title", "offered_seats", "price_summary", "prices", "semaphore_calibration",
+    "capture_status", "cinema_week", "concentration", "conclusions", "connect", "coverage", "events_by_kind", "findings", "headlines",
+    "heatmap_day_slot", "is_full_day", "kpis", "kpis_today", "labels", "mix", "movie_gaps", "movies_by_chain", "programming_moves", "recent_events",
+    "showtimes_by_slot", "snapshot_health", "today", "week_publication",
     "plaza_coverage", "plazas",
-    "datasets", "presale_compare", "presale_curve", "presale_ranking",
+    "datasets", "presale_by_chain", "presale_compare", "presale_curve", "presale_ranking",
     "cinema_highlights", "cinema_map", "cinema_sites", "recommend", "recommend_options", "recommend_search",
     "recommend_summary", "recommend_titles",
     "independent_conclusions", "independent_overlap", "independent_slots", "independent_summary", "independent_titles",
