@@ -19,10 +19,9 @@ export function MoviesDumbbell({ movies, axisTitle }: { movies: Movie[]; axisTit
   const titleOf = (row: number) => movies[movies.length - row]?.title ?? '';
   const both = (m: Movie) => COMPARED.every((c) => m[`shows_${c}`]);
 
-  // Una serie de línea por película y una serie de puntos por cadena. LineChart 9.3 ignora `markerColor` en el
-  // último punto de una serie, así que el color va en la serie de cada cadena.
-  // ponytail: el modo 'markers' de LineChart 9.3 crea un Fragment sin `key` y React avisa en desarrollo. Es un error de
-  // Fluent; sin 'markers' los puntos salen huecos y sin tamaño. Se va si el dumbbell pasa a Vega-Lite.
+  // Una serie de línea por película y un punto por película y cadena. El modo 'markers' de LineChart 9.3 crea
+  // Fragments sin `key` y React avisa en desarrollo. Por eso cada punto es una línea de largo cero con punta
+  // redonda: dos puntos iguales, sin 'markers', con el color de la cadena.
   const lines: LineChartPoints[] = movies.flatMap((m, i) => both(m) ? [{
     legend: m.title,
     color: NEUTRAL,
@@ -30,17 +29,15 @@ export function MoviesDumbbell({ movies, axisTitle }: { movies: Movie[]; axisTit
     lineOptions: { strokeWidth: 2, mode: 'lines' as const },
     data: COMPARED.map((c) => ({ x: m[`share_${c}`] ?? 0, y: rowOf(i), hideCallout: true })),
   }] : []);
-  const dots: LineChartPoints[] = COMPARED.map((c) => ({
-    legend: CHAIN_LABEL[c],
-    color: CHAIN_COLOR[c],
-    lineOptions: { mode: 'markers' as const },
-    data: movies.flatMap((m, i) => m[`shows_${c}`] ? [{
-      x: m[`share_${c}`] ?? 0,
-      y: rowOf(i),
-      markerSize: 6,
-      xAxisCalloutData: m.title,
-      yAxisCalloutData: m.tooltip[c],
-    }] : []),
+  const dots: LineChartPoints[] = movies.flatMap((m, i) => COMPARED.filter((c) => m[`shows_${c}`]).map((c) => {
+    const point = { x: m[`share_${c}`] ?? 0, y: rowOf(i), xAxisCalloutData: m.title, yAxisCalloutData: m.tooltip[c] };
+    return {
+      legend: `${m.title} · ${CHAIN_LABEL[c]}`,
+      color: CHAIN_COLOR[c],
+      hideNonActiveDots: true,
+      lineOptions: { strokeWidth: 12, strokeLinecap: 'round' as const, mode: 'lines' as const },
+      data: [point, point],
+    };
   }));
 
   const annotations: ChartAnnotation[] = movies.map((m, i) => ({
