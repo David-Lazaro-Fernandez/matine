@@ -1,6 +1,6 @@
 # Handoff: dashboard de Streamlit a Next.js con Fluent UI
 
-Preparado el 2026-10-10 para continuar en otra sesión. Lee antes `AGENTS.md` (reglas del repo) y
+Actualizado el 2026-10-10, al cerrar la ola 2. Lee antes `AGENTS.md` (reglas del repo) y
 `docs/plan-dashboard-nextjs.md` (el plan completo: arquitectura, fases, olas en paralelo y decisiones).
 
 ## Objetivo
@@ -12,19 +12,61 @@ mismo dominio, `stable` y `make deploy`.
 
 ## Estado
 
-Todo está en la rama **`dashboard-nextjs`**, sin push. Sale de `independientes-demo` y lleva 23 commits. `make check` y
-`pnpm run build` pasan.
+Todo está en la rama **`dashboard-nextjs`**, sin push. Sale de `independientes-demo`. En el repo principal pasan
+`make check` (con `AC_DATA_DIR="$PWD/data"`) y `pnpm run build` (18 páginas estáticas).
 
 | Fase | Estado | Dónde |
 | --- | --- | --- |
 | 0. Spike: Next.js + Fluent + tema + etiquetas | Hecha | `dashboard/`, `scripts/export_labels.py`, `make labels` |
 | 1. Lógica de pandas de las vistas a `analytics/` | Hecha | `capture_status`, `movie_gaps`, `week_publication`, `presale_by_chain`, `price_summary`, `occupancy_total`, `occupancy_readable` |
-| 2a. API interna y sesión por cookie | Hecha | `api/internal.py`, `api/session.py`, `api/pages/` (con `/api/datos` de referencia) |
+| 2a. API interna y sesión por cookie | Hecha | `api/internal.py`, `api/session.py` (acceso y usuarios) |
+| 2b. Un endpoint por página | Hecha | `api/pages/<pagina>.py`, más `/api/plazas`; pruebas en `tests/test_internal_api.py` |
 | Gráficas en Vega-Lite | Hechas todas | `dashboard/components/**` sobre `components/vega-chart.tsx` |
-| 2b. Un endpoint por página | Hecha | `api/pages/<pagina>.py`, más `/api/plazas`; sin `plaza` = nacional |
-| 3. Cascarón: navegación por rol, acceso, filtros, componentes compartidos | Hecha, falta probar la cookie en navegador | `components/shell.tsx`, `components/filters.tsx`, `components/common.tsx`, `lib/api.ts`, `lib/format.ts` |
+| 3. Cascarón | Hecha, falta probar la cookie en navegador | `components/shell.tsx`, `components/filters.tsx`, `components/common.tsx`, `lib/api.ts`, `lib/format.ts` |
 | 4–6. Páginas | Falta | Datos, Mapa, Usuarios, Operaciones → Dulcería, Independientes, Recomendador → Cartelera |
 | 7. Corte | Falta | Servicio, Caddy, borrar Streamlit, docs |
+
+### Endpoints (`api/pages/`)
+
+Todos siguen `api/pages/datos.py`: `router`, `TypedDict` de respuesta, parámetros con `Literal`/`Query` y
+`read(key, compute)` con caché de 60 s. Las filas salen de `analytics/` tal cual, en snake_case, y la respuesta lleva
+llaves, no frases (salvo las de `findings.py` y `conclusions`).
+
+| Endpoint | Parámetros | Notas |
+| --- | --- | --- |
+| `GET /api/plazas` | — | Lista del selector de zona (`analytics.plazas`), sin la opción nacional |
+| `GET /api/datos` | `dataset`, filtros de `DATASETS` | El patrón de referencia |
+| `GET /api/mapa` | `plaza`, `chains`, `cinema_ids` | En nacional, `cinemas` y `sites[].cinemas` repiten los 793 cines |
+| `GET /api/dulceria` | `plaza`, `platform`, `chain`, `product` | En sala y a domicilio |
+| `GET /api/operaciones` | `job_days`, `run_days`, `unit_days`, `log`, `lines` | Solo admin. Lo de `snapshots.db` va con caché; lo de `data/` en vivo |
+| `GET /api/independientes` | `plaza`, `d0`, `d1` | Solo Cineteca (`chain="cineteca"`). Plaza distinta de CDMX: `supported=false` |
+| `GET /api/recomendador` | `lat`, `lng`, `d0`, grupo, `budget`, `snacks`, `h0`, `h1`, `radius_km`, `sort`, `title_norm`, `formats` | Sin ubicación devuelve solo los límites del formulario |
+| `GET /api/recomendador/geocodificar` | `q` | Nominatim con `lru_cache` propia; 502 si no responde |
+| `GET /api/cartelera` | `plaza`, `d0`, `d1`, `h0`, `h1` | Las tres capas con los controles en su valor por defecto |
+| `GET /api/cartelera/curva`, `/cambios`, `/historia` | ver el módulo | Controles dentro de una sección, sin recalcular las tres capas |
+
+**Convención de zona:** sin `plaza` en la consulta = nacional. El frontend manda `plaza=cdmx` por defecto
+(`usePlaza()` devuelve `null` para nacional y `query()` de `lib/api.ts` omite el parámetro).
+
+**Franja:** va como `h0`/`h1` (enteros de `HOUR_MARKS`), no como `franja=`, porque las llaves de `HOUR_PRESETS` son
+texto en español y el rango libre necesita dos horas.
+
+### Cascarón (`dashboard/`)
+
+- `components/shell.tsx`: `NavDrawer` en escritorio, `TabList` abajo en celular (≤ 768 px). Las páginas salen del rol de
+  `GET /api/yo`, con las reglas de `app.py`. Sin sesión solo existen `/entrar/`, `/olvide/` y `/restablecer/`.
+- Las ocho rutas de módulo existen con solo su título. El spike pasó de `/` a `/preview/`.
+- `components/filters.tsx`: `PlazaSelector` (de `/api/plazas`, más Nacional) y `PeriodSelector` (hoy, mañana, resto de la
+  semana de cine, siguiente semana, fechas libres). El estado vive en la URL (`?plaza=`, `?periodo=`, `?d0=`, `?d1=`).
+- `components/common.tsx`: `Capa`, `Seccion`, `Pregunta`, `Leerla`, `Apendice`, `Leyenda`, `Hallazgo`, `Table` (sobre
+  `DataGrid`, misma firma que `table()` de Python), `AccessCard` y `AppLink`.
+- `lib/api.ts`: `api<T>(path, body?)`, credenciales same-origin, 401 manda a `/entrar/`, `ApiError(status, detail)`.
+  Tipos escritos a mano.
+- `lib/format.ts`: `date_es`, `range_es`, `time_12`, `n`, `pp`, `fixed`, `addDays`, `cinemaWeek`. Prueba de paridad en
+  `tests/test_format_parity.py` (importa el `.ts` con `node --experimental-strip-types`; se omite con Node < 22.6).
+- `next.config.mjs`: en `pnpm dev`, `/api` va a `127.0.0.1:8501`. En producción sigue `output: 'export'`.
+- `labels.py` sumó `DATE_TEXT`, `PERIOD_TEXT`, `LAYER_TEXT` y `PAGE_LABEL`. `ui/common.py`, `app.py` y
+  `views/cartelera.py` ya los usan.
 
 ## Decisiones tomadas
 
@@ -36,53 +78,87 @@ Todo está en la rama **`dashboard-nextjs`**, sin push. Sale de `independientes-
 - **Una API interna aparte de la pública.** `api.internal:app` exige sesión, no tiene CORS y va en `127.0.0.1:8501`
   detrás de Caddy, en el mismo dominio que los archivos estáticos. La cookie `ac_session` es HttpOnly y SameSite=Strict,
   y la sesión se valida en cada petición.
-- **Un endpoint por página.** Cada página es un módulo en `api/pages/` con `router = APIRouter()`. `api/internal.py`
-  los registra solo y les exige sesión. Los datos pasan por `pages.read(key, compute)`, con caché de 60 s. Así las ramas
-  por página no tocan el mismo archivo.
-- **Las gráficas reciben las filas de `analytics/` tal cual**, con sus llaves snake_case, para que el endpoint las
-  entregue sin transformar.
+- **Un endpoint por página**, con sub-endpoints solo para controles dentro de una sección. `api/internal.py` registra
+  solo cada módulo de `api/pages/`.
+- **Las gráficas reciben las filas de `analytics/` tal cual.** El reacomodo de presentación (melt, etiquetas, tooltip)
+  se hace en el componente.
 - **Ningún texto ni hex escrito a mano en `dashboard/`.** Salen de `dashboard/lib/labels.generated.ts`, generado desde
   `analytics/labels.py` con `make labels`. `make check` falla si no coincide.
+- **ruff no revisa `.claude/`** (`pyproject.toml`): los worktrees de agentes tienen código a medias.
 
 ## Decisiones abiertas
 
 1. **Dónde se hace `next build`.** El build pide ~1.6 GB con dos gráficas (medido en Mac) y el servidor tiene 2 GB. Se
    recomienda construir en GitHub Actions y que `deploy/update.sh` descargue `out/`. Falta que el usuario lo confirme.
+   Si CI instala Node ≥ 22.6, la prueba de paridad de formato deja de omitirse.
 2. **Pruebas de frontend.** La recomendación es solo `pnpm run build` en CI al principio.
 
-## Siguiente paso: ola 2
+## Antes de la ola 3
 
-Dos frentes en paralelo (plan §4, "Paralelismo"):
+- **Probar la cookie en un navegador real** (lo que cierra la fase 3): `uvicorn api.internal:app --port 8501` y
+  `cd dashboard && pnpm dev`. Recorrer invitación → contraseña → entrar → refrescar → salir. Con curl ya funciona.
+  `make user-create EMAIL=… NAME=… ROLE=admin` imprime el enlace de invitación.
+- **Paquetes que faltan** (los agentes no pueden instalarlos; el usuario corre `pnpm add` en `dashboard/`):
+  `@fluentui-contrib/react-data-grid-react-window` (`DataGrid` virtualizado para Datos), `openapi-typescript` (dev, tipos
+  de `lib/api.generated.ts`), `@fluentui/react-icons` (iconos de la navegación) y `maplibre-gl` (Mapa y Recomendador).
+  Ninguno bloquea empezar.
 
-- **Cascarón (fase 3):** `app/layout.tsx` con `NavDrawer` en escritorio y `TabList` abajo en celular, páginas según el
-  rol de `GET /api/yo`, las pantallas de entrar, olvidé y restablecer, y los selectores de zona y periodo. También los
-  componentes compartidos, que se cierran **antes** de las ramas por página: `capa`, `seccion`, `pregunta`, `leerla`,
-  `apendice`, `leyenda`, `hallazgo`, la tabla con `DataGrid` y `lib/format.ts`.
-- **Endpoints (fase 2b):** un módulo por página en `api/pages/`, siguiendo `api/pages/datos.py`, con su prueba en
-  `tests/test_internal_api.py`.
+## Siguiente paso: ola 3
 
-Después, la ola 3: una rama por página. Cada página mueve sus gráficas desde `/preview/*` a su sección.
+Una rama por página, cada una en `dashboard/app/<pagina>/page.tsx` sobre su endpoint y los componentes de
+`components/common.tsx`. Cada página mueve sus gráficas desde `/preview/*` a su sección. Orden del plan:
+
+1. **Simples:** Datos, Mapa, Usuarios, Operaciones. Pueden ir las cuatro en paralelo.
+2. **Medias:** Dulcería, Independientes, Recomendador.
+3. **Cartelera:** la más grande. Antes, sus textos escritos a mano pasan a `labels.py`.
+
+Las páginas no deben tocar `components/common.tsx`, `components/shell.tsx` ni `components/filters.tsx` en paralelo. Si
+una necesita cambiar un componente compartido, se hace primero en `dashboard-nextjs` y las demás ramas lo fusionan.
 
 ## Pendientes conocidos
 
-- **Leyendas HTML.** El `leyenda()` que va arriba de varias gráficas no se portó. Va como componente compartido.
-- **`dashboard/components/cartelera/format.ts` debe pasar a `lib/format.ts`**, con prueba de paridad contra los helpers
-  de Python (`date_es`, `time_12`, `n`, `pp`). Su `fixed` ya copia el redondeo de Python.
-- **Textos escritos a mano en `views/cartelera.py`** (avisos, textos de sección, encabezados de tabla). Pasan a
-  `labels.py` antes de portar la cartelera (fase 6).
-- **Vistas previas temporales.** `dashboard/app/page.tsx` y `dashboard/app/preview/*` existen solo para comparar contra
-  Altair. Se borran con sus scripts (`dashboard/scripts/spike_data.py`, `preview_*.py`) cuando existan las páginas
-  reales. Sus datos van en `dashboard/.spike-data/`, fuera de git. Se generan con
+### Por página
+
+- **Mapa:** en nacional, la respuesta repite los cines en `cinemas` y en `sites[].cinemas`: agregar GZip a la API
+  interna o aplanar `sites`. El círculo de cines del mismo edificio, el radio por métrica y el tooltip van en el
+  frontend.
+- **Datos:** necesita el `DataGrid` virtualizado (marcado con `ponytail:` en `common.tsx`).
+- **Dulcería:** el melt de la gráfica de domicilio y la etiqueta VIP van en el frontend, como ya hacen
+  `components/dulceria/`. El filtro "mediana no nula" de la vista sobra: `delivery_compare` ya omite cubetas sin dato.
+- **Independientes:** "Solo en la Cineteca" es `overlap` filtrado a `status == "indep_only"` en el frontend. La vista
+  ordena ocupación por título por `sold_pct`; `analytics/` la devuelve por `demand_index`. Solo importa cuando
+  `OCCUPANCY_CONFIRMED` sea verdadero.
+- **Recomendador:** el mapa necesita el clic (en Streamlit era folium). Los marcadores se deduplican por
+  `(chain, cinema_id)` en el frontend. Nada limita Nominatim a 1 petición por segundo entre usuarios; si importa, un lock
+  con pausa de 1 s en `_geocode`. La prueba es delgada: la captura grabada no trae precios.
+- **Cartelera:**
+  - `movies-dumbbell.tsx` y `day-slot-heatmap.tsx` esperan campos que armaba el spike (`delta`, `winner`, `tooltip`,
+    `day`, `slot_label`, `label`); deben armarlos desde las filas crudas de `movie_gaps` y `heatmap_day_slot`.
+  - La franja (`h0`/`h1`) no está en el cascarón: va en esta página.
+  - En frío tarda ~7.5 s con CDMX y ~9.5 s nacional (157 y 245 KB); con caché, 2 ms. `findings` se lleva 4.6 s. Si
+    molesta, la optimización va en `analytics/findings.py`.
+  - `SHOWN_MOVIES`, `TOTAL_MOVIES` y `FIRST_SNAPSHOT` están copiados de `ui/common.py` en `api/pages/cartelera.py`,
+    porque `api/` no puede importar `ui/`. La copia de `ui/` se borra en el corte.
+  - `views/cartelera.py` línea ~372 tiene `if True else None`, código muerto.
+  - Quedan textos escritos a mano en `views/cartelera.py` (avisos, textos de sección, encabezados de tabla).
+
+### Generales
+
+- **Vistas previas temporales.** `dashboard/app/preview/*` existe solo para comparar contra Altair. Se borra con sus
+  scripts (`dashboard/scripts/spike_data.py`, `preview_*.py`) cuando existan las páginas reales. Sus datos van en
+  `dashboard/.spike-data/`, fuera de git. Se generan con
   `AC_DATA_DIR="$PWD/data" .venv/bin/python dashboard/scripts/preview_<grupo>.py`.
-- **Corrección visible en Streamlit.** En Dulcería, un complejo VIP y uno tradicional del mismo centro comercial se
-  apilaban en una barra. Ahora el VIP lleva "VIP" en su etiqueta, en las dos versiones.
+- **"Hoy" en el navegador** usa la zona `America/Mexico_City` escrita en `components/filters.tsx` (copia de
+  `config.PILOT_TIMEZONE`), no la del servidor.
 - **Textos de error 401 y 403.** La API reusa `InvalidCredentials` y `SelfChange` de `AUTH_TEXT`. Faltan textos propios
   de "sesión vencida" y "solo administradores".
 - **Sin límite por IP en `POST /api/login` y `/api/olvide`.** El bloqueo por cuenta de `auth/` sigue activo. Si se
   quiere, se copia `_rate_limit` de `api/main.py`.
-- **`deploy/update.sh` revisa `/_stcore/health`.** En el corte debe revisar `/api/salud`.
-- **Reglas de `AGENTS.md` que cambian en el corte** (plan §6): tabla de capas, "`app.py` vive en la raíz", la cookie en
-  `api/session.py`, §6 y §8 completos.
+- **En el corte:** `deploy/update.sh` debe revisar `/api/salud` en vez de `/_stcore/health`; la prueba de paridad debe
+  tomar `n` y `pp` de otro lado cuando se borre `ui/common.py`; y cambian las reglas de `AGENTS.md` del plan §6 (tabla
+  de capas, "`app.py` vive en la raíz", la cookie en `api/session.py`, §6 y §8 completos).
+- **Corrección visible en Streamlit.** En Dulcería, un complejo VIP y uno tradicional del mismo centro comercial se
+  apilaban en una barra. Ahora el VIP lleva "VIP" en su etiqueta, en las dos versiones.
 
 ## Cómo trabajar
 
@@ -90,14 +166,18 @@ Después, la ola 3: una rama por página. Cada página mueve sus gráficas desde
   `git merge --ff-only dashboard-nextjs`.
 - **Dependencias.** Los agentes no pueden instalar paquetes. El usuario corre `pnpm install` en
   `/Users/david.fernandez/absolut-cinema/dashboard`, y cada worktree enlaza ese `node_modules` con `ln -s` (sin
-  commitearlo).
+  commitearlo). Con el enlace, Turbopack falla en el worktree: ahí se construye con `pnpm exec next build --webpack`.
+  El worktree tampoco tiene `.venv`: `make check VENV=/Users/david.fernandez/absolut-cinema/.venv/bin`.
 - **Firma de commits.** En algunos worktrees de agente, git no encuentra la llave de firma y el commit falla. El
   coordinador hace el commit desde su sesión.
 - **Fusión.** Después de cada merge en `dashboard-nextjs`: `make labels` si cambió `labels.py`, `make check` con
-  `AC_DATA_DIR="$PWD/data"` para que corran las pruebas de vistas, y `pnpm run build`.
+  `AC_DATA_DIR="$PWD/data"` para que corran las pruebas de vistas, y `cd dashboard && pnpm run build`. Las ramas que
+  agregan pruebas al final de `tests/test_internal_api.py` chocan ahí; se resuelve juntándolas y usando el fixture
+  `recorded` o el helper `_recorded`.
 - **`tests/test_update_sh.py` falla a veces** con `git commit` exit 128 dentro de su repo temporal, cada vez una prueba
   distinta. Al correrlo solo pasa. No es de esta rama.
 - **Nunca uses `git stash` sin etiqueta.** El stash se comparte con otras sesiones. `stash@{0}` es trabajo de otra
   sesión, ya copiado a `../absolut-cinema-plans` (rama `plans-subscriptions`). El usuario puede borrarlo.
-- **Limpieza.** Los worktrees `.claude/worktrees/agent-*` de este trabajo ya están fusionados y se pueden quitar con
-  `git worktree remove`. `mobile-keyboard-dock` no es de este trabajo.
+- **Limpieza.** Los worktrees de la ola 2 ya se borraron. Los `.claude/worktrees/agent-*` que quedan son de la ola 1,
+  ya fusionados, y se pueden quitar con `git worktree remove`. `mobile-keyboard-dock` no es de este trabajo.
+- **`dashboard/AGENTS.md`** lo puede crear `next dev`. No se commitea.
