@@ -3,7 +3,8 @@
 line-length = 120
 # scraper/ y analytics/ corren en el Python del sistema, 3.9 o mayor.
 target-version = "py39"
-extend-exclude = [".venv", "data", "docs"]
+# Los worktrees de los agentes son copias del repo, con cambios a medias.
+extend-exclude = [".venv", "data", "docs", ".claude"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I"]
