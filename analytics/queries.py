@@ -288,14 +288,17 @@ def recent_events(conn, limit=200, kinds=None, chain=None, plaza=None):
         where.append(pw[len(" AND "):])
         params.extend(pp)
     params.append(limit)
+    # Los eventos recientes son los de `id` más alto. Leer la tabla en ese orden y parar en `limit` es más rápido que
+    # el índice por cadena, que obliga a ordenar casi todos los eventos.
     return rows(conn, f"""
+        WITH e AS (SELECT * FROM event e NOT INDEXED WHERE {' AND '.join(where)} ORDER BY e.id DESC LIMIT ?)
         SELECT e.detected_at, e.chain, e.kind, e.movie_title,
                COALESCE(c.cinema_name, e.cinema_id) cinema_name, e.date, e.datetime_local, e.show_id
-        FROM event e
+        FROM e
         LEFT JOIN (SELECT chain, cinema_id, MAX(cinema_name) cinema_name
                    FROM current_showtime GROUP BY chain, cinema_id) c
                ON c.chain = e.chain AND c.cinema_id = e.cinema_id
-        WHERE {' AND '.join(where)} ORDER BY e.id DESC LIMIT ?""", params)
+        ORDER BY e.id DESC""", params)
 
 
 def events_by_kind(conn, since_hours=24, plaza=None):

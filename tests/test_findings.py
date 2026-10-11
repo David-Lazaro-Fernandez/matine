@@ -75,6 +75,7 @@ def test_findings_keeps_the_strongest(monkeypatch):
         return lambda *a, **k: {"topic": topic, "strength": strength}
     monkeypatch.setattr(findings, "kpis", lambda *a, **k: [{"chain": "cinemex"}, {"chain": "cinepolis"}])
     monkeypatch.setattr(findings, "movies_by_chain", lambda *a, **k: [])
+    monkeypatch.setattr(findings, "presale_compare", lambda *a, **k: [])
     monkeypatch.setattr(findings, "_moves_finding", rule("movimientos", 1.2))
     monkeypatch.setattr(findings, "_demand_finding", lambda *a, **k: None)
     monkeypatch.setattr(findings, "_price_finding", lambda *a, **k: None)

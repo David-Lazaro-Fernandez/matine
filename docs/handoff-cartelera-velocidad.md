@@ -97,3 +97,31 @@ Empieza por lo que el paso 1 diga que es más lento; hoy es `analytics.findings`
 - Tiempo hasta ver la capa 1 en el navegador (`pnpm dev` y `uvicorn api.internal:app --port 8501`).
 - Salida de `analytics/` idéntica antes y después de cada optimización.
 - `make check` con `AC_DATA_DIR="$PWD/data"` y `cd dashboard && pnpm run build` al final.
+
+## Resultado (2026-10-10)
+
+Hecho en la rama `dashboard-nextjs`. Salida de `analytics/` y de los endpoints idéntica antes y después, orden incluido:
+código viejo sobre una copia de la base sin índices contra código nuevo sobre la misma copia con índices, en el mismo
+minuto, con CDMX, nacional y hoy desde las 6 PM, más Dulcería e Independientes.
+
+- **Endpoints** como en la tabla del plan. Las conclusiones van con su sección: `analytics.conclusions(sections=…)`.
+  Los apéndices se piden al acercarse y no al abrirse, porque su resumen va en el encabezado cerrado.
+- **Frontend.** `useApi`, `useLazyApi` y `Diferido` en `components/common.tsx` (600 px de margen).
+- **`idx_current_window`** sobre `current_showtime` (`scraper/store.py`, en `migrate`): cubre las columnas de las
+  consultas de ventana. La base real lo recibe en la siguiente captura.
+- **`plaza_cinema_where`** acota también `chain`, así `event` usa sus índices con plaza.
+- **`recent_events`** lee `event` por `id` descendente y para en `limit`.
+- **`findings`** comparte `movies_by_chain` y `presale_compare` entre sus reglas.
+
+Tiempos en frío por HTTP (segundos; encabezado y hallazgos en paralelo, luego las secciones en paralelo):
+
+| Endpoint | CDMX antes | CDMX ahora | Nacional antes | Nacional ahora |
+| --- | --- | --- | --- | --- |
+| `/cartelera` (todo) | ~7.5 | — | ~9.5 | — |
+| `/cartelera` (encabezado) | — | 0.07 | — | 0.23 |
+| `/cartelera/hallazgos` | — | 0.9 | — | 2.3 |
+| la sección más lenta | — | 0.46 | — | 1.6 (`resumen`) |
+| el apéndice más lento | — | 0.3 (1.8 con disco frío, `cambios`) | — | 0.37 |
+
+Pendiente, si hace falta: hallazgos nacional (unas diez lecturas de la ventana de ~150 ms cada una y
+`programming_moves`) y `resumen` nacional, que calcula `general_summary` dos veces más la de su conclusión.

@@ -364,7 +364,7 @@ def _exclusive_finding(movies):
                        [{"label": _short(m["title"], 22), "value": _pct(m["share_cinepolis"]), "cmx": False} for m in only_them[:2]]}
 
 
-def _moves_finding(conn, d0, d1, hours=None, plaza=None):
+def _moves_finding(conn, d0, d1, movies, hours=None, plaza=None):
     """El título al que una cadena le cambió más la parrilla de lo que falta de la semana; primero Cinépolis."""
     moves = programming_moves(conn, d0, d1, hours=hours, plaza=plaza)
     big = [m for m in moves if abs(m["delta_pp"]) >= MOVE_MIN_PP and abs(m["shows_now"] - m["shows_then"]) >= MOVE_MIN_SHOWS]
@@ -386,7 +386,7 @@ def _moves_finding(conn, d0, d1, hours=None, plaza=None):
             + ("de " if net > 0 else "a ") + " y ".join(f"{_short(m['title'], 26)} ({_pp(m['delta_pp'])})" for m in others) + ". "
             if others else "")
     ours = next((m for m in moves if m["chain"] != pick["chain"] and m["title_norm"] == pick["title_norm"]), None)
-    mine = [r for r in movies_by_chain(conn, d0, d1, limit=200, hours=hours, plaza=plaza) if r["title_norm"] == pick["title_norm"]]
+    mine = [r for r in movies if r["title_norm"] == pick["title_norm"]]
     if them:
         us_share = mine[0]["share_cinemex"] if mine else 0
         body += (f"Nosotros le damos {_pct(us_share)} de nuestra parrilla" +
@@ -443,16 +443,16 @@ def _price_finding(conn, d0, d1, hours=None, plaza=None):
             "strength": _STRUCTURAL_WEIGHT * abs(gap) / PRICE_MIN_PCT, "as_of": min(us["last_sampled"], them["last_sampled"])}
 
 
-def _demand_finding(conn, d0, d1, hours=None, plaza=None):
+def _demand_finding(conn, movies, plaza=None):
     """Un título que en las salas de Cinépolis vende muy por encima (o por debajo) de lo normal para su horario,
     contra cuánta parrilla le damos. Solo con plaza: los planos se leen en las plazas de `AC_SEATS_PLAZAS`."""
     if plaza is None:
         return None
     occ = occupancy_by_title(conn, days=DEMAND_SAMPLE_DAYS, min_samples=DEMAND_MIN_SAMPLES, plaza=plaza)
-    movies = {m["title_norm"]: m for m in movies_by_chain(conn, d0, d1, limit=200, hours=hours, plaza=plaza)}
+    by_title = {m["title_norm"]: m for m in movies}
     best = None
     for o in occ:
-        m = movies.get(o["title_norm"])
+        m = by_title.get(o["title_norm"])
         if not m or o["demand_index"] is None:
             continue
         hot = (o["demand_index"] >= 1 + DEMAND_MIN_DEV and m["share_cinepolis"] >= DEMAND_MIN_SHARE
@@ -516,9 +516,9 @@ def _presale_finding(conn, plaza=None):
                         {"label": "Funciones leídas", "value": f"{first['shows']}", "cmx": False}]}
 
 
-def _presale_gap_finding(conn, plaza=None):
+def _presale_gap_finding(compare):
     """El título en preventa en ambas cadenas donde una lleva vendido mucho más de su aforo que la otra."""
-    shared = [r for r in presale_compare(conn, plaza=plaza)
+    shared = [r for r in compare
               if r["gap_pp"] is not None and min(r["shows_cinemex"], r["shows_cinepolis"]) >= PRESALE_MIN_SHOWS]
     if not shared:
         return None
@@ -543,9 +543,9 @@ def _presale_gap_finding(conn, plaza=None):
                         {"label": "Estreno", "value": date_es(r["release_date"], with_year=False) if r["release_date"] else "—", "cmx": False}]}
 
 
-def _presale_exclusive_finding(conn, plaza=None):
+def _presale_exclusive_finding(compare):
     """Preventas de Cinépolis de títulos que no exhibimos y que ya venden buena parte de su aforo."""
-    theirs = [r for r in presale_compare(conn, plaza=plaza)
+    theirs = [r for r in compare
               if r["status"] == "exclusiva_cinepolis" and r["shows_cinepolis"] >= PRESALE_MIN_SHOWS]
     hot = sorted((r for r in theirs if r["sold_pct_cinepolis"] >= PRESALE_EXCLUSIVE_MIN_PCT),
                  key=lambda r: (-r["sold_pct_cinepolis"], r["title"]))
@@ -604,12 +604,13 @@ def findings(conn, d0=None, d1=None, top=3, hours=None, plaza=None):
     if US not in kp or THEM not in kp:
         return []
     movies = movies_by_chain(conn, d0, d1, limit=200, hours=hours, plaza=plaza)
+    compare = presale_compare(conn, plaza=plaza)
     out = []
-    for fn in (lambda: _moves_finding(conn, d0, d1, hours=hours, plaza=plaza),
-               lambda: _demand_finding(conn, d0, d1, hours=hours, plaza=plaza),
+    for fn in (lambda: _moves_finding(conn, d0, d1, movies, hours=hours, plaza=plaza),
+               lambda: _demand_finding(conn, movies, plaza=plaza),
                lambda: _presale_finding(conn, plaza=plaza),
-               lambda: _presale_gap_finding(conn, plaza=plaza),
-               lambda: _presale_exclusive_finding(conn, plaza=plaza),
+               lambda: _presale_gap_finding(compare),
+               lambda: _presale_exclusive_finding(compare),
                lambda: _title_finding(conn, d0, d1, hours=hours, plaza=plaza),
                lambda: _concentration_finding(conn, d0, d1, movies, hours=hours, plaza=plaza),
                lambda: _concession_finding(conn),
