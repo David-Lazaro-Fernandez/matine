@@ -210,6 +210,10 @@ DIDI_MAX_PAGES = 60
 # Snapshot sin finish_snapshot más viejo que esto: se da por fallido.
 SNAPSHOT_STALE_HOURS = 2
 
+# --- Respuestas precalculadas del dashboard (api/precalc.py) ---
+# Caché en disco que se puede borrar: la escribe solo `api.precalc`, al final de los trabajos `snapshot` y `seats`.
+PRECALC_DB_PATH = Path(os.environ.get("AC_PRECALC_DB", DATA_DIR / "precalc.db"))
+
 # --- Acceso al dashboard (auth/) ---
 # Cuentas, sesiones, enlaces y auditoría en su propia base SQLite: la escribe solo auth/ (dashboard y auth.cli), nunca
 # la captura; snapshots.db sigue siendo solo de la captura (decisión 2026-09-25: sin Postgres ni RDS).

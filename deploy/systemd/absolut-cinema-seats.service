@@ -10,7 +10,7 @@ User=absolut
 WorkingDirectory=/opt/absolut-cinema
 EnvironmentFile=-/etc/absolut-cinema.env
 ExecStart=/usr/bin/make -C /opt/absolut-cinema job KEY=seats
-TimeoutStartSec=35min
+TimeoutStartSec=40min
 Nice=5
 StandardOutput=append:/opt/absolut-cinema/data/logs/systemd.out
 StandardError=append:/opt/absolut-cinema/data/logs/systemd.out

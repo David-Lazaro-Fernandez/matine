@@ -619,6 +619,7 @@ export const CARTELERA_TEXT = {
   "meta_cinemas": "cines",
   "meta_shows": "funciones publicadas",
   "meta_capture": "Última captura:",
+  "meta_computed": "Cifras al",
   "nav": [
     "Lo que importa hoy",
     "Evidencia",

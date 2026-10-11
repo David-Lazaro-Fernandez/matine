@@ -4,18 +4,23 @@
 página nueva es un archivo nuevo aquí; no se edita `api/internal.py`. Una página solo de admin agrega
 `dependencies=[Depends(session.require_admin)]` a su router.
 
-`read` lee `snapshots.db` con `analytics.connect()` en solo lectura, cierra la conexión y guarda el resultado `TTL`
-segundos en memoria, como `load()` del dashboard de Streamlit.
+`read` busca la respuesta en memoria (`TTL` segundos), luego en las precalculadas de `data/precalc.db` (`api/precalc.py`,
+de hasta `PRECALC_MAX_AGE`) y si no está la calcula con `analytics.connect()` en solo lectura.
 """
+import contextlib
 import importlib
+import json
 import pkgutil
+import sqlite3
 import threading
 import time
 from collections import OrderedDict
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 
 import analytics
+from scraper import config
 
 # Los planos de asientos escriben cada 15 min y la cartelera tres veces al día.
 TTL = 60
@@ -23,8 +28,13 @@ TTL = 60
 # La Cartelera usa doce llaves por combinación de filtros: encabezado, hallazgos, secciones y apéndices.
 _CACHE_SIZE = 64
 
+# `api.precalc` corre cada hora. Si deja de correr, la API vuelve a calcular en vivo en vez de servir datos viejos.
+PRECALC_MAX_AGE = timedelta(hours=2)
+
 _cache = OrderedDict()
 _cache_lock = threading.Lock()
+# Mientras `recording()` está abierto, `read` calcula todo en vivo y guarda aquí cada respuesta por su llave.
+_recorded = None
 
 
 def routers():
@@ -33,14 +43,53 @@ def routers():
             for m in sorted(pkgutil.iter_modules(__path__), key=lambda m: m.name)]
 
 
+def precalc_key(key):
+    """La llave de `read` como texto, la de la tabla `result` de `precalc.db`: ('a', (0, 24), None) → '["a", [0, 24], null]'."""
+    return json.dumps(key)
+
+
+def _precalculated(key):
+    path = config.PRECALC_DB_PATH
+    if not path.exists():
+        return None
+    oldest = (datetime.now(timezone.utc) - PRECALC_MAX_AGE).isoformat(timespec="seconds")
+    try:
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=5)
+        try:
+            row = conn.execute("SELECT payload FROM result WHERE key = ? AND computed_at >= ?",
+                               (precalc_key(key), oldest)).fetchone()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return None
+    return json.loads(row[0]) if row else None
+
+
+@contextlib.contextmanager
+def recording():
+    """Mientras está abierto, `read` ignora las cachés y anota cada respuesta: `with recording() as got: …` deja
+    `{key: respuesta}` en `got`. Lo usa `api.precalc`."""
+    global _recorded
+    _recorded = {}
+    try:
+        yield _recorded
+    finally:
+        _recorded = None
+
+
 def read(key, compute):
-    """`compute(conn)` sobre `snapshots.db`, con caché de `TTL` segundos por `key` (tupla hasheable). 503 sin base."""
+    """`compute(conn)` sobre `snapshots.db`, con caché de `TTL` segundos por `key` (tupla hasheable) y las respuestas
+    precalculadas de `precalc.db`. 503 sin base."""
     now = time.monotonic()
-    with _cache_lock:
-        hit = _cache.get(key)
-        if hit and hit[0] > now:
-            _cache.move_to_end(key)
-            return hit[1]
+    if _recorded is None:
+        with _cache_lock:
+            hit = _cache.get(key)
+            if hit and hit[0] > now:
+                _cache.move_to_end(key)
+                return hit[1]
+        value = _precalculated(key)
+        if value is not None:
+            return _remember(key, value, now)
     try:
         conn = analytics.connect()
     except FileNotFoundError:
@@ -49,6 +98,12 @@ def read(key, compute):
         value = compute(conn)
     finally:
         conn.close()
+    if _recorded is not None:
+        _recorded[key] = value
+    return _remember(key, value, now)
+
+
+def _remember(key, value, now):
     with _cache_lock:
         _cache[key] = (now + TTL, value)
         _cache.move_to_end(key)

@@ -44,13 +44,14 @@ DEFAULTS = {
 REGISTRY = {
     keys.SNAPSHOT: {
         "description": "Captura de cartelera: nacional de ambas cadenas más las cinetecas de CDMX, Guadalajara y Monterrey y los cines independientes de la demo (descarga en paralelo, 15–30 min)",
-        "steps": (("python", "scraper.run"),),
+        # Después de cada captura, las respuestas por defecto de la Cartelera (`api/precalc.py`).
+        "steps": (("python", "scraper.run"), ("venv", "api.precalc")),
         "schedule": ("07:30", "13:30", "20:30"),
         "timeout_min": 45,
         "hosts": ("server", "mac"),
         "egress": True,
         "nice": 5,
-        "writes": ("snapshot", "snapshot_unit", "cinema", "current_showtime", "event", "data/raw"),
+        "writes": ("snapshot", "snapshot_unit", "cinema", "current_showtime", "event", "data/raw", "data/precalc.db"),
     },
     keys.SEATS: {
         "description": "Planos de asientos de las tres cadenas 15–75 min tras el inicio (asistencia final), plazas de AC_SEATS_PLAZAS",
@@ -58,13 +59,16 @@ REGISTRY = {
         # tarde: cada cadena tiene su tiempo y lo que no alcanza queda como muestra repartida entre cines.
         "steps": (("python", "scraper.sample", "--post-start", "--chain", "cineteca", "--budget-min", "2"),
                   ("python", "scraper.sample", "--post-start", "--budget-min", "12"),
-                  ("python", "scraper.sample", "--post-start", "--chain", "cinemex", "--budget-min", "12")),
+                  ("python", "scraper.sample", "--post-start", "--chain", "cinemex", "--budget-min", "12"),
+                  # Cada hora, para que el corte de "hoy" de lo precalculado no quede más de una hora atrás.
+                  ("venv", "api.precalc")),
         "schedule": ("*:50",),
-        "timeout_min": 30,
+        # Los planos usan hasta 26 min de presupuesto y el precálculo 1–2 min más.
+        "timeout_min": 35,
         "hosts": ("server", "mac"),
         "egress": True,
         "nice": 5,
-        "writes": ("occupancy_sample",),
+        "writes": ("occupancy_sample", "data/precalc.db"),
     },
     keys.PRICES: {
         "description": "Precios de boleto por cine, formato y tipo de día, y menú de dulcería de Cinépolis",

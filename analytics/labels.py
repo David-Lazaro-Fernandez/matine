@@ -273,6 +273,7 @@ CARTELERA_TEXT = {
     "meta_cinemas": "cines",
     "meta_shows": "funciones publicadas",
     "meta_capture": "Última captura:",
+    "meta_computed": "Cifras al",
     "nav": ["Lo que importa hoy", "Evidencia", "Detalle"],
     "stale_none": "No hay ninguna captura buena de {name}.",
     "stale_error": "La última captura de {name} falló y el dato vigente tiene {age} minutos. Detalle técnico: {error}",
