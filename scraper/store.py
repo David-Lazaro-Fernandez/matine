@@ -134,7 +134,8 @@ CINEMA_ROW_COLUMNS = [c for c in CINEMA_COLUMNS if c not in ("chain", "cinema_id
 
 def migrate(conn):
     """Cambios de esquema aditivos sobre una base ya creada: columnas de `COLUMNS` y `CINEMA_COLUMNS` que aún no
-    existen en `current_showtime` y `cinema` (la base de producción tiene historia desde el 2026-09-07 y no se recrea)."""
+    existen en `current_showtime` y `cinema`, y los índices sobre ellas (la base de producción tiene historia desde el
+    2026-09-07 y no se recrea)."""
     have = {r["name"] for r in conn.execute("PRAGMA table_info(current_showtime)")}
     for col in ROW_COLUMNS:
         if col not in have:
@@ -148,6 +149,12 @@ def migrate(conn):
     for col in CINEMA_ROW_COLUMNS:
         if col not in have:
             conn.execute(f"ALTER TABLE cinema ADD COLUMN {col} {'REAL' if col in ('lat', 'lng') else 'TEXT'}")
+    # Las consultas de `analytics/` filtran por cadena, plaza (`city_id`) y fecha, y leen estas columnas. El índice las
+    # contiene todas, así SQLite no lee la fila completa, que lleva `fare_json`. Va aquí y no en SCHEMA porque
+    # `city_id` llega por migración.
+    conn.execute("""CREATE INDEX IF NOT EXISTS idx_current_window ON current_showtime (chain, city_id, date,
+                    datetime_utc, datetime_local, cinema_id, title_norm, movie_title, movie_id, language, format,
+                    experience, premium_tier, screen)""")
     conn.commit()
 
 
