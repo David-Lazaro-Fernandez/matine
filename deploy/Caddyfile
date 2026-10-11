@@ -2,13 +2,33 @@
 # la instancia antes. El dashboard trae su propio login por usuario (auth/); el basic_auth de abajo es una segunda
 # puerta opcional mientras no haya dominio ni TLS (genera el hash con `caddy hash-password`). Con el dominio en
 # producción, quita el bloque basic_auth y recarga: systemctl reload caddy.
+
+# El dashboard: /api/* va a la API interna (absolut-cinema-dashboard, 127.0.0.1:8501) y lo demás es el build estático
+# de Next.js que trae `stable` (dashboard/out/). Caddy añade X-Forwarded-For; api/session.py la usa como IP del visitante
+# en la auditoría de accesos. Los archivos de /_next/static/ llevan un hash en el nombre, así que no cambian nunca.
+(dashboard) {
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8501
+    }
+    handle {
+        root * /opt/absolut-cinema/dashboard/out
+        header /_next/static/* Cache-Control "public, max-age=31536000, immutable"
+        try_files {path} {path}/index.html
+        file_server
+    }
+    handle_errors 404 {
+        root * /opt/absolut-cinema/dashboard/out
+        rewrite * /404.html
+        file_server
+    }
+}
+
 cinema.example.com {
     basic_auth {
         cinemex REEMPLAZAR_CON_LA_SALIDA_DE_caddy_hash-password
     }
-    # Caddy añade X-Forwarded-For; ui/session.py la usa como IP del visitante en la auditoría de accesos.
-    reverse_proxy 127.0.0.1:8501
     encode zstd gzip
+    import dashboard
 }
 
 # API pública de "¿A dónde ir?" para el sitio en Vercel. Sin basic_auth: es anónima, con CORS (AC_API_ORIGINS) y límite

@@ -40,7 +40,7 @@ flowchart LR
     subgraph producto["Producto"]
         AN["analytics/ (funciones puras, sin dependencias)<br/>queries · findings · summary · history · seats · presale · concessions · delivery · datasets · labels"]
         AUTH["auth/ (venv, boto3 solo para SES)<br/>cuentas · sesiones · enlaces · correo SES/console · auth.cli"]
-        APP["app.py · Streamlit (.venv) · st.navigation según sesión y rol<br/>views/login · olvide · restablecer<br/>views/cartelera (3 capas) · mapa · recomendador · dulceria · independientes · datos · usuarios · operaciones (admin)<br/>ui/common.py helpers · ui/session.py cookie"]
+        APP["dashboard/ · Next.js estático (dashboard/out/) · navegación según sesión y rol<br/>api/internal.py · FastAPI (.venv) · un módulo por página en api/pages/<br/>api/session.py cookie HttpOnly"]
         CADDY["Caddy · HTTPS (basic auth opcional hasta tener dominio)"]
     end
 
@@ -94,9 +94,11 @@ Reglas que sostiene el diagrama:
   el cliente WARP corre en modo proxy (SOCKS5 local, registro gratuito, sin cuenta) y Privoxy lo convierte en proxy HTTP;
   `scraper/http.py` manda por ahí solo los hosts de `AC_EGRESS_PROXY_HOSTS`. Cinemex, Rappi y DiDi salen directo. En la Mac
   no hace falta: `AC_EGRESS_PROXY` vacío. Operación en `deploy/README.md`.
-- **Sesión por cookie propia.** Streamlit no escribe cookies: `ui/session.py` la pone con JavaScript desde un iframe del
-  mismo origen y recarga la página; `st.context.cookies` la lee en el handshake. En la base solo vive su sha256; cambiar
-  la contraseña o desactivar la cuenta revoca todas las sesiones y surte efecto en ≤ 60 s.
+- **Sesión por cookie propia.** `api/session.py` la pone `HttpOnly`, `SameSite=Strict` y `Secure` con `AC_BASE_URL` en
+  https, y la valida en `app.db` en cada petición. En la base solo vive su sha256; cambiar la contraseña o desactivar la
+  cuenta revoca todas las sesiones.
+- **El dashboard es un sitio estático.** GitHub Actions corre `next build` y publica `dashboard/out/` dentro de la rama
+  `stable`; el servidor no tiene Node. Caddy sirve esos archivos y pasa `/api/*` a la API interna.
 
 ## 2. Programación: qué dispara cada servicio
 
@@ -122,8 +124,8 @@ línea por corrida en `data/logs/jobs.jsonl` con la duración, el resultado y el
 | `deploy` | operación | Trae origin/stable si se movió, reinstala si cambió requirements, sincroniza unidades y reinicia el dashboard y la API | cada hora a :02 y :17 y :32 y :47 | 10 min | servidor | `código en /opt/absolut-cinema`, `data/logs/deploy.log` |
 <!-- jobs:end -->
 
-Fuera del registro, siempre encendidos en el servidor: `absolut-cinema-dashboard.service` (Streamlit en 127.0.0.1:8501,
-detrás de Caddy), `absolut-cinema-api.service` (API pública en 127.0.0.1:8000, detrás de Caddy, para el sitio en Vercel) y `warp-svc` + `privoxy` (salida por Cloudflare para Cinépolis). GitHub Actions mueve la rama `stable`
+Fuera del registro, siempre encendidos en el servidor: `absolut-cinema-dashboard.service` (API interna del dashboard en
+127.0.0.1:8501, detrás de Caddy, que además sirve `dashboard/out/`), `absolut-cinema-api.service` (API pública en 127.0.0.1:8000, detrás de Caddy, para el sitio en Vercel) y `warp-svc` + `privoxy` (salida por Cloudflare para Cinépolis). GitHub Actions mueve la rama `stable`
 cuando pasan las pruebas y el trabajo `deploy` la trae. A mano, con `!` en la sesión: `make capacity-cinemex PLAZAS=all`
 (pasada nacional única de aforo). Ningún flujo abre órdenes de checkout: el plano de Cinemex sale del `GET` público.
 
@@ -144,11 +146,11 @@ cuando pasan las pruebas y el trabajo `deploy` la trae. A mano, con `!` en la se
 | `jobs.run` (`make job KEY=…`) | ejecuta un trabajo del registro: candado por llave, tope, reintentos; genera las unidades con `jobs.units` | lo lanza cada timer | `logs/jobs.jsonl` (duración, resultado, pico de memoria), `data/locks/` | systemd / launchd / a mano |
 | `scraper.health` (`make health`) | salud de la captura: capturas programadas, fallos, muestreos; las mismas funciones alimentan en vivo la página Operaciones | diario | `logs/health.log` | trabajo `health` |
 | `backup.sh` | copias en línea de `snapshots.db` y `app.db` y sync del crudo | diario 05:07 | bucket (`db/`, `app/`, `raw/`) | trabajo `backup` |
-| `app.py` (+ `ui/`, `views/`) | dashboard Streamlit con login por usuario: Cartelera, Mapa, ¿A dónde ir? (recomendador), Dulcería, Independientes (Cineteca Nacional), Datos (explorador de tablas de SQLite) y, para admin, Usuarios y Operaciones (estado de captura, bases, servidor y logs; lee `scraper.health`) | siempre | `app.db` vía `auth/` (cuentas, sesiones, enlaces, auditoría); `snapshots.db`, solo lectura | `dashboard.service`, detrás de Caddy |
+| `dashboard/` + `api/internal.py` (`make dashboard` y `pnpm dev` en local) | dashboard en Next.js (estático) sobre la API interna (FastAPI), con login por usuario: Cartelera, Mapa, ¿A dónde ir? (recomendador), Dulcería, Independientes (Cineteca Nacional), Datos (explorador de tablas de SQLite) y, para admin, Usuarios y Operaciones (estado de captura, bases, servidor y logs; lee `scraper.health`) | siempre | `app.db` vía `auth/` (cuentas, sesiones, enlaces, auditoría); `snapshots.db`, solo lectura | `dashboard.service` (API) y Caddy (`dashboard/out/`) |
 | `api/main.py` (`make api` en local) | API pública de "¿A dónde ir?" (FastAPI): búsqueda con `analytics.recommend_search`, CORS para `AC_API_ORIGINS`, límite por IP, `AC_API_THREADS` búsquedas a la vez | siempre | nada; `snapshots.db`, solo lectura | `api.service`, detrás de Caddy |
 | `auth.cli` (`make user-create`, `user-list`, `user-reset`, `user-deactivate`, `user-activate`) | administración de cuentas desde la terminal; así nace el primer admin | a mano | `app.db`; correo por SES o `data/logs/mail.log` | manual |
 | `auth.cli prune` (`make auth-prune`) | borra sesiones y enlaces vencidos hace más de 90 días | domingos 04:07 | `app.db`: `session`, `token` | trabajo `auth-prune` |
-| GitHub Actions `tests.yml` | pruebas en cada push a `main`; si pasan, mueve la rama `stable` a ese commit | cada push | rama `stable` del repo | GitHub |
+| GitHub Actions `tests.yml` | pruebas y `next build` en cada push y PR; en `main`, si pasan, mueve `stable` a un commit encima con `dashboard/out/` | cada push | rama `stable` del repo | GitHub |
 | `deploy/update.sh` (`make deploy`) | si `origin/stable` se movió: lo trae, reinstala si cambió `requirements-*`, reinicia el dashboard y la API, comprueba salud | cada 15 min | código en `/opt/absolut-cinema`, `logs/deploy.log` | trabajo `deploy` |
 | `warp-svc` + `privoxy` (solo servidor) | salida por Cloudflare WARP para `api-g.cinepolis.com`, cuyo WAF bloquea AWS; `http.py` la usa vía `AC_EGRESS_PROXY` | siempre | nada | systemd, instalados por `install.sh` |
 | `geo/` (futuro) | features de zona y arquetipos | trimestral | `geo.db` | a mano en la Mac |

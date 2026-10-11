@@ -827,6 +827,11 @@ para la lógica pura (`tests/`, pytest en el venv, `requirements-dev.txt`).
   queda para cuando haya login por usuario de Cinemex, UI con marca, más de un consumidor de los
   datos (alertas, etc.) o más de cinco o seis pantallas. Con `analytics/` separado, el cambio es
   envolver cada función en un endpoint.
+- **Corte a Next.js (2026-10-10).** El dashboard deja Streamlit: `dashboard/` (Next.js en exportación estática, Fluent UI
+  v9) sobre la API interna (`api/internal.py`, un módulo por página en `api/pages/`). `next build` corre en GitHub
+  Actions y `dashboard/out/` viaja en la rama `stable`; Caddy lo sirve y pasa `/api/*` a 127.0.0.1:8501. Se borran
+  `app.py`, `ui/`, `views/` y sus dependencias (streamlit, pandas, folium), que ocupaban ~330 MB del venv del servidor.
+  Plan y fases en `docs/plan-dashboard-nextjs.md`.
 - **Servidor: EC2 en la cuenta de AWS de Cinemex** (decisión de David, 2026-09-09; queda descartado el
   droplet de DigitalOcean). Instancia `t4g.medium` (ARM Graviton2, 2 vCPU, 4 GB) con 30 GB de EBS gp3,
   ~29–32 USD al mes con el respaldo en S3. **Cinépolis no acepta la IP de AWS** (su WAF de Cloudflare bloquea el ASN,

@@ -26,8 +26,8 @@ pasaron por última vez al cerrar la ola 2; la ola 3 y el rediseño no se han co
 | 3. Cascarón | Hecha, falta probar la cookie en navegador | `components/shell.tsx`, `components/filters.tsx`, `components/common.tsx`, `lib/api.ts`, `lib/format.ts` |
 | 4–6. Páginas | Hechas (2026-10-10), sin build ni pruebas | Las ocho, más Dulcería en dos vistas; commit `7936088` |
 | Diseño empresarial | Hecho (2026-10-10), sin commit | Tema Fluent, riel de módulos, `shadow16`, `Entrada`, esqueletos (`DESIGN.md`) |
-| Velocidad de Cartelera | Falta | `docs/handoff-cartelera-velocidad.md` |
-| 7. Corte | Falta | Servicio, Caddy, borrar Streamlit, docs |
+| Velocidad de Cartelera | Hecha (2026-10-10) | `docs/handoff-cartelera-velocidad.md` |
+| 7. Corte | Hecha (2026-10-10) | `absolut-cinema-dashboard.service` con uvicorn, build en CI dentro de `stable`, `deploy/Caddyfile`, Streamlit y `/preview/` borrados, `AGENTS.md` |
 
 ### Endpoints (`api/pages/`)
 

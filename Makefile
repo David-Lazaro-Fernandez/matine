@@ -63,8 +63,8 @@ capacity-cinemex:   ## aforo de Cinemex con el plano público; PLAZAS=all para l
 calibrate-cinemex:  ## calibración del semáforo de Cinemex, 100 funciones por nivel (trabajo `calibrate-cinemex`)
 	$(PY) -m scraper.sample --occupancy --chain cinemex --per-level $(or $(PER_LEVEL),100) --lead 60 --tolerance 45 --limit $(or $(LIMIT),60)
 
-dashboard:          ## Streamlit local
-	$(VENV)/streamlit run app.py
+dashboard:          ## API interna del dashboard en local (:8501); el frontend va aparte con `pnpm dev` en dashboard/
+	$(VENV)/uvicorn api.internal:app --port 8501 --reload
 
 api:                ## API pública en local (http://localhost:8000/docs); requiere requirements.txt en el venv
 	$(VENV)/uvicorn api.main:app --port 8000 --reload

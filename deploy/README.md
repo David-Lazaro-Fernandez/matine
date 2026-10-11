@@ -26,7 +26,9 @@ mostraría un aviso de "aún no hay datos"), y con `deploy/units.sh` enlaza las 
 **Las unidades se generan desde `jobs/registry.py`** (`make units`) y viven en `deploy/systemd/`: una unidad
 `absolut-cinema-{llave}.service` + `.timer` por trabajo, y cada una ejecuta `make job KEY=llave`. La tabla de trabajos,
 cadencias y topes está en `ARCHITECTURE.md` ("Programación"), generada del mismo registro. Además, siempre encendido,
-`absolut-cinema-dashboard.service` (Streamlit en `127.0.0.1:8501`, escrito a mano).
+`absolut-cinema-dashboard.service` (API interna del dashboard en `127.0.0.1:8501`, escrito a mano). El frontend no es un
+servicio: Caddy sirve `dashboard/out/`, el build estático que GitHub Actions publica dentro de la rama `stable`
+(`deploy/Caddyfile`, bloque `dashboard`). El servidor no necesita Node.
 
 `deploy/units.sh` (idempotente; lo llaman `install.sh` y, si cambió alguna unidad, `update.sh`) enlaza todo lo de
 `deploy/systemd/`, **apaga y quita las unidades de absolut-cinema que ya no están en el repo** (una llave renombrada,
@@ -57,7 +59,7 @@ Después de instalar:
 ```sh
 systemctl list-timers 'absolut-cinema-*'            # próximas ejecuciones
 tail -f /opt/absolut-cinema/data/logs/run.log      # una línea por cadena y snapshot
-journalctl -u absolut-cinema-dashboard -f          # logs de Streamlit
+journalctl -u absolut-cinema-dashboard -f          # logs de la API interna del dashboard
 systemctl start absolut-cinema-snapshot.service    # forzar una captura de cartelera ahora
 systemctl start absolut-cinema-backup.service      # forzar un respaldo ahora
 systemctl start absolut-cinema-health.service      # reporte de salud ahora (también: make health)
@@ -96,10 +98,13 @@ Son dos piezas desacopladas:
    `git pull` a mano en el servidor entra en menos de 15 min. Si todo coincide, sale en silencio. Si `origin/stable` se
    movió, `git reset --hard` a ese commit
    como el usuario `absolut`, reinstala el venv si cambió algún `requirements-*.txt`, `deploy/units.sh` si cambió una
-   unidad en `deploy/`, reinicia el dashboard y espera a que `/_stcore/health` responda. Escribe una línea en
+   unidad en `deploy/`, reinicia el dashboard y espera a que `/api/salud` responda. Escribe una línea en
    `data/logs/deploy.log` solo cuando despliega o falla, y sale con 1 si el dashboard no levanta (queda visible en
    `systemctl list-timers`). No toca `data/`: los cambios de esquema de ambas bases son aditivos y se aplican solos al
    conectar (`store.py`, `auth/db.py`).
+   `pip install` no desinstala lo que se quita de `requirements-*.txt`. Para liberar ese espacio, recrea el venv a mano:
+   `sudo -u absolut python3 -m venv --clear .venv && sudo -u absolut .venv/bin/pip install -q -r requirements.txt` y
+   `systemctl restart absolut-cinema-dashboard absolut-cinema-api` (así se quitó Streamlit el 2026-10-10).
 
 ```sh
 tail -5 /opt/absolut-cinema/data/logs/deploy.log        # qué se desplegó y cuándo
@@ -128,7 +133,7 @@ journalctl -u absolut-cinema-api -f                 # errores de la API
 
 ## Acceso por usuario y correo (SES)
 
-El dashboard pide correo y contraseña (`auth/`, `ui/session.py`) con dos roles: `admin` (gestiona cuentas en la página
+El dashboard pide correo y contraseña (`auth/`, `api/session.py`) con dos roles: `admin` (gestiona cuentas en la página
 Usuarios y ve todo) y `viewer` (Cartelera, Dulcería y el explorador Datos). Las cuentas viven en su propia base SQLite,
 `data/app.db` (`AC_APP_DB` para moverla), que escribe solo `auth/`; se crea con su esquema al primer uso y entra en el
 respaldo diario.
@@ -153,9 +158,8 @@ transaccionales de acceso, menos de 100 al mes) o verificar los correos del pers
 
 **Cookie y seguridad.** La sesión dura 30 días y se extiende con el uso; se guarda solo su sha256 y se revoca al cerrar
 sesión, cambiar la contraseña o desactivar la cuenta (surte efecto en ≤ 60 s). Con `AC_BASE_URL` en `https` la cookie
-lleva `Secure`. Diez contraseñas malas seguidas bloquean la cuenta 15 min. "Olvidé mi contraseña" responde igual exista o
-no el correo y emite a lo más tres enlaces por hora (valen 60 min). Streamlit no permite cookies `HttpOnly`; la
-mitigación es el token aleatorio con hash en base y la revocación.
+lleva `Secure`; siempre es `HttpOnly` y `SameSite=Strict`. Diez contraseñas malas seguidas bloquean la cuenta 15 min.
+"Olvidé mi contraseña" responde igual exista o no el correo y emite a lo más tres enlaces por hora (valen 60 min).
 
 ## Salida por Cloudflare WARP para Cinépolis
 

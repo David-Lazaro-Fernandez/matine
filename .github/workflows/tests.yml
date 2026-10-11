@@ -1,6 +1,7 @@
-# Pruebas en cada push a main y en cada pull request. Si pasan en main, mueve la rama `stable` a ese commit: es lo que
-# el servidor despliega en los siguientes 15 min (deploy/update.sh). Si fallan, `stable` no se mueve y el commit queda en rojo.
-# La rama `stable` la mueve solo este workflow; no se toca a mano.
+# Pruebas y build del dashboard en cada push a main y en cada pull request. Si pasan en main, `stable` apunta a un commit
+# encima de ese con `dashboard/out/` (el build estático que sirve Caddy): es lo que el servidor despliega en los siguientes
+# 15 min (deploy/update.sh). El build va en git porque el servidor no tiene Node y ya trae `stable` con `git fetch`.
+# Si algo falla, `stable` no se mueve y el commit queda en rojo. La rama `stable` la mueve solo este workflow.
 name: pruebas y commit estable
 
 on:
@@ -34,11 +35,31 @@ jobs:
           .venv/bin/pip install -q -r requirements.txt -r requirements-dev.txt
 
       - name: make check (igual que el pre-push)
-        # Sin data/snapshots.db, las pantallas usan la captura grabada.
+        # Sin data/snapshots.db, las pruebas usan la captura grabada.
         run: make check
 
-      - name: marcar commit estable
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: dashboard/pnpm-lock.yaml
+
+      - name: build del dashboard (revisa los tipos)
+        working-directory: dashboard
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: marcar commit estable con el build
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          git push --force origin "${GITHUB_SHA}:refs/heads/stable"
-          echo "stable -> ${GITHUB_SHA}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f dashboard/out
+          git commit -q -m "Build del dashboard para ${GITHUB_SHA}"
+          git push --force origin "HEAD:refs/heads/stable"
+          echo "stable -> $(git rev-parse HEAD) (build de ${GITHUB_SHA})"
