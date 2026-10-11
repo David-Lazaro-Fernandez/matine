@@ -832,6 +832,12 @@ para la lógica pura (`tests/`, pytest en el venv, `requirements-dev.txt`).
   Actions y `dashboard/out/` viaja en la rama `stable`; Caddy lo sirve y pasa `/api/*` a 127.0.0.1:8501. Se borran
   `app.py`, `ui/`, `views/` y sus dependencias (streamlit, pandas, folium), que ocupaban ~330 MB del venv del servidor.
   Plan y fases en `docs/plan-dashboard-nextjs.md`.
+- **Respuestas precalculadas (2026-10-11).** En el servidor (1.8 GB de RAM, `event` de 1.3 GB fuera de caché) los
+  hallazgos nacionales tardan ~10 s en frío. `api.precalc` calcula al final de `snapshot` y de `seats` (cada hora) lo que
+  casi toda visita pide: cada plaza y nacional, semana en curso, día completo. Lo guarda en `data/precalc.db`, y
+  `api.pages.read` lo sirve hasta 2 h. Decisión de David: se acepta hasta una hora de retraso en el corte de "hoy"
+  (`from_now`), porque los directivos consultan resultados semanales; el encabezado muestra la hora del cálculo
+  ("Cifras al"). Otro filtro se calcula en vivo.
 - **Servidor: EC2 en la cuenta de AWS de Cinemex** (decisión de David, 2026-09-09; queda descartado el
   droplet de DigitalOcean). Instancia `t4g.medium` (ARM Graviton2, 2 vCPU, 4 GB) con 30 GB de EBS gp3,
   ~29–32 USD al mes con el respaldo en S3. **Cinépolis no acepta la IP de AWS** (su WAF de Cloudflare bloquea el ASN,

@@ -74,6 +74,7 @@ class Cartelera(TypedDict):
     next_week_publication: str | None
     snapshot_times: list[str]
     first_snapshot: str
+    computed_at: str
     shown_movies: int
     total_movies: int
     coverage: Rows
@@ -156,7 +157,8 @@ def _key(name, scope):
 @router.get("/cartelera")
 def cartelera(plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
               h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Cartelera:
-    """Encabezado de la cartelera: periodo, publicación de la semana siguiente, cobertura, captura y `kpis`."""
+    """Encabezado de la cartelera: periodo, publicación de la semana siguiente, cobertura, captura y `kpis`.
+    `computed_at` es la hora del cálculo; con los filtros por defecto puede venir de `api.precalc`, hasta una hora antes."""
     scope = _scope(plaza, d0, d1, h0, h1)
     today = analytics.today()
 
@@ -168,6 +170,7 @@ def cartelera(plaza: Plaza | None = None, d0: date | None = None, d1: date | Non
             "today": today, "week": list(analytics.cinema_week(today)), "next_week": list(next_week),
             "next_week_publication": analytics.week_publication(conn, *next_week, plaza=plaza),
             "snapshot_times": job_registry.daily_times(job_keys.SNAPSHOT), "first_snapshot": FIRST_SNAPSHOT,
+            "computed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "shown_movies": SHOWN_MOVIES, "total_movies": TOTAL_MOVIES,
             "coverage": analytics.coverage(conn, plaza=plaza),
             "capture": analytics.capture_status(conn, limit=12),

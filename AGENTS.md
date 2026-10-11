@@ -57,9 +57,12 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
   El registro nombra el código de cada paso por módulo y lo lanza como subproceso con su intérprete (`python`, `venv`,
   `bash`): `jobs/` no importa ninguna capa salvo `scraper.config`, y cualquiera puede importar `jobs.keys` y
   `jobs.registry` para nombrar un trabajo.
-- **Solo SQLite, dos archivos con un escritor cada uno** (decisión 2026-09-25: sin Postgres ni RDS, por costo y por los
-  2 GB del servidor; el código anterior vive en el tag `pre-sqlite-only`). `data/snapshots.db` la escribe solo la
-  captura (`scraper/`); `data/app.db` la escribe solo `auth/`. No agregues un tercer escritor a ninguna sin ubicarlo aquí.
+- **Solo SQLite, un escritor por archivo** (decisión 2026-09-25: sin Postgres ni RDS, por costo y por los 2 GB del
+  servidor; el código anterior vive en el tag `pre-sqlite-only`). `data/snapshots.db` la escribe solo la captura
+  (`scraper/`); `data/app.db` la escribe solo `auth/`; `data/precalc.db` la escribe solo `api.precalc` (decisión
+  2026-10-11), que guarda las respuestas por defecto de la Cartelera al final de los trabajos `snapshot` y `seats`. Esa
+  es una caché que se puede borrar: sin ella, la API calcula en vivo. No agregues otro escritor a ninguna sin ubicarlo
+  aquí.
 - **El dashboard nunca escribe datos.** `analytics.connect()` abre `snapshots.db` en `mode=ro`, a propósito. Lo único
   que escribe desde el dashboard es `auth/`, y solo en `app.db` (cuentas, sesiones, enlaces de acceso, auditoría); las
   endpoints no lo llaman directo, pasan por `api/session.py`, el único módulo que conoce la cookie de sesión.

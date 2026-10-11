@@ -129,6 +129,7 @@ type Cartelera = {
   next_week_publication: keyof typeof PUBLICATION_LABEL | null;
   snapshot_times: string[];
   first_snapshot: string;
+  computed_at: string;
   shown_movies: number;
   total_movies: number;
   coverage: Row[];
@@ -409,6 +410,7 @@ function metaItems(data: Cartelera): MetaItem[] {
     [`${us.cinemas} + ${them.cinemas}`, T.meta_cinemas],
     [thousands(us.shows + them.shows), T.meta_shows],
     `${T.meta_capture} ${last ? localTime(last) : '—'}`,
+    `${T.meta_computed} ${localTime(data.computed_at)}`,
   ];
 }
 

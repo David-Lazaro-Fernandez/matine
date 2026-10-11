@@ -125,3 +125,29 @@ Tiempos en frío por HTTP (segundos; encabezado y hallazgos en paralelo, luego l
 
 Pendiente, si hace falta: hallazgos nacional (unas diez lecturas de la ventana de ~150 ms cada una y
 `programming_moves`) y `resumen` nacional, que calcula `general_summary` dos veces más la de su conclusión.
+
+## Servidor y precálculo (2026-10-11)
+
+En el servidor (2 vCPU, 1.8 GB de RAM) los hallazgos nacionales tardan ~10 s aun con `idx_current_window`. La causa es
+disco: `event` pesa 1.3 GB de los 1.6 GB de la base y no cabe en caché. La lectura de `event` de `programming_moves`
+tarda 1.2 s en frío y 0.17 s en caliente. Además, `findings` recorre ~12 veces la misma ventana de ~103k funciones.
+
+Respuesta: `api.precalc` guarda en `data/precalc.db` las 48 respuestas por defecto (4 zonas × encabezado, hallazgos,
+5 secciones y 5 apéndices) al final de `snapshot` y de `seats`. Medido en la Mac: 12 s para calcularlas, 0.7 MB, idénticas
+al cálculo en vivo; `read()` las sirve en ~1 ms. Siguen pendientes, para los filtros que no se precalculan: una sola pasada
+sobre la ventana en `findings` y leer menos de `event` en `programming_moves`.
+
+### Prueba de carga (2026-10-11)
+
+Usuarios simultáneos abriendo la Cartelera nacional como el navegador (encabezado y hallazgos, luego 5 secciones,
+luego 5 apéndices), API local sobre una copia de la base, en frío. En el servidor, `api.precalc` tarda 53 s en frío y
+31 s en caliente, con un pico de 220 MB, y sirve cada respuesta en menos de 1 ms.
+
+| Página completa | 1 usuario | 5 | 10 | 5, desde las 6 PM |
+| --- | --- | --- | --- | --- |
+| Sin precálculo, antes | 5.9 s | 106 s | 271 s | 93 s |
+| Sin precálculo, con candado por llave y 2 cálculos a la vez | 5.1 s | 3.1 s | 3.7 s | 2.5 s |
+| Con precálculo | 0.04 s | 0.08 s | 0.12 s | (no aplica) |
+
+Sin candado, cada usuario repetía los mismos cálculos en paralelo y se estorbaban. Con filtros distintos el tiempo crece
+en línea recta: 4 zonas a la vez, 5.4 s; 8 filtros distintos, 10 s.
