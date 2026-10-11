@@ -104,8 +104,8 @@ def test_login_page_rejects_bad_credentials(monkeypatch, admin):
     at = _run(monkeypatch)
     _clean(at)
     assert [t.label for t in at.text_input] == [AUTH_TEXT["email"], AUTH_TEXT["password"]]
-    at.text_input[0].set_value(ADMIN).run()
-    at.text_input[1].set_value("incorrecta").run()
+    at.text_input[0].set_value(ADMIN)
+    at.text_input[1].set_value("incorrecta")
     at.button[0].click().run()
     _clean(at)
     assert [e.value for e in at.error] == [AUTH_TEXT["InvalidCredentials"]]
@@ -113,8 +113,8 @@ def test_login_page_rejects_bad_credentials(monkeypatch, admin):
 
 def test_login_page_accepts_good_credentials(monkeypatch, admin):
     at = _run(monkeypatch)
-    at.text_input[0].set_value(ADMIN).run()
-    at.text_input[1].set_value(PASSWORD).run()
+    at.text_input[0].set_value(ADMIN)
+    at.text_input[1].set_value(PASSWORD)
     at.button[0].click().run()
     _clean(at)
     assert not at.error
@@ -125,7 +125,7 @@ def test_login_page_accepts_good_credentials(monkeypatch, admin):
 def test_forgot_page_answers_the_same_for_any_email(monkeypatch, conn):
     at = _run(monkeypatch, page="olvide")
     _clean(at)
-    at.text_input[0].set_value("nadie@example.test").run()
+    at.text_input[0].set_value("nadie@example.test")
     at.button[0].click().run()
     _clean(at)
     assert [s.value for s in at.success] == [AUTH_TEXT["forgot_done"]]
@@ -144,11 +144,11 @@ def test_reset_page_sets_a_new_password(monkeypatch, conn, viewer):
     token = link.split("token=")[1]
     at = _run(monkeypatch, page="restablecer", query={"token": token})
     _clean(at)
-    at.text_input[0].set_value("nueva-contraseña-larga-1").run()
-    at.text_input[1].set_value("otra").run()
+    at.text_input[0].set_value("nueva-contraseña-larga-1")
+    at.text_input[1].set_value("otra")
     at.button[0].click().run()
     assert [e.value for e in at.error] == [AUTH_TEXT["password_mismatch"]]
-    at.text_input[1].set_value("nueva-contraseña-larga-1").run()
+    at.text_input[1].set_value("nueva-contraseña-larga-1")
     at.button[0].click().run()
     _clean(at)
     assert [s.value for s in at.success] == [AUTH_TEXT["reset_done"]]
@@ -315,8 +315,8 @@ def test_usuarios_for_admin_lists_and_rejects_duplicate(monkeypatch, conn, admin
     _clean(at)
     table = at.dataframe[0].value
     assert {ADMIN, VIEWER} <= set(table["Correo"])
-    at.text_input[0].set_value("Duplicado").run()
-    at.text_input[1].set_value(VIEWER).run()
+    at.text_input[0].set_value("Duplicado")
+    at.text_input[1].set_value(VIEWER)
     at.button[0].click().run()
     assert [e.value for e in at.error] == [AUTH_TEXT["DuplicateEmail"]]
 
