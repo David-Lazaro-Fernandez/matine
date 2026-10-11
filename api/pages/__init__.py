@@ -33,6 +33,12 @@ PRECALC_MAX_AGE = timedelta(hours=2)
 
 _cache = OrderedDict()
 _cache_lock = threading.Lock()
+# Una llave que ya se está calculando: las demás peticiones de esa llave esperan su resultado en vez de repetirlo.
+_computing = {}
+# El servidor tiene 2 vCPU. Más cálculos en vivo a la vez se estorban (GIL y disco) y tardan más que en fila: con 5
+# usuarios a la vez, la Cartelera nacional tardó 106 s, contra 6 s de uno solo (medido 2026-10-11).
+_COMPUTE_SLOTS = threading.BoundedSemaphore(2)
+_MISS = object()
 # Mientras `recording()` está abierto, `read` calcula todo en vivo y guarda aquí cada respuesta por su llave.
 _recorded = None
 
@@ -79,33 +85,53 @@ def recording():
 
 def read(key, compute):
     """`compute(conn)` sobre `snapshots.db`, con caché de `TTL` segundos por `key` (tupla hasheable) y las respuestas
-    precalculadas de `precalc.db`. 503 sin base."""
-    now = time.monotonic()
-    if _recorded is None:
-        with _cache_lock:
-            hit = _cache.get(key)
-            if hit and hit[0] > now:
-                _cache.move_to_end(key)
-                return hit[1]
-        value = _precalculated(key)
-        if value is not None:
-            return _remember(key, value, now)
+    precalculadas de `precalc.db`. Peticiones simultáneas de la misma llave hacen un solo cálculo. 503 sin base."""
+    if _recorded is not None:
+        value = _recorded[key] = _compute(compute)
+        return _remember(key, value)
+    value = _cached(key)
+    if value is not _MISS:
+        return value
+    value = _precalculated(key)
+    if value is not None:
+        return _remember(key, value)
+    with _cache_lock:
+        lock = _computing.setdefault(key, threading.Lock())
+    with lock:
+        value = _cached(key)
+        if value is not _MISS:
+            return value
+        try:
+            with _COMPUTE_SLOTS:
+                return _remember(key, _compute(compute))
+        finally:
+            with _cache_lock:
+                _computing.pop(key, None)
+
+
+def _compute(compute):
     try:
         conn = analytics.connect()
     except FileNotFoundError:
         raise HTTPException(503) from None
     try:
-        value = compute(conn)
+        return compute(conn)
     finally:
         conn.close()
-    if _recorded is not None:
-        _recorded[key] = value
-    return _remember(key, value, now)
 
 
-def _remember(key, value, now):
+def _cached(key):
     with _cache_lock:
-        _cache[key] = (now + TTL, value)
+        hit = _cache.get(key)
+        if hit and hit[0] > time.monotonic():
+            _cache.move_to_end(key)
+            return hit[1]
+    return _MISS
+
+
+def _remember(key, value):
+    with _cache_lock:
+        _cache[key] = (time.monotonic() + TTL, value)
         _cache.move_to_end(key)
         while len(_cache) > _CACHE_SIZE:
             _cache.popitem(last=False)

@@ -1,4 +1,7 @@
-"""`api.pages.read` sirve lo que guarda `api.precalc` mientras está vigente y calcula en vivo cuando no."""
+"""`api.pages.read`: sirve lo que guarda `api.precalc` mientras está vigente, calcula en vivo cuando no y calcula una
+sola vez una llave pedida a la vez."""
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 
 import analytics
@@ -39,3 +42,25 @@ def test_recording_ignores_the_caches_and_keeps_each_answer(monkeypatch, tmp_pat
     with pages.recording() as got:
         assert pages.read(KEY, lambda conn: {"findings": []}) == {"findings": []}
     assert got == {KEY: {"findings": []}}
+
+
+def test_simultaneous_requests_for_one_key_compute_once(monkeypatch, tmp_path):
+    _setup(monkeypatch, tmp_path)
+    started, release, calls = threading.Event(), threading.Event(), []
+
+    def compute(conn):
+        calls.append(1)
+        started.set()
+        release.wait(5)
+        return {"findings": []}
+
+    first = threading.Thread(target=pages.read, args=(KEY, compute))
+    first.start()
+    started.wait(5)
+    second = threading.Thread(target=pages.read, args=(KEY, compute))
+    second.start()
+    # Sin el candado por llave, la segunda petición entraría a `compute` en este lapso.
+    time.sleep(0.2)
+    release.set()
+    first.join(5); second.join(5)
+    assert calls == [1]
