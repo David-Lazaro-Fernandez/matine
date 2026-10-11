@@ -22,7 +22,7 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
 | --- | --- | --- | --- |
 | Captura | `scraper/` | **solo stdlib**, `/usr/bin/python3` | `data/snapshots.db`, `data/raw/`, `data/logs/` |
 | Negocio | `analytics/` | **solo stdlib** | nada (abre la base en `mode=ro`) |
-| Presentación | `app.py` + `ui/` + `views/` | `.venv` (streamlit, pandas, altair) | nada |
+| Presentación | `dashboard/` (Next.js estático) + `api/internal.py` y `api/pages/` | `dashboard/`: Node/pnpm solo para el build; API: `.venv` (fastapi, uvicorn) | nada |
 | Acceso | `auth/` | `.venv` (`hashlib.scrypt`; boto3 solo para SES) | `data/app.db` (cuentas, sesiones, enlaces, auditoría), **nada más** |
 | Programación | `jobs/` | **solo stdlib**, `/usr/bin/python3` | `data/logs/jobs.jsonl`, `data/locks/`; genera `deploy/systemd/` |
 | API pública | `api/` | `.venv` (fastapi, uvicorn) | nada (lee `snapshots.db` con `analytics.connect()`, `mode=ro`) |
@@ -33,22 +33,22 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
 - **El scraper no tiene dependencias externas.** Corre con el Python del sistema en un servidor
   pelado. Si necesitas algo que no está en la stdlib, la respuesta por defecto es implementarlo en
   `scraper/http.py` o replantear el cambio. Igual para `analytics/`: sin `pandas` ni nada más.
-- **`analytics/` no importa Streamlit ni pandas** y no sabe que existe un dashboard. Son funciones
+- **`analytics/` no importa FastAPI ni pandas** y no sabe que existe un dashboard. Son funciones
   puras: reciben `conn` y parámetros, devuelven listas de dicts. Están escritas así para envolverlas
   después en un API (FastAPI) sin reescribir nada.
-- **La presentación no lleva SQL ni lógica de negocio.** `app.py` es la entrada (configuración, CSS y
-  `st.navigation`), `ui/common.py` los helpers compartidos y `views/*.py` una página por módulo. Solo pintan lo que
-  devuelve `analytics/`. Si para una vista nueva hace falta un cálculo, va en `analytics/`, no en el dashboard.
+- **La presentación no lleva SQL ni lógica de negocio.** `dashboard/` pinta lo que devuelve la API interna, y cada
+  módulo de `api/pages/` (uno por página) solo llama a `analytics/` y `auth/` y devuelve sus filas tal cual. Si para una
+  vista nueva hace falta un cálculo, va en `analytics/`, no en el endpoint ni en el frontend.
 - **Un solo escritor** sobre `snapshots.db`. Todo lo que escribe corre en serie desde el mismo trabajo
   o en minutos distintos (`:07`). No añadas un proceso escritor sin ubicarlo en ese calendario.
 - **La comparación es de dos cadenas; la captura, de las que haya.** Cinemex y Cinépolis son las comparables
   (`US`/`THEM`, shares head-to-head en `analytics/queries.py`). La **Cineteca Nacional** (`chain="cineteca"`, cine
   independiente de CDMX) se captura en el mismo esquema (`scraper/cineteca.py`, plano de Vista en `sample.py`) pero **no
   entra a los shares** (cine de autor, un precio, pocas funciones: engañaría). Lo que compara dos cadenas —
-  `analytics/plaza.py`, `analytics/queries.py`, `views/cartelera.py` — se queda en Cinemex↔Cinépolis: `_window`,
+  `analytics/plaza.py`, `analytics/queries.py`, `api/pages/cartelera.py` — se queda en Cinemex↔Cinépolis: `_window`,
   `plaza_where` y `plaza_cinema_where` reciben `chains=COMPARED` (`analytics/labels.py`) por defecto, también con zona
   nacional, y lo que pide una cadena explícita (`chain="cineteca"`) pasa `chains=(chain,)`. La Cineteca tiene su propia
-  vista (`views/independientes.py`, `analytics/independents.py`). Un cine independiente nuevo sigue este patrón:
+  vista (`dashboard/app/independientes/`, `analytics/independents.py`). Un cine independiente nuevo sigue este patrón:
   captura aditiva, `chains=` explícito, presentación aparte.
 - **El calendario tiene una sola fuente: `jobs/registry.py`.** Cada trabajo programado tiene una llave en `jobs/keys.py`
   (con su área, la capa dueña) y una entrada en el registro: pasos, horario, tope, reintentos y dónde corre. De ahí se
@@ -62,8 +62,8 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
   captura (`scraper/`); `data/app.db` la escribe solo `auth/`. No agregues un tercer escritor a ninguna sin ubicarlo aquí.
 - **El dashboard nunca escribe datos.** `analytics.connect()` abre `snapshots.db` en `mode=ro`, a propósito. Lo único
   que escribe desde el dashboard es `auth/`, y solo en `app.db` (cuentas, sesiones, enlaces de acceso, auditoría); las
-  vistas no lo llaman directo, pasan por `ui/session.py` y `load_auth`. `ui/session.py` es el único módulo que conoce la
-  cookie de sesión. `scraper/` y `analytics/` jamás importan `auth/`, y `auth/` no importa Streamlit.
+  endpoints no lo llaman directo, pasan por `api/session.py`, el único módulo que conoce la cookie de sesión.
+  `scraper/` y `analytics/` jamás importan `auth/`, y `auth/` no importa FastAPI.
 - Las reglas de "qué cuenta como cambio" y "cómo se cierra una función" viven en `scraper/diff.py` (`changed_fields`,
   `closing_kind`) y `scraper/normalize.py` (`TRACKED_FIELDS`); scraper y dashboard las comparten y no se duplican. El
   crudo (`data/raw/`) es la fuente para reconstruir cualquier historia con esas mismas reglas.
@@ -82,9 +82,9 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
   no cambia; `--plazas` solo altera esa corrida, nunca un timer. Cada función
   lleva `datetime_utc`: "ya empezó" (`from_now`, `closing_kind`) se decide con esa hora, no con la de CDMX, porque
   México tiene siete zonas horarias.
-- **`app.py` vive en la raíz a propósito**: Streamlit solo recarga en caliente los módulos bajo la
-  carpeta del script, así `ui/`, `views/`, `analytics/`, `auth/` y `scraper/` también se recargan al
-  editarlos. No lo muevas.
+- **El dashboard es un sitio estático.** `next build` (exportación estática) corre en GitHub Actions y `dashboard/out/`
+  viaja dentro de la rama `stable`; el servidor no tiene Node. Caddy sirve `out/` y pasa `/api/*` a la API interna
+  (`absolut-cinema-dashboard.service`, 127.0.0.1:8501). Todo componente de Fluent es de cliente y pide sus datos a `/api`.
 - **`marketing/` es un proyecto aparte** con su propio `package.json`: ninguna capa de Python lo importa y él no importa
   nada del repo. La única conexión es HTTP: la demo `/a-donde-ir/` consulta la API pública (`api/main.py`, sobre
   `analytics/recommender.py`) en `NEXT_PUBLIC_API_URL`, y nunca recibe el catálogo completo. Su identidad visual sí se hereda a mano de `DESIGN.md` y `analytics/labels.py` (ver
@@ -139,7 +139,7 @@ Estos mandan sobre cualquier preferencia técnica.
 ### Vocabulario estándar
 
 Los mismos nombres en todo el repo. Esto es sagrado; renombrar rompe la lectura cruzada de SQL,
-`analytics/` y `app.py`.
+`analytics/`, `api/pages/` y `dashboard/`.
 
 | Nombre | Significado |
 | --- | --- |
@@ -171,8 +171,9 @@ mira si extender una existente con un parámetro con nombre cubre el caso.
 
 - **Ningún nombre interno llega al usuario.** `chain`, `kind`, claves de franja y de cubeta se
   traducen en `analytics/labels.py`. Si un texto aparece en pantalla, sale de `labels.py` (etiquetas)
-  o de `findings.py` (frases), nunca escrito en `app.py`, `ui/` ni `views/`.
-- **Ningún hex se escribe en la presentación (`app.py`, `ui/`, `views/`, `dashboard/`).** En `dashboard/` la interfaz
+  o de `findings.py` (frases), nunca escrito en `dashboard/` ni en `api/`. `dashboard/` los lee de
+  `lib/labels.generated.ts` (`make labels`).
+- **Ningún hex se escribe en la presentación (`dashboard/`).** En `dashboard/` la interfaz
   usa `tokens.*` de Fluent. Los colores viven en `analytics/labels.py` (`RED`, `INK`,
   `GRAY`, `LINE`, `CHAIN_COLOR`, `RED_RAMP`, `DIVERGING`…). Para un color nuevo: agrégalo a
   `labels.py` y documéntalo en `DESIGN.md` **antes** de usarlo.
@@ -214,41 +215,34 @@ puede resolver sin que importe se maneja en silencio.
 `scraper.health` es el que decide si la captura está sana y **sale con 1 si hay problemas** para que
 el timer lo note. Si añades un flujo de captura, añade su cobertura ahí y su entrada en `jobs/registry.py`.
 
-## 6. Dashboard (`app.py`, `ui/`, `views/`)
+## 6. Dashboard (`dashboard/`, `api/internal.py`)
 
-- Páginas con `st.navigation` (barra superior; en celular el CSS la fija abajo): `views/cartelera.py` (tres
-  capas con los filtros de zona, periodo y franja en la barra lateral; la zona sale de `plaza_selector()` en `ui/common.py`
-  y viaja como `plaza=` en cada `load`), `views/mapa.py` (mapa de cines, pydeck), `views/recomendador.py` (funciones cerca y dentro del presupuesto; su mapa
-  es Leaflet vía `streamlit-folium` porque necesita la coordenada del clic, y la dirección se geocodifica con
-  `scraper/geocode.py` a través de `load_geocode`), `views/dulceria.py`, `views/independientes.py` (la Cineteca Nacional),
-  `views/datos.py` (explorador de
-  tablas de `snapshots.db`, `analytics/datasets.py`) y, solo para el rol admin, `views/usuarios.py` y `views/operaciones.py`. Un módulo que responde una
-  pregunta propia del cliente y no depende del periodo va en su página; lo demás, en la cartelera. **Excepción:**
-  `views/independientes.py` sí depende del periodo (con su propio selector, hasta el miércoles de la semana en curso) y
-  aun así va aparte, para que la Cineteca nunca se mezcle con los shares Cinemex↔Cinépolis. Las páginas
-  hacen `from ui.common import *` a propósito: comparten un espacio de nombres de presentación.
-- **`views/operaciones.py` es la excepción documentada** a "ningún nombre interno llega al usuario": su público es quien
-  opera la plataforma, así que muestra nombres de tablas, logs y módulos tal cual, y usa los colores de estado `OK` y
-  `WARN` de `labels.py` (los únicos que no son rojo ni tinta). Su lógica vive en `scraper/health.py` (SQLite y `data/`,
-  stdlib); entra por `load_health` y `load_ops`. Nada de
-  esa página escribe ni ejecuta acciones: es un tablero de lectura, no una consola.
-- **La lista de páginas depende de la sesión** (`app.py`): sin cookie válida solo existen `views/login.py`,
-  `views/olvide.py` y `views/restablecer.py` (navegación oculta). Streamlit resuelve la URL contra esa lista, así que una
-  ruta que no corresponde al rol cae en la página por defecto; `views/usuarios.py` además abre con `require_admin`.
-  Las páginas de acceso no tocan `snapshots.db` y solo hablan con `ui/session.py`.
-- Estructura fija de tres capas (hallazgos → evidencia → apéndice), descrita en `DESIGN.md` y
-  `project.md`. Una sección de evidencia va siempre en el mismo orden: pregunta, conclusión,
-  leyenda, gráfico, controles, "Cómo leerla". Reutiliza los helpers (`capa`, `seccion`, `pregunta`,
-  `leerla`, `apendice`, `leyenda`, `table`, `chart`), no repliques el HTML.
-- **Todo dato entra por `load()` / `load_raw()`** (SQLite, `ttl=TTL`), **`load_dataset()`** (explorador,
-  `analytics.datasets`) o **`load_auth()`** (cuentas, sin caché); todos cierran la conexión. No abras conexiones sueltas
-  ni llames a `analytics` o `auth` directamente en el cuerpo de la página.
-- **El HTML crudo se escapa.** Cualquier texto que venga de la base y se pinte con
-  `unsafe_allow_html=True` pasa por `esc()`.
-- **Paneles dependientes de historia**: si un panel necesita más días de los que hay desde
-  `FIRST_SNAPSHOT`, se muestra como pendiente con lo que desbloquea, no con una serie de un punto.
-- El cálculo va en `analytics/`. Si te encuentras escribiendo un `groupby` de pandas con lógica de
-  negocio en una vista, es señal de que falta una función en `analytics/`.
+- Una página por módulo en `dashboard/app/` y un endpoint por página en `api/pages/<pagina>.py`, con un `router` de
+  FastAPI, `TypedDict` de respuesta, `Literal` para las llaves y `read(key, compute)` (`api/pages/__init__.py`: abre
+  `snapshots.db` en solo lectura, cierra la conexión y guarda el resultado 60 s). `api/internal.py` solo los registra.
+  Páginas: Cartelera (`app/page.tsx`, tres capas con zona, periodo y franja en la barra de filtros), Mapa, ¿A dónde ir?
+  (recomendador), Dulcería, Independientes, Datos (explorador de `snapshots.db`, `analytics/datasets.py`) y, solo para
+  admin, Usuarios y Operaciones. Un módulo que responde una pregunta propia del cliente y no depende del periodo va en
+  su página; lo demás, en la cartelera. **Excepción:** Independientes sí depende del periodo y aun así va aparte, para
+  que la Cineteca nunca se mezcle con los shares Cinemex↔Cinépolis.
+- **Los filtros viven en la URL** (`components/filters.tsx`: `plaza`, `d0`, `d1`, `h0`, `h1`) y viajan como parámetros
+  de cada endpoint. Nacional es la ausencia de `plaza`.
+- **Operaciones es la excepción documentada** a "ningún nombre interno llega al usuario": su público es quien opera la
+  plataforma, así que muestra nombres de tablas, logs y módulos tal cual, y usa los colores de estado `OK` y `WARN` de
+  `labels.py`. Su lógica vive en `scraper/health.py`; su endpoint (`api/pages/operaciones.py`) exige admin. Nada de esa
+  página escribe ni ejecuta acciones.
+- **Acceso.** Sin sesión solo existen `/entrar`, `/olvide` y `/restablecer` (`lib/api.ts`, `PUBLIC_PATHS`); un 401 de la
+  API manda a entrar. Lo que solo puede ver un admin lo decide la API (`session.require_admin`), no el menú.
+- Estructura fija de tres capas (hallazgos → evidencia → apéndice), descrita en `DESIGN.md`. Una sección de evidencia va
+  siempre en el mismo orden: pregunta, conclusión, leyenda, gráfico, controles, "Cómo leerla". Reutiliza los componentes
+  de `components/common.tsx` (`Capa`, `Seccion`, `Pregunta`, `Leerla`, `Apendice`, `Leyenda`, `Table`, los esqueletos y
+  `Diferido`), no repliques el marcado.
+- **Una página larga pide sus datos por partes** (`useApi`, `Diferido`; `DESIGN.md`, "Carga"): lo de arriba al entrar y
+  cada sección cuando se acerca a la pantalla, con su propio endpoint.
+- **Paneles dependientes de historia**: si un panel necesita más días de los que hay desde `FIRST_SNAPSHOT`, se muestra
+  como pendiente con lo que desbloquea, no con una serie de un punto.
+- El cálculo va en `analytics/`. Si te encuentras escribiendo lógica de negocio en un componente o en un endpoint, es
+  señal de que falta una función en `analytics/`.
 
 ## 7. Shell y despliegue
 
@@ -280,9 +274,9 @@ usa a propósito); sí por imports sin usar, nombres sin definir, orden de impor
 
 La verificación principal es correr el flujo de verdad contra la base. Hay además pruebas unitarias en
 `tests/` (pytest, `requirements-dev.txt`, solo en el venv): lógica pura que no toca red (diff de snapshots,
-parsers, cuentas sobre un `app.db` temporal, conjuntos del explorador) y un recorrido por pantalla con `AppTest`
-(`tests/test_views.py`: acceso, cartelera, dulcería, independientes, datos y usuarios, por rol). Las pantallas de acceso corren en
-cualquier máquina (crean su propio `app.db`); las de datos usan la captura grabada donde no hay `data/snapshots.db` (en CI), salvo cartelera y dulcería, que la necesitan real y se omiten.
+parsers, cuentas sobre un `app.db` temporal, conjuntos del explorador) y los endpoints de la API interna con
+`TestClient` (`tests/test_internal_api.py`: acceso y cada página, por rol, sobre la captura grabada). El frontend no tiene
+pruebas todavía; `pnpm run build` en `dashboard/` revisa los tipos y corre en CI.
 La captura se prueba de punta a punta contra respuestas reales grabadas de ambas APIs (`tests/test_capture_replay.py`,
 `tests/fixtures/capture/`, `scripts/capture_fixtures.py`): Cinemex estado 18 y Cinépolis `hermosillo` pasan por
 `snapshot()`, `normalize` y `store`, y el resultado debe ser idéntico al esperado grabado y cumplir las reglas de
@@ -294,19 +288,19 @@ y di en el commit qué dato cambió. `make fixtures` vuelve a grabar de las APIs
 Cinépolis bloquea IPs de nube).
 
 Corre `.venv/bin/python -m pytest -q tests/` si tocas `scraper/diff.py`,
-una vista o añades lógica pura; añade una prueba cuando el caso quepa en memoria y, si es una pantalla, en `test_views.py`. Antes de dar por bueno un cambio:
+un endpoint o añades lógica pura; añade una prueba cuando el caso quepa en memoria y, si es un endpoint, en `test_internal_api.py`. Antes de dar por bueno un cambio:
 
 ```sh
 make help                                  # los targets son lo que corren los timers
 /usr/bin/python3 -m scraper.run            # snapshot completo de ambas cadenas (~5 min)
 /usr/bin/python3 -m scraper.health         # sale 1 si hay huecos o fallos
-make dashboard                             # Streamlit local
+make dashboard                             # API interna en :8501; el frontend con `pnpm dev` en dashboard/
 sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
 ```
 
 - **Ejecuta el módulo que tocaste**, no solo el que te queda a mano. Un cambio en `normalize.py` o
-  `store.py` se verifica con un `scraper.run` real; uno en `analytics/` levantando el dashboard y
-  mirando el panel; uno en `sample.py` con el flag correspondiente y `--limit` bajo.
+  `store.py` se verifica con un `scraper.run` real; uno en `analytics/` levantando el dashboard (`make dashboard` y
+  `pnpm dev`) y mirando el panel; uno en `sample.py` con el flag correspondiente y `--limit` bajo.
 - **Verifica con el scraper del sistema, no con el venv**, para que un import accidental de una
   dependencia externa falle aquí y no en el servidor:
   `/usr/bin/python3 -c "import analytics, scraper.run, scraper.sample"`.
@@ -314,10 +308,10 @@ sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
   público. Si alguna vez hiciera falta un `POST` del checkout (`buy/*`), va **a mano y con tope**, nunca en un
   automatismo, y se pide antes.
 - Si añades una función a `analytics/`, imprímela una vez con datos reales antes de conectarla al
-  dashboard; es más rápido que depurar dentro de Streamlit.
+  dashboard; es más rápido que depurar en el navegador.
 - Acceso: `data/app.db` se crea sola al primer uso; `make user-create EMAIL=… NAME=… ROLE=admin` imprime el enlace de invitación (con `AC_MAIL_BACKEND=console` también
-  queda en `data/logs/mail.log`). Las páginas se pueden recorrer sin navegador con `streamlit.testing.v1.AppTest`
-  parcheando `ui.session._raw_cookie`; lo que solo un navegador prueba es la cookie (entrar, refrescar, salir).
+  queda en `data/logs/mail.log`). Los endpoints se prueban sin navegador con el `TestClient` de FastAPI; lo que solo un
+  navegador prueba es la cookie (entrar, refrescar, salir).
 
 ## 9. Al terminar
 

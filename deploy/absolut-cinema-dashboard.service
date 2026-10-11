@@ -1,17 +1,15 @@
 [Unit]
-Description=absolut-cinema: dashboard Streamlit (solo localhost; Caddy lo expone)
+Description=absolut-cinema: API interna del dashboard (solo localhost; Caddy expone /api y sirve dashboard/out/)
 After=network.target
 
 [Service]
 User=absolut
 WorkingDirectory=/opt/absolut-cinema
 EnvironmentFile=-/etc/absolut-cinema.env
-Environment=STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 # Anota el commit de arranque para deploy/update.sh. Con `-`, un fallo no detiene el servicio.
 ExecStartPre=-/bin/sh -c 'mkdir -p "data/run" && git rev-parse HEAD > "data/run/dashboard.commit"'
-ExecStart=/opt/absolut-cinema/.venv/bin/streamlit run app.py \
-  --server.address 127.0.0.1 --server.port 8501 --server.headless true \
-  --server.enableCORS false --server.enableXsrfProtection true
+# Sin --proxy-headers: api/session.py lee X-Forwarded-For solo si la conexión viene de Caddy en 127.0.0.1.
+ExecStart=/opt/absolut-cinema/.venv/bin/uvicorn api.internal:app --host 127.0.0.1 --port 8501 --no-proxy-headers --no-access-log
 Restart=on-failure
 RestartSec=5
 

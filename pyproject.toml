@@ -12,11 +12,6 @@ select = ["E", "W", "F", "I"]
 ignore = ["E501", "E702"]
 
 [tool.ruff.lint.per-file-ignores]
-# Las páginas hacen `from ui.common import *` a propósito. Ver AGENTS.md §6.
-"views/*.py" = ["F403", "F405"]
-# Importa analytics/ después de `sys.path.insert` y reexporta nombres para las páginas.
-"ui/common.py" = ["E402", "F401"]
-"app.py" = ["E402"]
 "tests/*.py" = ["E402"]
 
 [tool.pytest.ini_options]

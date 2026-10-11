@@ -1,4 +1,4 @@
-"""Que `dashboard/lib/format.ts` formatee igual que los helpers de Python del dashboard.
+"""Que `dashboard/lib/format.ts` formatee igual que los helpers de Python (`analytics/labels.py`).
 
 Python calcula lo esperado; Node importa `format.ts` con `--experimental-strip-types` y devuelve su salida. Sin un
 Node que entienda TypeScript (22.6 o más), la prueba se omite.
@@ -12,10 +12,19 @@ import pytest
 
 from analytics import cinema_week
 from analytics.labels import date_es, range_es, time_12
-from ui.common import n, pp
 
 FORMAT_TS = Path(__file__).resolve().parents[1] / "dashboard" / "lib" / "format.ts"
 _NODE = ["node", "--experimental-strip-types", "--no-warnings"]
+
+
+# Los formatos de número y de puntos porcentuales que tenía el dashboard de Streamlit, como referencia de `format.ts`.
+def n(v, nd=0):
+    return "—" if v is None else f"{float(v):,.{nd}f}"
+
+
+def pp(v):
+    return f"{v:+.1f} pp".replace("-", "−")
+
 
 # Cada caso: nombre de la función en format.ts, argumentos y lo que devuelve Python.
 CASES = (

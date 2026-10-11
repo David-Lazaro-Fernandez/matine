@@ -10,7 +10,7 @@ Cineforo (Guadalajara) y la Cineteca Nuevo León (Monterrey).
 
 Sobre la misma base hay tres productos:
 
-- **Dashboard** (`app.py`, `ui/`, `views/`): comparación entre cadenas por plaza o nacional, con login por usuario.
+- **Dashboard** (`dashboard/`, Next.js estático, sobre `api/internal.py`): comparación entre cadenas por plaza o nacional, con login por usuario.
 - **API pública** (`api/`): la búsqueda de "¿A dónde ir?", funciones cerca de un punto que caben en un presupuesto.
 - **Sitio público** (`marketing/`): la página de Matiné y la demo "¿A dónde ir?". Next.js estático, independiente del
   resto del repo. Ver `marketing/README.md`.
@@ -40,7 +40,8 @@ make hooks                                     # pre-push: make check (lint, imp
 make snapshot                                  # una captura completa (~5 min)
 make health                                    # estado de la captura
 make user-create EMAIL=tu@correo NAME="Tu Nombre" ROLE=admin   # imprime el enlace para elegir la contraseña
-make dashboard                                 # dashboard en Streamlit
+make dashboard                                 # API interna del dashboard en :8501
+cd dashboard && pnpm dev                       # frontend en :3000 (pasa /api a :8501)
 make api                                       # API pública en http://localhost:8000/docs
 make marketing-dev                             # sitio público (npm install una vez en marketing/)
 ```

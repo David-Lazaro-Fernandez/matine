@@ -19,7 +19,7 @@ log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" | tee -a "$LOG"; }
 
 healthy() {
   for _ in $(seq 1 20); do
-    if curl -fs http://127.0.0.1:8501/_stcore/health >/dev/null && curl -fs http://127.0.0.1:8000/salud >/dev/null; then
+    if curl -fs http://127.0.0.1:8501/api/salud >/dev/null && curl -fs http://127.0.0.1:8000/salud >/dev/null; then
       return 0
     fi
     sleep 1
