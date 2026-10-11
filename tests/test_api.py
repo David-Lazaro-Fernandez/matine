@@ -16,7 +16,8 @@ from api import main  # noqa: E402
 from scraper import config  # noqa: E402
 
 FORUM_TEPIC = {"lat": 21.493764, "lng": -104.8664}
-DAY = "2026-09-26"                                     # un día de la captura grabada, ya pasado: sin recorte `from_now`
+# Un día de la captura grabada, ya pasado: sin recorte `from_now`
+DAY = "2026-09-26"
 
 
 @pytest.fixture
@@ -38,7 +39,8 @@ def test_a_search_returns_only_what_is_near(client):
     body = res.json()
     assert set(body) == {"summary", "complete", "snacks_unpriced", "unpriced", "sites", "titles"}
     assert body["unpriced"] and all(r["distance_km"] <= 1 for r in body["unpriced"])
-    assert {r["chain"] for r in body["unpriced"]} == {"cinemex"}                     # nada de Hermosillo
+    # Nada de Hermosillo.
+    assert {r["chain"] for r in body["unpriced"]} == {"cinemex"}
 
 
 def test_a_search_shows_only_what_the_page_needs(client):
@@ -90,7 +92,8 @@ def test_only_the_configured_sites_get_cors(client):
 def test_each_ip_has_a_limit_per_minute(client, monkeypatch):
     monkeypatch.setattr(config, "API_REQUESTS_PER_MINUTE", 2)
     spoofed = [client.get("/salud", headers={"X-Forwarded-For": f"203.0.113.{i}"}).status_code for i in range(3)]
-    assert spoofed == [200, 200, 429]                   # X-Forwarded-For del cliente no cuenta
+    # X-Forwarded-For del cliente no cuenta.
+    assert spoofed == [200, 200, 429]
     other = TestClient(main.app, client=("198.51.100.8", 50000))
     assert other.get("/salud").status_code == 200
 

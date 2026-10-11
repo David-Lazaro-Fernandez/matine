@@ -17,7 +17,7 @@ from pathlib import Path
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from analytics.labels import AUTH_TEXT, INDEP_TEXT, MAP_TEXT, OPS_TEXT, RECOMMEND_TEXT  # noqa: E402
+from analytics.labels import AUTH_TEXT, PAGE_LABEL  # noqa: E402
 from ui import session  # noqa: E402
 from ui.common import PAGE_TITLE, inject_css  # noqa: E402
 
@@ -34,19 +34,19 @@ if user is None:
     ], position="hidden").run()
 else:
     pages = [
-        st.Page("views/cartelera.py", title="Cartelera", icon=":material/movie:", default=True),
-        st.Page("views/mapa.py", title=MAP_TEXT["nav"], icon=":material/map:", url_path="mapa"),
-        st.Page("views/recomendador.py", title=RECOMMEND_TEXT["nav"], icon=":material/near_me:", url_path="recomendador"),
-        st.Page("views/dulceria.py", title="Dulcería", icon=":material/fastfood:"),
-        st.Page("views/independientes.py", title=INDEP_TEXT["nav"], icon=":material/theaters:", url_path="independientes"),
-        st.Page("views/datos.py", title="Datos", icon=":material/table:", url_path="datos"),
+        st.Page("views/cartelera.py", title=PAGE_LABEL["cartelera"], icon=":material/movie:", default=True),
+        st.Page("views/mapa.py", title=PAGE_LABEL["mapa"], icon=":material/map:", url_path="mapa"),
+        st.Page("views/recomendador.py", title=PAGE_LABEL["recomendador"], icon=":material/near_me:", url_path="recomendador"),
+        st.Page("views/dulceria.py", title=PAGE_LABEL["dulceria"], icon=":material/fastfood:"),
+        st.Page("views/independientes.py", title=PAGE_LABEL["independientes"], icon=":material/theaters:", url_path="independientes"),
+        st.Page("views/datos.py", title=PAGE_LABEL["datos"], icon=":material/table:", url_path="datos"),
     ]
     if user["role"] == "admin":
-        pages.append(st.Page("views/usuarios.py", title=AUTH_TEXT["users_title"], icon=":material/group:", url_path="usuarios"))
-        pages.append(st.Page("views/operaciones.py", title=OPS_TEXT["title"], icon=":material/monitor_heart:", url_path="operaciones"))
+        pages.append(st.Page("views/usuarios.py", title=PAGE_LABEL["usuarios"], icon=":material/group:", url_path="usuarios"))
+        pages.append(st.Page("views/operaciones.py", title=PAGE_LABEL["operaciones"], icon=":material/monitor_heart:", url_path="operaciones"))
     # El enlace del correo debe abrir aunque haya una sesión (p. ej. otra persona en el mismo navegador).
     pages.append(st.Page("views/restablecer.py", title=AUTH_TEXT["reset_title"], url_path="restablecer", visibility="hidden"))
     session.account_sidebar(user)
-    # Navegación arriba en escritorio; en pantallas chicas el CSS de ui/common.py la fija abajo, al alcance del
-    # pulgar (Streamlit no conoce el tamaño de pantalla del lado del servidor, así que la condición es una regla @media).
+    # Navegación arriba en escritorio. En pantallas chicas el CSS de ui/common.py la fija abajo, al alcance del pulgar.
+    # Streamlit no conoce el tamaño de pantalla en el servidor, por eso la condición es una regla @media.
     st.navigation(pages, position="top").run()

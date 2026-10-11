@@ -23,11 +23,15 @@ from .seats import occupancy_by_title
 # regla queda; si no, las ventas se leen como lo que `broken` sube sobre la base de su sala. Al confirmarlo se cambia a
 # True y se anota la fecha en `project.md`.
 OCCUPANCY_CONFIRMED = False
-OCCUPANCY_DAYS = 7          # ventana de planos: una semana de cine
-OCCUPANCY_MIN_SAMPLES = 20  # funciones medidas en esa ventana para pintar la ocupación: menos es anécdota
+# Ventana de planos: una semana de cine.
+OCCUPANCY_DAYS = 7
+# Funciones medidas en esa ventana para pintar la ocupación: menos es anécdota.
+OCCUPANCY_MIN_SAMPLES = 20
 # Umbrales del hallazgo de Capa 1 (`findings._independent_finding`); ajustar con una o dos semanas de planos.
-INDEP_MIN_SOLD_PCT = 60.0   # % vendido tras el inicio de un título solo suyo que ya es demanda que no atendemos
-INDEP_MIN_SAMPLES = 5       # funciones de ese título medidas en la ventana
+# % vendido tras el inicio de un título solo suyo que ya es demanda que no atendemos.
+INDEP_MIN_SOLD_PCT = 60.0
+# Funciones de ese título medidas en la ventana.
+INDEP_MIN_SAMPLES = 5
 # La Cineteca marca el idioma al final del título ("Mary y Max DOB"); el idioma ya va en `language`.
 _LANGUAGE_SUFFIX = re.compile(r"\s+(dob|dub|sub)\s*$", re.IGNORECASE)
 
@@ -85,11 +89,12 @@ def independent_slots(conn, d0=None, d1=None, from_now=True, hours=None, chain="
     return out
 
 
-def independent_overlap(conn, d0=None, d1=None, from_now=True, hours=None, chain="cineteca", vs=US, plaza="cdmx"):
+def independent_overlap(conn, d0=None, d1=None, from_now=True, hours=None, chain="cineteca", vs=US, plaza="cdmx", limit=None):
     """Cada título de la cadena independiente frente a la cartelera de `vs` en la plaza, por `title_key` (devuelta como
     `title_norm`): `title`, `shows_indep`, `share_indep` (% de su programación), `shows_vs`, `cinemas_vs`, `status`
     (`shared` si `vs` también lo exhibe, `indep_only` si no) y la ocupación tras el inicio de sus funciones en la última
-    semana: `samples` y `sold_pct` (None sin planos). Orden: funciones independientes descendentes, luego título."""
+    semana: `samples` y `sold_pct` (None sin planos). Orden: funciones independientes descendentes, luego título. Con
+    `limit`, solo los primeros títulos de ese orden."""
     ind_where, ind_params, _ = _window(d0, d1, from_now, hours=hours, chains=(chain,))
     vs_where, vs_params, _ = _window(d0, d1, from_now, hours=hours, plaza=plaza, chains=(vs,))
     data = rows(conn, f"""
@@ -107,4 +112,11 @@ def independent_overlap(conn, d0=None, d1=None, from_now=True, hours=None, chain
     for r in data:
         o = occupancy.get(r["title_norm"])
         r["samples"], r["sold_pct"] = (o["samples"], o["sold_pct"]) if o else (0, None)
-    return _clean(data)
+    return _clean(data[:limit])
+
+
+def occupancy_readable(occupancy):
+    """True si la ocupación de la cadena independiente ya se puede afirmar: la lectura de sus planos está confirmada
+    (`OCCUPANCY_CONFIRMED`) y las filas de `seats.occupancy_by_cinema` suman al menos `OCCUPANCY_MIN_SAMPLES` funciones
+    medidas."""
+    return OCCUPANCY_CONFIRMED and sum(r["samples"] for r in occupancy) >= OCCUPANCY_MIN_SAMPLES

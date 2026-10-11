@@ -57,7 +57,8 @@ def test_log_tail_reads_last_lines(tmp_path, monkeypatch):
     tail = health.log_tail("run", lines=3)
     assert tail["lines"] == ["línea 498", "línea 499", "línea 500"]
     assert tail["size_bytes"] > 0 and tail["modified_at"]
-    assert health.log_tail("run", lines=1000)["lines"][0] == "línea 1"     # pide más de las que hay: todas
+    # Pide más de las que hay: todas.
+    assert health.log_tail("run", lines=1000)["lines"][0] == "línea 1"
 
 
 def test_log_tail_handles_missing_and_unknown(tmp_path, monkeypatch):
@@ -69,7 +70,8 @@ def test_log_tail_handles_missing_and_unknown(tmp_path, monkeypatch):
 
 def test_deployment_without_git_or_logs(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "LOG_DIR", tmp_path)
-    monkeypatch.setattr(config, "ROOT", tmp_path)                           # no es un clon: commit None, sin explotar
+    # No es un clon: commit None, sin explotar.
+    monkeypatch.setattr(config, "ROOT", tmp_path)
     dep = health.deployment()
     assert dep["commit"] is None and dep["last_deploy"] is None and dep["last_backup"] is None
     (tmp_path / "backup.log").write_text("2026-09-11T05:07:00Z backup ok x.gz\n")

@@ -64,7 +64,8 @@ def test_every_recorded_unit_succeeds(captured):
 
 @pytest.fixture
 def conn(tmp_path, monkeypatch):
-    monkeypatch.setattr(config, "LOG_DIR", tmp_path)      # run.commit registra en run.log: fuera del log real
+    # `run.commit` registra en run.log: fuera del log real.
+    monkeypatch.setattr(config, "LOG_DIR", tmp_path)
     c = sqlite3.connect(":memory:")
     c.row_factory = sqlite3.Row
     c.executescript(store.SCHEMA)

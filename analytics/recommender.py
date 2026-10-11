@@ -70,7 +70,8 @@ SORTS = ("distance", "price", "time")
 STATUSES = ("complete", "snacks_unpriced", "unpriced")
 SNACK_PACKAGES = tuple(SNACK_LABEL)
 COMBOS_PATH = Path(__file__).resolve().parent / "snack_combos.csv"
-_SINGLE = ("Palomitas", "Refresco")       # tamaño base: palomitas y refresco de una persona
+# Tamaño base: palomitas y refresco de una persona.
+_SINGLE = ("Palomitas", "Refresco")
 _FOR = {"todos": "all", "ninos": "children", "adultos": "adults"}
 
 
@@ -114,8 +115,10 @@ _DAY_PROMOS = {
 _LOOP_FIXED = {"cmx_individual_lunes": 180.0, "cmx_individual_miercoles": 180.0, "cmx_martes_pareja": 340.0,
                "cmx_martes_individual": 240.0, "cmx_jueves": 255.0}
 _LOOP_MARKET = {"cmx_jueves": 310.0}
-_SOLO = ("cmx_individual_lunes", "cmx_individual_miercoles", "cmx_martes_individual")   # combos para 1 persona
-_USES = {"cmx_martes_2x1": 3}                                                             # veces por cuenta; si no, 1
+# Combos para 1 persona.
+_SOLO = ("cmx_individual_lunes", "cmx_individual_miercoles", "cmx_martes_individual")
+# Veces por cuenta; si no, 1.
+_USES = {"cmx_martes_2x1": 3}
 _LOOP_2X1_EXCLUDED = ("imax", "atmos", "v4d", "4dx")
 # Club Cinépolis, Combo Lunes: `experience` → (precio bajo, precio alto), solo en 2D y sin VIP (verificado 2026-09-29).
 # XE es Macro XE, SP es Pluus y SJ es la Sala Junior.
@@ -138,8 +141,8 @@ _HOLIDAYS = ("01-01", "05-01", "09-16", "12-25")
 #   - Cine Tonalá (ficha de cada película en cinetonala.mx): general $80, descuentos $65. Los niños pagan el general.
 #   - Cinemanía (confirmada por el cliente; no la publica en su sitio): general $70 para todos.
 #   - Cinemas Raly (cinemasraly.com/precios): $45 para todos; miércoles $30.
-# ponytail: una función gratuita (Cinema Libre de la FICG) y el Foro al aire libre de la Cineteca Nacional ($90 por dos
-# personas) pagan la tarifa de sala; la cartelera no los distingue.
+# ponytail: la cartelera no distingue las funciones con otra tarifa. Pagan la tarifa de sala una función gratuita
+# (Cinema Libre de la FICG) y el Foro al aire libre de la Cineteca Nacional ($90 por dos personas).
 _PUBLIC_FARES = {**{("cineteca", code): (70.0, 50.0, 50.0) for code in ("001", "002", "003")},
                  ("cineteca_gdl", "ficg"): (60.0, 60.0, 40.0), ("cineteca_gdl", "cineforo"): (50.0, 50.0, 35.0),
                  ("cineteca_mty", "centro-artes"): (80.0, 80.0, 50.0), ("tonala", "roma-sur"): (80.0, 80.0, 65.0),
@@ -155,7 +158,8 @@ _CHILD_WORDS = ("menor", "nino")
 _SENIOR_WORDS = ("mayor", "tercera", "3 era", "3ra", "3a edad", "+60")
 _EARTH_KM = 6371.0
 _KM_PER_DEGREE = 111.32
-_AREA_MARGIN_DEG = 0.05                   # ~5 km más allá de los cines de la plaza
+# ~5 km más allá de los cines de la plaza.
+_AREA_MARGIN_DEG = 0.05
 
 
 def _distance_km(lat1, lng1, lat2, lng2):

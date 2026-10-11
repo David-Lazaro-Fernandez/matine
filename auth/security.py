@@ -12,13 +12,19 @@ _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2 ** 14, 8, 1
 _SALT_BYTES = 16
 MIN_PASSWORD_LENGTH = 12
 
-MAX_FAILS = 10                 # intentos fallidos seguidos antes de bloquear la cuenta
-LOCK_MINUTES = 15              # duración del bloqueo
-RESET_TTL_MIN = 60             # vida del enlace de restablecimiento
-INVITE_TTL_HOURS = 72          # vida del enlace de invitación
-SESSION_TTL_DAYS = 30          # vida de la cookie; se extiende con el uso
-SESSION_TOUCH_MINUTES = 60     # cada cuánto se refresca `last_seen_at` para no escribir en cada corrida
-RESET_MAX_PER_HOUR = 3         # tope de enlaces de restablecimiento por cuenta y hora
+# Intentos fallidos seguidos antes de bloquear la cuenta.
+MAX_FAILS = 10
+LOCK_MINUTES = 15
+# Vida del enlace de restablecimiento.
+RESET_TTL_MIN = 60
+# Vida del enlace de invitación.
+INVITE_TTL_HOURS = 72
+# Vida de la cookie; se extiende con el uso.
+SESSION_TTL_DAYS = 30
+# Cada cuánto se refresca `last_seen_at` para no escribir en cada corrida.
+SESSION_TOUCH_MINUTES = 60
+# Tope de enlaces de restablecimiento por cuenta y hora.
+RESET_MAX_PER_HOUR = 3
 
 
 def _b64(raw):

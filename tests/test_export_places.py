@@ -25,10 +25,13 @@ def test_one_place_per_name_kind_and_spot():
     station = {"public_transport": "station", "station": "subway", "name": "Coyoacán"}
     elements = [
         {"type": "node", "lat": 19.3612, "lon": -99.1709, "tags": station},
-        {"type": "way", "center": {"lat": 19.3614, "lon": -99.1711}, "tags": station},        # el edificio, a metros
+        # El edificio, a metros.
+        {"type": "way", "center": {"lat": 19.3614, "lon": -99.1711}, "tags": station},
         {"type": "node", "lat": 19.3500, "lon": -99.1620, "tags": {"place": "neighbourhood", "name": "Coyoacán"}},
-        {"type": "node", "lat": 19.4000, "lon": -99.1000, "tags": station},                     # otra, a kilómetros
-        {"type": "node", "lat": 19.4, "lon": -99.1, "tags": {"place": "neighbourhood"}},        # sin nombre: fuera
+        # Otra, a kilómetros.
+        {"type": "node", "lat": 19.4000, "lon": -99.1000, "tags": station},
+        # Sin nombre: fuera.
+        {"type": "node", "lat": 19.4, "lon": -99.1, "tags": {"place": "neighbourhood"}},
     ]
     got = ep.places(elements)
     kinds = [ep.KINDS[k] for _, k, _, _ in got]

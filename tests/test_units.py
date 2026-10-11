@@ -25,7 +25,8 @@ def test_big_states_split_evenly_and_small_ones_share_a_batch():
     assert all(len(b["cinema_ids"]) <= 30 for b in batches)
     by_unit = {b["unit"]: b for b in batches}
     assert len(by_unit["09-1de2"]["cinema_ids"]) == 26 and len(by_unit["09-2de2"]["cinema_ids"]) == 25
-    assert "06+14" not in by_unit and any(set(b["state_codes"]) == {"06", "18"} for b in batches)   # Colima + Nayarit
+    # Colima + Nayarit.
+    assert "06+14" not in by_unit and any(set(b["state_codes"]) == {"06", "18"} for b in batches)
     assert sorted(c for b in batches for c in b["cinema_ids"]) == sorted(c["id"] for c in
                                                                          _cinemas("09", 51) + _cinemas("06", 3) + _cinemas("18", 4) + _cinemas("14", 29))
 
@@ -44,7 +45,8 @@ def test_a_failed_unit_does_not_stop_the_others_and_is_retried():
         stats["calls"] += 1
         tries[u["unit"]] = tries.get(u["unit"], 0) + 1
         if u["unit"] == "b" and tries["b"] == 1:
-            raise ApiError("HTTP 502")          # transitorio: pasa en el reintento
+            # Transitorio: pasa en el reintento.
+            raise ApiError("HTTP 502")
         if u["unit"] == "c":
             raise ApiError("HTTP 500 siempre")
         return u["unit"]
@@ -77,7 +79,8 @@ def test_all_units_failing_fails_the_chain():
 
 @pytest.fixture
 def conn(tmp_path, monkeypatch):
-    monkeypatch.setattr(config, "LOG_DIR", tmp_path)      # run.commit registra en run.log: fuera del log real
+    # `run.commit` registra en run.log: fuera del log real.
+    monkeypatch.setattr(config, "LOG_DIR", tmp_path)
     c = sqlite3.connect(":memory:")
     c.row_factory = sqlite3.Row
     c.executescript(store.SCHEMA)
@@ -105,11 +108,13 @@ def test_apply_current_writes_only_the_difference(conn):
     written = store.apply_current(conn, "cinemex", 2, rows, previous, TAKEN_2, keep={"c"})
     assert written == {"inserted": 1, "updated": 1, "deleted": 0}
     table = _table(conn)
-    assert set(table) == {"a", "b", "c", "d"}                        # c se conserva: su unidad falló
+    # `c` se conserva: su unidad falló.
+    assert set(table) == {"a", "b", "c", "d"}
     assert table["a"]["snapshot_id"] == 1 and table["b"]["snapshot_id"] == 2 and table["b"]["screen"] == "4"
     assert table["b"]["first_seen"] == TAKEN_1 and table["d"]["first_seen"] == TAKEN_2
     written = store.apply_current(conn, "cinemex", 3, rows, {k: dict(v) for k, v in _table(conn).items()}, TAKEN_2)
-    assert written["deleted"] == 1 and "c" not in _table(conn)       # sin `keep`, c ya no está publicada
+    # Sin `keep`, c ya no está publicada.
+    assert written["deleted"] == 1 and "c" not in _table(conn)
 
 
 # --- una captura con un estado caído, de punta a punta ------------------------------------------------------------
@@ -144,8 +149,10 @@ def test_a_failed_state_keeps_its_showtimes_and_makes_no_events(conn):
     raw = _cinemex_raw({"1": [(12, "21")], "2": []}, failed={"2"})
     snap = _commit(conn, raw, TAKEN_2)
     events = {(r["show_id"], r["kind"]) for r in conn.execute("SELECT show_id, kind FROM event WHERE snapshot_id = ?", (snap,))}
-    assert events == {("11", "removed"), ("12", "moved")}              # nada del estado 2
-    assert {"21", "22"} <= set(_table(conn))                          # conservadas tal cual
+    # Nada del estado 2.
+    assert events == {("11", "removed"), ("12", "moved")}
+    # Conservadas tal cual.
+    assert {"21", "22"} <= set(_table(conn))
     (unit,) = [dict(r) for r in conn.execute("SELECT * FROM snapshot_unit WHERE snapshot_id = ? AND ok = 0", (snap,))]
     assert unit["unit"] == "estado-2" and unit["carried"] == 2 and unit["n_cinemas"] == 1
     assert conn.execute("SELECT n_units, n_failed_units FROM snapshot WHERE id = ?", (snap,)).fetchone()[:] == (2, 1)

@@ -23,7 +23,8 @@ def _console(to, subject, text, html):
 
 
 def _ses(to, subject, text, html):
-    import boto3  # solo en el servidor; el venv de desarrollo no lo necesita con el backend console
+    # Solo en el servidor; el venv de desarrollo no lo necesita con el backend console.
+    import boto3
 
     body = {"Text": {"Data": text, "Charset": "UTF-8"}}
     if html:

@@ -1,17 +1,21 @@
-# Solo configuración de herramientas de desarrollo (ruff, pytest). El proyecto no se instala como paquete.
+# Solo configura las herramientas de desarrollo. El proyecto no se instala como paquete.
 [tool.ruff]
 line-length = 120
-target-version = "py39"          # scraper/ y analytics/ deben correr en el Python del sistema (3.9+)
-extend-exclude = [".venv", "data", "docs"]
+# scraper/ y analytics/ corren en el Python del sistema, 3.9 o mayor.
+target-version = "py39"
+# Los worktrees de los agentes son copias del repo, con cambios a medias.
+extend-exclude = [".venv", "data", "docs", ".claude"]
 
 [tool.ruff.lint]
-# E/W: PEP 8; F: nombres sin definir e imports sin usar (el caso de AUTH_TEXT); I: orden de imports.
 select = ["E", "W", "F", "I"]
-ignore = ["E501", "E702"]        # E501: 120 es guía, no bloqueo. E702: el repo agrupa pasos cortos con `;` a propósito
+# El largo de 120 es una guía. El repo agrupa pasos cortos con `;` a propósito.
+ignore = ["E501", "E702"]
 
 [tool.ruff.lint.per-file-ignores]
-"views/*.py" = ["F403", "F405"]  # las páginas hacen `from ui.common import *` a propósito (AGENTS.md §6)
-"ui/common.py" = ["E402", "F401"]  # sys.path.insert antes de importar analytics/; reexporta nombres para las páginas
+# Las páginas hacen `from ui.common import *` a propósito. Ver AGENTS.md §6.
+"views/*.py" = ["F403", "F405"]
+# Importa analytics/ después de `sys.path.insert` y reexporta nombres para las páginas.
+"ui/common.py" = ["E402", "F401"]
 "app.py" = ["E402"]
 "tests/*.py" = ["E402"]
 

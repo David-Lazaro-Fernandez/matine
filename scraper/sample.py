@@ -55,7 +55,8 @@ TICKETS_QUERY = """query Tickets($countryId: String!, $sessionId: String!, $cine
 # Estados vistos en planos reales de Cinépolis (2026-09-08). "Broken" no se vende; Special y Companion sí.
 NOT_SELLABLE = {"Broken"}
 SOLD = {"Sold"}
-TRANSIENT = ("(116)", "(101305)")   # Vista: "no es posible continuar por el momento"; suele pasar al reintentar
+# Vista: "no es posible continuar por el momento"; suele pasar al reintentar.
+TRANSIENT = ("(116)", "(101305)")
 
 
 def log(msg):
@@ -249,7 +250,8 @@ def summarize_prices(tickets):
 
 
 # --- pasadas -------------------------------------------------------------------------------------------
-CAPACITY_CANDIDATES = 3   # funciones distintas a probar por sala si la primera ya no existe (404 / 101)
+# Funciones distintas a probar por sala si la primera ya no existe (404 / 101).
+CAPACITY_CANDIDATES = 3
 
 
 def _measure_screen(chain, key, candidates, vids, stats):
@@ -274,7 +276,8 @@ def capacity_pass(conn, chain="cinepolis", refresh=False, dry_run=False, limit=N
     más próxima en adelante, porque el snapshot puede listar funciones que la cadena ya retiró. `scope=None` recorre
     todos los cines capturados: la pasada nacional única que deja consultables salas y butacas de todo el país.
     `workers` hilos piden planos a la vez (por defecto `config.SAMPLE_WORKERS`); la base se escribe en este hilo."""
-    stats = {"calls": 0}   # contador aproximado con varios hilos: solo informa
+    # Contador aproximado con varios hilos: solo informa.
+    stats = {"calls": 0}
     vids = vista_ids(conn) if chain == "cinepolis" else {}
     now = now_local().strftime("%Y-%m-%dT%H:%M:%S")
     scope_sql, scope_params = _plaza_filter(chain, scope=scope)
@@ -310,7 +313,8 @@ def capacity_pass(conn, chain="cinepolis", refresh=False, dry_run=False, limit=N
     return fail == 0
 
 
-CALIBRATION_LEVELS = ("high", "mid", "low")   # semáforo de Cinemex
+# Semáforo de Cinemex.
+CALIBRATION_LEVELS = ("high", "mid", "low")
 
 
 def calibration_progress(conn, chain="cinemex"):
@@ -474,7 +478,8 @@ def price_pass(conn, days=7, limit=None, dry_run=False):
         d = dict(r)
         title = (d.get("movie_title") or "").lower()
         if title.startswith("evento") or "matinee" in title or "matiné" in title:
-            continue   # los eventos tienen precios propios; no representan al cine
+            # Los eventos tienen precios propios; no representan al cine.
+            continue
         key = (d["chain"], d["cinema_id"], format_bucket(d), day_type_of(d["date"]))
         if key in recent or key in todo:
             continue
@@ -499,7 +504,8 @@ def price_pass(conn, days=7, limit=None, dry_run=False):
             fail += 1; log(f"prices FAIL {chain} {r['show_id']}: {e}"[:300]); continue
         general, lo, hi, fee = summarize_prices(tickets)
         if general is None:
-            log(f"prices skip {chain} {r['show_id']}: sin boletos"); continue   # se reintenta en la siguiente pasada
+            # Se reintenta en la siguiente pasada.
+            log(f"prices skip {chain} {r['show_id']}: sin boletos"); continue
         conn.execute("""INSERT INTO price_sample (chain, show_id, cinema_id, screen, format_bucket, day_type, date, datetime_local,
                             sampled_at, general_cents, min_cents, max_cents, fee_cents, tickets_json)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",

@@ -12,11 +12,13 @@ from .labels import CHAIN_LABEL, CINEMA_TYPE_LABEL
 from .plaza import plaza_cinema_where, plaza_where
 from .queries import _window
 
-MAP_CHAINS = tuple(CHAIN_LABEL)                 # el mapa muestra las tres; los destacados comparan dentro de cada cadena
+# El mapa muestra las tres; los destacados comparan dentro de cada cadena.
+MAP_CHAINS = tuple(CHAIN_LABEL)
 TICKET_FORMAT, TICKET_DAY_TYPE = "traditional", "weekend"
 POPCORN = "Palomitas"
 OCCUPANCY_DAYS = 7
-OCCUPANCY_MIN_SAMPLES = 10       # planos de un cine en la ventana para afirmar su ocupación
+# Planos de un cine en la ventana para afirmar su ocupación.
+OCCUPANCY_MIN_SAMPLES = 10
 # Eventos y matinés tienen precio propio (un "Evento Matinée" a $15 el 2026-09-08); el muestreo ya los salta, pero las
 # lecturas anteriores siguen en la base.
 _NOT_EVENT = "lower(COALESCE(tickets_json, '')) NOT LIKE '%matin%' AND lower(COALESCE(tickets_json, '')) NOT LIKE '%evento%'"

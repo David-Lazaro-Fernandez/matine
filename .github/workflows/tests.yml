@@ -8,8 +8,9 @@ on:
     branches: [main]
   pull_request:
 
+# El trabajo mueve la rama stable.
 permissions:
-  contents: write     # para mover la rama stable
+  contents: write
 
 concurrency:
   group: pruebas-${{ github.ref }}

@@ -172,11 +172,13 @@ mira si extender una existente con un parámetro con nombre cubre el caso.
 - **Ningún nombre interno llega al usuario.** `chain`, `kind`, claves de franja y de cubeta se
   traducen en `analytics/labels.py`. Si un texto aparece en pantalla, sale de `labels.py` (etiquetas)
   o de `findings.py` (frases), nunca escrito en `app.py`, `ui/` ni `views/`.
-- **Ningún hex se escribe en la presentación (`app.py`, `ui/`, `views/`).** Los colores viven en `analytics/labels.py` (`RED`, `INK`,
+- **Ningún hex se escribe en la presentación (`app.py`, `ui/`, `views/`, `dashboard/`).** En `dashboard/` la interfaz
+  usa `tokens.*` de Fluent. Los colores viven en `analytics/labels.py` (`RED`, `INK`,
   `GRAY`, `LINE`, `CHAIN_COLOR`, `RED_RAMP`, `DIVERGING`…). Para un color nuevo: agrégalo a
   `labels.py` y documéntalo en `DESIGN.md` **antes** de usarlo.
-- **Rojo = Cinemex o acción. Cinépolis = tinta (`#191A1E`).** El rojo no se usa para alertas ni para
-  valores negativos. Cinemex siempre primero en las escalas; las series no se ciclan.
+- **Rojo = Cinemex, solo en los datos. Cinépolis = tinta (`#191A1E`).** En `dashboard/` la interfaz (botones,
+  navegación, foco, enlaces) usa los tokens de Fluent con su marca azul (decisión 2026-10-10, `DESIGN.md`); el rojo no se
+  usa para acciones, alertas ni valores negativos. Cinemex siempre primero en las escalas; las series no se ciclan.
 - Formato para directivos: horas en 12 h, fechas en español, números tabulares. Usa los helpers
   (`date_es`, `range_es`, `time_12`, `n`, `pp`), no `f"{x:.1f}"` a mano.
 
@@ -255,6 +257,10 @@ el timer lo note. Si añades un flujo de captura, añade su cobertura ahí y su 
 - `deploy/*.sh` son bash con `set -euo pipefail`: instalar o respaldar a medias es peor que fallar.
 - Los pasos de un trabajo del registro corren todos aunque uno falle (`jobs.run`, igual que `make -k`): cada paso escribe
   su log y una captura que falla no debe cancelar las siguientes del mismo tick. El trabajo sí sale con error.
+- **Node se maneja con `pnpm`, nunca con `npm`** (`pnpm install`, `pnpm run build`, `pnpm dlx` en vez de `npx`). El
+  lockfile versionado es `pnpm-lock.yaml`; no se commitea un `package-lock.json`.
+- **El registro es siempre el público, `https://registry.npmjs.org/`, nunca Shadowbox.** El servidor, Vercel y CI no
+  ven el registro privado. Un lockfile que apunta a Shadowbox rompe la instalación fuera de esta máquina.
 - Nada de secretos en el repo. Van en `deploy/absolut-cinema.env` (con `.example` versionado).
 - **Un trabajo programado nuevo es una llave en `jobs/keys.py` y una entrada en `jobs/registry.py`**, seguido de
   `make units`. No se escriben unidades de systemd ni plists a mano: cada una ejecuta `make job KEY=llave`, así
@@ -315,6 +321,12 @@ sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
 
 ## 9. Al terminar
 
+- **Revisa cada comentario que agregaste o tocaste.** Preferimos código que se explica solo, con buenos nombres, a
+  comentarios que repiten lo que ya se lee en el código. Un comentario no explica de más y va en ASD-STE100 (inglés) o
+  en Español Técnico Simplificado. **Nunca escribas un comentario a la derecha de una línea de código.** Detalle en
+  `.claude/rules/comments.md`.
+- **Pasa el linter sobre todo lo que agregaste o cambiaste**: `make lint` (ruff) para Python y `pnpm run build` (que
+  revisa los tipos) para `dashboard/` y `marketing/`.
 - Sigue los patrones de los archivos vecinos antes que cualquier preferencia general.
 - Actualiza la documentación que el cambio invalide, en el archivo que le toca: `project.md`
   (APIs, modelo de datos, decisiones), `ARCHITECTURE.md` (flujo, servicios, cadencias), `DESIGN.md`

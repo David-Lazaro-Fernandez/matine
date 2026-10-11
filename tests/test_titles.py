@@ -16,7 +16,8 @@ def test_same_movie_across_chains():
     # Pares vistos en la cartelera del 2026-09-25 (Cinemex, Cinépolis).
     for a, b in [("Avengers Endgame: Bonus", "Avengers: Endgame Bonus Infinity Vision"),
                  ("Rápido y Furioso (25° Aniversario)", "Reestreno Rápido Y Furioso"),
-                 ("One Piece: La Pelicula 2000", "One Piece: La Película"),              # por title_pairs.csv
+                 # Por title_pairs.csv.
+                 ("One Piece: La Pelicula 2000", "One Piece: La Película"),
                  ("Transformers: La película", "The Transformers: La Película 40 Aniversario"),
                  ("BTS WORLD TOUR 'ARIRANG' IN SÃO PAULO: LIVE VIEWING", "BTS WORLD TOUR 'ARIRANG' IN SÃO PAULO: EN VIVO"),
                  ("Coraline y la Puerta Secreta (Re-estreno 2026)", "Coraline y la Puerta Secreta"),
@@ -29,7 +30,8 @@ def test_the_cineteca_language_suffix_is_dropped():
     assert key("Cars 20 aniversario DOB") == key("Cars") == "cars"
     assert key("Mary y Max SUB") == key("Mary y Max DOB") == "mary y max"
     assert key("Coyote vs. Acme DUB") == key("Coyote vs. Acme")
-    assert key("Subterráneo") != key("Terráneo")          # la regla solo quita la palabra suelta al final
+    # La regla solo quita la palabra suelta al final.
+    assert key("Subterráneo") != key("Terráneo")
 
 
 def test_never_merge():
@@ -47,14 +49,18 @@ def test_empty_title():
 
 
 def test_a_rejection_only_splits_what_the_rules_merged():
-    merged = frozenset(("reestreno rapido y furioso", "rapido y furioso 25 aniversario"))   # las reglas los unen
-    unrelated = frozenset(("el descenso re estrenos 2026", "el desaire"))                    # nunca se unieron
+    # Las reglas los unen.
+    merged = frozenset(("reestreno rapido y furioso", "rapido y furioso 25 aniversario"))
+    # Nunca se unieron.
+    unrelated = frozenset(("el descenso re estrenos 2026", "el desaire"))
     assert titles._exempt({merged, unrelated}) == set(merged)
-    assert title_key("el descenso re estrenos 2026") == "el descenso"      # el rechazo no le quita sus reglas
+    # El rechazo no le quita sus reglas.
+    assert title_key("el descenso re estrenos 2026") == "el descenso"
 
 
 def test_candidates_need_matching_numbers_and_skip_paired_titles():
     info = {"title": "x", "duration_min": 100, "distributor": "d", "shows": 1}
     out = titles.candidates({"la pelicula parte 1": info, "queen budapest": info},
                             {"la pelicula parte 3": info, "queen budapest": info})
-    assert out == []      # "parte 1" frente a "parte 3" no se propone; Queen ya tiene pareja
+    # "parte 1" frente a "parte 3" no se propone; Queen ya tiene pareja.
+    assert out == []

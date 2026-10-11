@@ -9,7 +9,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from analytics import queries  # noqa: E402
 
-findings = importlib.import_module("analytics.findings")   # el paquete exporta la función con el mismo nombre
+# El paquete exporta la función con el mismo nombre.
+findings = importlib.import_module("analytics.findings")
 
 NOW = datetime.now(timezone.utc)
 DAY = (NOW + timedelta(days=2)).date().isoformat()
@@ -22,7 +23,8 @@ def ago(hours):
 
 def show(show_id, title, cinema_id="a", hhmm="15:00", first_seen=OLD):
     local = f"{DAY}T{hhmm}:00"
-    utc = (datetime.fromisoformat(local + "+00:00") + timedelta(hours=6)).isoformat()      # CDMX es UTC−6
+    # CDMX es UTC−6.
+    utc = (datetime.fromisoformat(local + "+00:00") + timedelta(hours=6)).isoformat()
     return {"chain": "cinepolis", "show_id": show_id, "cinema_id": cinema_id, "date": DAY, "datetime_local": local,
             "datetime_utc": utc, "title_norm": title, "movie_title": title.title(),
             "city_id": "cdmx", "first_seen": first_seen}
@@ -48,7 +50,8 @@ def test_programming_moves_replays_changes_on_published_days_only():
     xs = [show(f"x{i}", "equis") for i in range(10)]
     ys = [show(f"y{i}", "ye") for i in range(10)]
     new_y = show("y_new", "ye", first_seen=ago(40))
-    other_cinema = show("b1", "equis", cinema_id="b", first_seen=ago(40))    # cine que no estaba publicado en el corte
+    # Cine que no estaba publicado en el corte.
+    other_cinema = show("b1", "equis", cinema_id="b", first_seen=ago(40))
     moved = show("y0", "ye", hhmm="21:00")
     current = xs[1:] + [moved] + ys[1:] + [new_y, other_cinema]
     events = [("added", new_y, ago(40), None), ("added", other_cinema, ago(40), None),
@@ -58,7 +61,8 @@ def test_programming_moves_replays_changes_on_published_days_only():
     assert (out["ye"]["shows_then"], out["ye"]["shows_now"], out["ye"]["added"], out["ye"]["moved"]) == (10, 11, 1, 1)
     assert (out["equis"]["delta_pp"], out["ye"]["delta_pp"]) == (-5.0, 5.0)
     since = datetime.fromisoformat(out["ye"]["since"])
-    assert abs((since - (NOW - timedelta(hours=72))).total_seconds()) < 60      # el corte de 72 h, no el de publicación
+    # El corte de 72 h, no el de publicación.
+    assert abs((since - (NOW - timedelta(hours=72))).total_seconds()) < 60
 
 
 def test_programming_moves_is_empty_while_the_week_is_being_published():
@@ -84,7 +88,8 @@ def test_findings_keeps_the_strongest(monkeypatch):
     monkeypatch.setattr(findings, "_format_finding", rule("formato", 1.1))
     monkeypatch.setattr(findings, "_exclusive_finding", rule("exclusivas", 2.0))
     out = findings.findings(None, DAY, DAY, top=4)
-    assert [f["topic"] for f in out] == ["dulceria", "franjas", "titulo", "exclusivas"]   # empate: orden de evaluación
+    # Empate: orden de evaluación.
+    assert [f["topic"] for f in out] == ["dulceria", "franjas", "titulo", "exclusivas"]
     assert all("as_of" in f for f in out)
 
 
@@ -126,7 +131,8 @@ def test_occupancy_by_title_compares_against_its_own_time_slot():
     fri = _next_friday()
     rows = [("Alta", f"{fri}T19:00:00", 30), ("Alta", f"{fri}T19:30:00", 30),
             ("Baja", f"{fri}T19:00:00", 10), ("Baja", f"{fri}T20:00:00", 10),
-            ("Matiné", f"{fri}T11:00:00", 5)]          # otra franja: no mueve lo esperado de la noche
+            # Otra franja: no mueve lo esperado de la noche.
+            ("Matiné", f"{fri}T11:00:00", 5)]
     conn.executemany("INSERT INTO occupancy_sample (chain, cinema_id, movie_title, datetime_local, minutes_to_start, seats, sold, sampled_at) "
                      "VALUES ('cinepolis', 'c1', ?, ?, -30, 100, ?, ?)", [(t, dt, sold, ago(5)) for t, dt, sold in rows])
     out = {r["title_norm"]: r for r in seats.occupancy_by_title(conn, min_samples=1)}

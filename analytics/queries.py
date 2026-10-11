@@ -21,6 +21,7 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from scraper import config
+from scraper.health import MAX_AGE_MIN
 from scraper.plazas import city_ids
 from scraper.titles import title_key
 
@@ -81,7 +82,8 @@ _FORMAT_CASE = """CASE
     WHEN format = '3D' OR lower(experience) IN ('v4d', '4dx') THEN '3d4d'
     ELSE 'traditional' END"""
 _LANG_CASE = "CASE WHEN language = 'subtitled' THEN 'subtitled' ELSE 'spanish' END"
-_WEEKDAY = "(CAST(strftime('%w', date) AS INTEGER) + 6) % 7"      # 0 = lunes
+# 0 = lunes.
+_WEEKDAY = "(CAST(strftime('%w', date) AS INTEGER) + 6) % 7"
 _IS_PRIME = f"({_WEEKDAY} >= 4 AND {_HOUR} >= {PRIME_START_HOUR})"
 _SLOT_CASE = "CASE " + " ".join(f"WHEN {_HOUR} BETWEEN {lo} AND {hi - 1} THEN '{key}'" for key, lo, hi, _ in SLOTS) + " END"
 
@@ -94,12 +96,50 @@ def snapshot_health(conn, limit=20):
         FROM snapshot ORDER BY id DESC LIMIT ?""", (limit,))
 
 
+def capture_status(conn, limit=12, max_age_min=MAX_AGE_MIN, now=None):
+    """Estado de la captura por cadena, sobre los últimos `limit` snapshots. Por cadena: `last_ok_at` (taken_at de la
+    última captura buena, None si no hay), `age_min` (minutos desde ella, None si no hay), `error` (el del intento más
+    reciente si falló) y `stale`. Una cadena está desactualizada si su intento más reciente falló o si su última captura
+    buena tiene más de `max_age_min` minutos; un fallo ya superado por una captura buena no cuenta. Orden: chain."""
+    now = now or datetime.now(timezone.utc)
+    latest, last_ok = {}, {}
+    for r in snapshot_health(conn, limit=limit):
+        latest.setdefault(r["chain"], r)
+        if r["ok"] == 1:
+            last_ok.setdefault(r["chain"], r["taken_at"])
+    out = []
+    for chain in sorted(latest):
+        failed = latest[chain]["ok"] != 1
+        last_good = last_ok.get(chain)
+        age_min = (now - datetime.fromisoformat(last_good)).total_seconds() / 60 if last_good else None
+        out.append({"chain": chain, "last_ok_at": last_good, "age_min": age_min,
+                    "error": latest[chain]["error"] if failed else None,
+                    "stale": failed or age_min is None or age_min > max_age_min})
+    return out
+
+
 def coverage(conn, plaza=None):
     """Funciones publicadas por fecha y cadena. Sirve para saber qué semanas están completas."""
     where, params = plaza_where(plaza)
     return rows(conn, f"""
         SELECT date, SUM(chain = 'cinemex') cinemex, SUM(chain = 'cinepolis') cinepolis
         FROM current_showtime WHERE 1 = 1{where} GROUP BY date ORDER BY date""", params)
+
+
+# Una semana está publicada a medias si Cinemex promedia menos de esta fracción del día más lleno de la semana en curso.
+_PARTIAL_PUBLICATION = 0.6
+
+
+def week_publication(conn, d0, d1, plaza=None):
+    """Qué tanto está publicada la semana [d0, d1] frente al día más lleno de Cinemex entre hoy y el fin de la semana
+    de cine en curso: `"published"`, `"partial"` o None si aún no hay funciones. Textos en `labels.PUBLICATION_LABEL`."""
+    cov = coverage(conn, plaza=plaza)
+    today_s = today()
+    full_day = max((r["cinemex"] for r in cov if today_s <= r["date"] <= cinema_week(today_s)[1]), default=0) or 1
+    week = [r["cinemex"] for r in cov if d0 <= r["date"] <= d1]
+    if not week:
+        return None
+    return "partial" if sum(week) / len(week) < _PARTIAL_PUBLICATION * full_day else "published"
 
 
 def kpis(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None):
@@ -120,7 +160,8 @@ def kpis(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None):
         FROM current_showtime WHERE {where} GROUP BY chain ORDER BY chain""", params)
 
 
-kpis_today = kpis   # compatibilidad
+# Nombre anterior de `kpis`; se conserva para quien ya lo importa.
+kpis_today = kpis
 
 
 def showtimes_by_slot(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None):
@@ -134,9 +175,10 @@ def showtimes_by_slot(conn, d0=None, d1=None, from_now=True, hours=None, plaza=N
 
 def heatmap_day_slot(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None):
     """Share de la programación de cada cadena por día de la semana y franja (en % del total de
-    la cadena en la ventana) y la diferencia en puntos (positivo = Cinemex pone más)."""
+    la cadena en la ventana) y la diferencia en puntos (`gap_pp`, positivo = Cinemex pone más; una cadena sin
+    funciones en la celda cuenta como 0 %)."""
     where, params, _ = _window(d0, d1, from_now, hours=hours, plaza=plaza)
-    return rows(conn, f"""
+    cells = rows(conn, f"""
         WITH base AS (SELECT chain, {_WEEKDAY} weekday, {_SLOT_CASE} slot FROM current_showtime WHERE {where}),
              tot AS (SELECT chain, COUNT(*) n FROM base GROUP BY chain),
              cell AS (SELECT chain, weekday, slot, COUNT(*) n FROM base GROUP BY chain, weekday, slot)
@@ -146,6 +188,9 @@ def heatmap_day_slot(conn, d0=None, d1=None, from_now=True, hours=None, plaza=No
                ROUND(100.0 * SUM(CASE WHEN c.chain = 'cinemex'   THEN c.n END) / (SELECT n FROM tot WHERE chain = 'cinemex'), 1)   share_cinemex,
                ROUND(100.0 * SUM(CASE WHEN c.chain = 'cinepolis' THEN c.n END) / (SELECT n FROM tot WHERE chain = 'cinepolis'), 1) share_cinepolis
         FROM cell c GROUP BY c.weekday, c.slot ORDER BY c.weekday, c.slot""", params)
+    for c in cells:
+        c["gap_pp"] = round((c["share_cinemex"] or 0.0) - (c["share_cinepolis"] or 0.0), 1)
+    return cells
 
 
 def movies_by_chain(conn, d0=None, d1=None, limit=60, from_now=True, hours=None, plaza=None):
@@ -174,6 +219,21 @@ def movies_by_chain(conn, d0=None, d1=None, limit=60, from_now=True, hours=None,
                COUNT(*)                                                   shows_total
         FROM base b
         GROUP BY title_norm ORDER BY shows_total DESC LIMIT ?""", params + [limit])
+
+
+def movie_gaps(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None, limit=15):
+    """Las `limit` películas con más funciones (`movies_by_chain`), ordenadas por tamaño de la diferencia de share.
+    Agrega a cada fila `abs_gap` (|gap_pp|; una exclusiva pesa lo que su propio share), `exclusive` (la cadena que la
+    exhibe sola, None si la exhiben las dos; texto en `labels.EXCLUSIVE_LABEL`) y `leader` (la cadena que le da más
+    share; un empate es de Cinemex). `title` va sin espacios en los extremos. Un empate en `abs_gap` conserva el orden
+    por funciones."""
+    out = movies_by_chain(conn, d0, d1, limit=limit, from_now=from_now, hours=hours, plaza=plaza)
+    for m in out:
+        m["title"] = m["title"].strip()
+        m["exclusive"] = "cinemex" if not m["shows_cinepolis"] else "cinepolis" if not m["shows_cinemex"] else None
+        m["abs_gap"] = m[f"share_{m['exclusive']}"] if m["exclusive"] else abs(m["gap_pp"])
+        m["leader"] = "cinemex" if m["exclusive"] == "cinemex" or (m["shows_cinemex"] and m["gap_pp"] >= 0) else "cinepolis"
+    return sorted(out, key=lambda m: -m["abs_gap"])
 
 
 def mix(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None):

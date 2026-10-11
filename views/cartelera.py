@@ -1,5 +1,19 @@
 """Página principal: la cartelera en tres capas (hallazgos → evidencia → apéndice) con los filtros de zona, periodo y
 franja horaria en la barra lateral. La dulcería vive en su propia página (views/dulceria.py)."""
+from analytics.labels import (
+    CARTELERA_CHART_TEXT as CT,
+)
+from analytics.labels import (
+    CARTELERA_TEXT as T,
+)
+from analytics.labels import (
+    EXCLUSIVE_LABEL,
+    PERIOD_TEXT,
+    PRESALE_OTHER_LABEL,
+    PRESALE_TAG,
+    PUBLICATION_LABEL,
+    RED_RAMP_TEXT,
+)
 from ui.common import *  # noqa: F401,F403
 
 # --- barra lateral: zona, periodo y franja ---------------------------------------------------------------
@@ -9,34 +23,30 @@ if not config.DB_PATH.exists():
     # Recién desplegado: el scraper aún no ha creado la base. Aviso claro en lugar del traceback.
     now_hm = datetime.now(TZ).strftime("%H:%M")
     nxt = next((hm for hm in SNAPSHOT_TIMES if hm > now_hm), SNAPSHOT_TIMES[0])
-    md(f'<div class="enc"><h1>{esc(plaza_title(None))}: <span>Cinemex</span> frente a Cinépolis</h1></div>')
-    st.info(f"Aún no hay datos: la base {config.DB_PATH} no existe. La cartelera se captura a las "
-            f"{', '.join(time_12(hm) for hm in SNAPSHOT_TIMES)}; la siguiente captura es a las {time_12(nxt)} y tarda de 15 a 30 "
-            "minutos. Para no esperar: `make snapshot` (o `systemctl start absolut-cinema-snapshot.service` en el servidor), o copia "
-            "`data/` desde la máquina donde ya corre. Esta página se refresca sola.")
+    md(f'<div class="enc"><h1>{T["title"].format(plaza=esc(plaza_title(None)))}</h1></div>')
+    st.info(T["no_db"].format(path=config.DB_PATH, times=", ".join(time_12(hm) for hm in SNAPSHOT_TIMES), next=time_12(nxt)))
     st.stop()
 plaza = plaza_selector()
 cov = load("coverage", plaza=plaza)
 if cov.empty:
-    st.info("La base existe pero todavía no tiene funciones capturadas. Revisa `data/logs/run.log`.")
+    st.info(T["no_shows"])
     st.stop()
 this_w0, this_w1 = analytics.cinema_week(today_s)
 next_w0, next_w1 = analytics.cinema_week((date.fromisoformat(this_w1) + timedelta(days=1)).isoformat())
-full_day = cov[(cov.date >= today_s) & (cov.date <= this_w1)].cinemex.max() or 1
-next_cov = cov[(cov.date >= next_w0) & (cov.date <= next_w1)]
-next_state = "" if next_cov.empty else (" · publicada parcialmente" if next_cov.cinemex.mean() < 0.6 * full_day else " · publicada")
+next_state = PUBLICATION_LABEL.get(load_raw("week_publication", d0=next_w0, d1=next_w1, plaza=plaza), "")
 
 periods = {
-    "Hoy": (today_s, today_s),
-    "Mañana": ((today_d + timedelta(days=1)).isoformat(),) * 2,
-    f"Resto de la semana de cine (hasta el {date_es(this_w1, with_year=False)})": (today_s, this_w1),
-    f"Semana de cine siguiente ({date_es(next_w0, with_year=False)} a {date_es(next_w1, with_year=False)}){next_state}": (next_w0, next_w1),
-    "Elegir fechas": None,
+    PERIOD_TEXT["today"]: (today_s, today_s),
+    PERIOD_TEXT["tomorrow"]: ((today_d + timedelta(days=1)).isoformat(),) * 2,
+    PERIOD_TEXT["week"].format(d1=date_es(this_w1, with_year=False)): (today_s, this_w1),
+    PERIOD_TEXT["next_week"].format(d0=date_es(next_w0, with_year=False), d1=date_es(next_w1, with_year=False),
+                                    state=next_state): (next_w0, next_w1),
+    PERIOD_TEXT["custom"]: None,
 }
-st.sidebar.header("Periodo")
-choice = st.sidebar.radio("Semana o día a analizar", list(periods), index=2, label_visibility="collapsed")
+st.sidebar.header(PERIOD_TEXT["header"])
+choice = st.sidebar.radio(PERIOD_TEXT["select"], list(periods), index=2, label_visibility="collapsed")
 if periods[choice] is None:
-    rng = st.sidebar.date_input("Del … al …", value=(today_d, date.fromisoformat(this_w1)),
+    rng = st.sidebar.date_input(PERIOD_TEXT["custom_range"], value=(today_d, date.fromisoformat(this_w1)),
                                 min_value=today_d - timedelta(days=1), max_value=today_d + timedelta(days=35),
                                 format="DD/MM/YYYY")
     d0, d1 = (rng[0].isoformat(), rng[-1].isoformat()) if isinstance(rng, tuple) and rng else (today_s, today_s)
@@ -44,124 +54,95 @@ else:
     d0, d1 = periods[choice]
 includes_today = d0 <= today_s <= d1
 
-# Franja horaria: filtra por la hora de inicio de la función y aplica a todo el tablero salvo al Resumen general,
+# Franja horaria: filtra por la hora de inicio de la función. Aplica a todo el tablero salvo al Resumen general,
 # que muestra sus dos cortes lado a lado. Solo corta en los límites de las franjas, así ninguna queda partida.
-st.sidebar.header("Franja horaria")
-preset = st.sidebar.radio("Franja horaria", list(HOUR_PRESETS) + ["Rango libre"], index=0, label_visibility="collapsed", key="hours_preset")
-if preset == "Rango libre":
-    hours = st.sidebar.select_slider("Hora de inicio de la función", options=HOUR_MARKS, value=FULL_DAY, format_func=hour_mark,
+st.sidebar.header(T["hours_header"])
+preset = st.sidebar.radio(T["hours_header"], list(HOUR_PRESETS) + [T["hours_free"]], index=0, label_visibility="collapsed",
+                          key="hours_preset")
+if preset == T["hours_free"]:
+    hours = st.sidebar.select_slider(T["hours_slider"], options=HOUR_MARKS, value=FULL_DAY, format_func=hour_mark,
                                      key="hours_range")
 else:
     hours = HOUR_PRESETS[preset]
 hours = tuple(hours)
 full_day = analytics.is_full_day(hours)
 if not full_day:
-    st.sidebar.caption(f"Solo funciones que empiezan {hours_label(hours)}. Las participaciones se calculan dentro de esa franja.")
+    st.sidebar.caption(T["hours_caption"].format(hours=hours_label(hours)))
 
-st.sidebar.header("Cómo leer las cifras")
-st.sidebar.markdown(
-    "Todo se compara en **porcentaje de la programación de cada cadena** (share), no en totales: las cadenas tienen "
-    "distinto número de cines y salas en cada zona. Las diferencias entre porcentajes van en **puntos porcentuales (pp)**."
-    + (" Para hoy solo se cuentan funciones que aún no han empezado, en ambas cadenas." if includes_today else ""))
-with st.sidebar.expander("Glosario"):
-    st.markdown(
-        "- **Función.** Una proyección de una película en una sala a una hora.\n"
-        "- **Aforo.** Butacas vendibles de una sala; se mide una vez por sala en el plano de asientos.\n"
-        "- **Butacas ofertadas.** Suma del aforo de la sala por cada función del periodo: el máximo de boletos "
-        "que la cadena podría vender en esos días. Un cine con 10 salas de 150 butacas y 5 funciones por sala "
-        "oferta 7,500 al día.\n"
-        "- **Butacas ocupadas.** Boletos vendidos. En Cinépolis se leen del plano a una hora de la función; en "
-        "Cinemex se estiman a partir de su semáforo de disponibilidad, calibrado con planos reales.\n"
-        "- **Ocupación.** Butacas ocupadas entre butacas ofertadas.\n"
-        "- **Share.** Parte de la programación de una cadena que se lleva una película, franja o formato.\n"
-        "- **Puntos porcentuales (pp).** Diferencia entre dos porcentajes. De 18 % a 21 % son +3 pp.\n"
-        "- **Semana de cine.** De jueves a miércoles; es lo que ambas cadenas publican completo.\n"
-        "- **Horario prime.** Viernes a domingo de 6:00 P.M. en adelante.")
-st.sidebar.caption(f"La cartelera se captura a las {', '.join(time_12(hm) for hm in SNAPSHOT_TIMES)} y los planos de "
-                   f"asientos cada hora; esta página se refresca cada {TTL} segundos.")
+st.sidebar.header(T["read_header"])
+st.sidebar.markdown(T["read_body"] + (T["read_today"] if includes_today else ""))
+with st.sidebar.expander(T["glossary_header"]):
+    st.markdown("\n".join(f"- {item}" for item in T["glossary"]))
+st.sidebar.caption(T["capture_caption"].format(times=", ".join(time_12(hm) for hm in SNAPSHOT_TIMES),
+                                               refresh=T["refresh_caption"].format(ttl=TTL)))
 
 # --- datos del encabezado ---------------------------------------------------------------------------------
-health = load("snapshot_health", limit=12)
-last_ok = health[health.ok == 1].groupby("chain").first()
-# Una cadena está desactualizada si su intento más reciente falló o si su última captura buena tiene más de
-# MAX_AGE_MIN de scraper.health (la cartelera se captura tres veces al día; el hueco nocturno normal es de 11 h).
-# Fallos ya superados por una captura buena no avisan.
-now_utc = datetime.now(ZoneInfo("UTC"))
-stale = []
-for chain, r in health.groupby("chain").first().iterrows():
-    last_good = last_ok.loc[chain].taken_at if chain in last_ok.index else None
-    age_min = (now_utc - datetime.fromisoformat(last_good)).total_seconds() / 60 if last_good else None
-    if r.ok != 1 or age_min is None or age_min > MAX_AGE_MIN:
-        stale.append((CHAIN_LABEL.get(chain, chain), age_min, r.error if r.ok != 1 else None))
+capture = load_raw("capture_status", limit=12)
+stale = [(CHAIN_LABEL.get(r["chain"], r["chain"]), r["age_min"], r["error"]) for r in capture if r["stale"]]
 kp = load("kpis", d0=d0, d1=d1, hours=hours, plaza=plaza)
 if kp.empty or len(kp) < 2:
-    md(f'<div class="enc"><h1>{esc(plaza_title(plaza))}: <span>Cinemex</span> frente a Cinépolis</h1></div>')
-    st.info(f"No hay cartelera publicada de ambas cadenas para {range_es(d0, d1)}.")
+    md(f'<div class="enc"><h1>{T["title"].format(plaza=esc(plaza_title(plaza)))}</h1></div>')
+    st.info(T["no_board"].format(range=range_es(d0, d1)))
     st.stop()
 K = kp.set_index("chain")
 us, them = K.loc["cinemex"], K.loc["cinepolis"]
-last_capture = min(datetime.fromisoformat(r.taken_at) for _, r in last_ok.iterrows()) if len(last_ok) else None
+last_capture = min((datetime.fromisoformat(r["last_ok_at"]) for r in capture if r["last_ok_at"]), default=None)
+nav = "".join(f'<a href="#capa{i}"><b>{i}</b>{esc(label)}</a>' for i, label in enumerate(T["nav"], 1))
 
 md(f"""
 <div class="enc">
-  <h1>{esc(plaza_title(plaza))}: <span>Cinemex</span> frente a Cinépolis</h1>
+  <h1>{T["title"].format(plaza=esc(plaza_title(plaza)))}</h1>
   <div class="meta">
-    <span><strong>Periodo:</strong> {esc(range_short(d0, d1))}</span>
-    {"" if full_day else f"<span><strong>Franja:</strong> {esc(hours_label(hours))}</span>"}
-    <span><strong>{int(us.cinemas)} + {int(them.cinemas)}</strong> cines</span>
-    <span><strong>{int(us.shows + them.shows):,}</strong> funciones publicadas</span>
-    <span>Última captura: {esc(local_time(last_capture.isoformat())) if last_capture else "—"}</span>
+    <span><strong>{T["meta_period"]}</strong> {esc(range_short(d0, d1))}</span>
+    {"" if full_day else f"<span><strong>{T['meta_hours']}</strong> {esc(hours_label(hours))}</span>"}
+    <span><strong>{int(us.cinemas)} + {int(them.cinemas)}</strong> {T["meta_cinemas"]}</span>
+    <span><strong>{int(us.shows + them.shows):,}</strong> {T["meta_shows"]}</span>
+    <span>{T["meta_capture"]} {esc(local_time(last_capture.isoformat())) if last_capture else "—"}</span>
   </div>
-  <nav class="nav-capas">
-    <a href="#capa1"><b>1</b>Lo que importa hoy</a>
-    <a href="#capa2"><b>2</b>Evidencia</a>
-    <a href="#capa3"><b>3</b>Detalle</a>
-  </nav>
+  <nav class="nav-capas">{nav}</nav>
 </div>
 """)
 for name, age_min, err in stale:
     if age_min is None:
-        st.warning(f"No hay ninguna captura buena de {name}.")
+        st.warning(T["stale_none"].format(name=name))
     elif err:
-        st.warning(f"La última captura de {name} falló y el dato vigente tiene {age_min:.0f} minutos. Detalle técnico: {err[:120]}")
+        st.warning(T["stale_error"].format(name=name, age=f"{age_min:.0f}", error=err[:120]))
     else:
-        st.warning(f"El dato de {name} tiene {age_min:.0f} minutos sin actualizarse; el scraper puede estar detenido.")
+        st.warning(T["stale_old"].format(name=name, age=f"{age_min:.0f}"))
 
 # ============ CAPA 1 ============
-capa(1, "Lo que importa hoy",
-     "Hallazgos redactados como decisión, cada uno con sus números de soporte. Si un dato no cambia una decisión "
-     "esta semana, no vive aquí.", roja=True)
+capa(1, T["layer1"], T["layer1_desc"], roja=True)
 hallazgos = load_raw("findings", d0=d0, d1=d1, hours=hours, plaza=plaza)
 if not hallazgos:
-    st.info("Ninguna diferencia cruza el umbral de relevancia en este periodo. La evidencia completa está en la Capa 2.")
+    st.info(T["no_findings"])
 for f in hallazgos:
     hallazgo(f)
 if any(f["topic"] == "dulceria" for f in hallazgos):
-    st.page_link("views/dulceria.py", label="Ver el módulo de dulcería: precios en sala y a domicilio", icon=":material/fastfood:")
+    st.page_link("views/dulceria.py", label=T["link_dulceria"], icon=":material/fastfood:")
 if any(f["topic"] == "independientes" for f in hallazgos):
     st.page_link("views/independientes.py", label=INDEP_TEXT["link"], icon=":material/theaters:")
 
 # ============ CAPA 2 ============
-capa(2, "Evidencia por pregunta",
-     "Cada sección abre con la conclusión; el gráfico es la prueba, no el mensaje. Las guías de lectura van colapsadas.")
+capa(2, T["layer2"], T["layer2_desc"])
 concl = load_raw("conclusions", d0=d0, d1=d1, shown=SHOWN_MOVIES, total=TOTAL_MOVIES, hours=hours, plaza=plaza)
 
 # --- Resumen general (formato del reporte diario del cliente) ------------------------------------------
 with seccion("resumen"):
-    pregunta("¿Cómo se reparte la programación de la semana?", concl.get("resumen", ""))
-    tab_labels = list(HOUR_PRESETS)[:2]   # "Todo el día" y "Después de las 6 PM", lado a lado como en su reporte
+    pregunta(T["q_resumen"], concl.get("resumen", ""))
+    # "Todo el día" y "Después de las 6 PM", lado a lado como en su reporte.
+    tab_labels = list(HOUR_PRESETS)[:2]
     for tab, label in zip(st.tabs(tab_labels), tab_labels):
         with tab:
             gs = load("general_summary", d0=d0, d1=d1, hours=HOUR_PRESETS[label], plaza=plaza)
             if gs.empty:
-                st.info("Sin funciones en el periodo.")
+                st.info(T["empty_period"])
                 continue
             rows_ = []
             rank = 0
             for r in gs.itertuples():
                 cls = "sum" if r.kind != "title" else ""
                 rank += r.kind == "title"
-                name = {"title": r.title, "rest": "Resto", "total": "Total de programación"}[r.kind]
+                name = {"title": r.title, "rest": T["resumen_rest"], "total": T["resumen_total"]}[r.kind]
 
                 def cell(txt, extra="", cls=cls):
                     return txt, " ".join(x for x in (extra, cls) if x)
@@ -173,29 +154,14 @@ with seccion("resumen"):
                               cell(f"{r.share_cinepolis:.1f} %" if pd.notna(r.share_cinepolis) else "—", "cnp"),
                               cell(f"{int(r.diff_shows):+,d}".replace("-", "−")), cell(pp(r.diff_pp) if r.kind != "total" else ""),
                               cell(f"{r.ratio:.2f}" if pd.notna(r.ratio) else "—")])
-            table(["", "Película", "Cines Cinemex", "Funciones", "% cadena", "Cines Cinépolis", "Funciones", "% cadena",
-                   "Δ funciones", "Δ pp", "Cinépolis / Cinemex"], rows_, num_cols=range(2, 11))
-    leerla("resumen",
-           "Es la tabla del reporte diario, calculada para la Ciudad de México y la semana de cine (jueves a miércoles) del periodo "
-           "elegido; el reporte del cliente es nacional y por semana calendario, así que las cifras no coinciden. Por cadena: cines "
-           "que exhiben la película, funciones y qué parte de la programación de esa cadena representan. Δ funciones es Cinemex menos "
-           "Cinépolis; Δ pp, la diferencia entre participaciones; la última columna, cuántas funciones pone Cinépolis por cada una "
-           "nuestra. \"Resto\" agrupa las demás películas (sus cines no se suman porque se repiten). La pestaña de las 6 PM cuenta "
-           "solo funciones que empiezan de 6:00 P.M. en adelante y no depende del filtro de franja de la barra lateral. Con el día en "
-           "curso solo cuentan funciones que no han empezado.")
+            table(T["resumen_headers"], rows_, num_cols=range(2, 11))
+    leerla("resumen", T["leer_resumen"])
 
 # --- Películas: dumbbell -------------------------------------------------------------------------------
 with seccion("peliculas"):
     show_all = st.session_state.get("all_movies", False)
-    pregunta("¿A qué películas les damos más pantalla que Cinépolis?", concl.get("peliculas", ""),
-             None if show_all else concl.get("peliculas_note"))
-    battle = load("movies_by_chain", d0=d0, d1=d1, limit=60, hours=hours, plaza=plaza)
-    battle["title"] = battle["title"].str.strip()
-    top = battle.head(TOTAL_MOVIES).copy()
-    # Orden por magnitud de la diferencia; una exclusiva pesa lo que su propio share.
-    top["abs_gap"] = top.apply(lambda r: r.share_cinemex if r.shows_cinepolis == 0 else
-                               r.share_cinepolis if r.shows_cinemex == 0 else abs(r.gap_pp), axis=1)
-    top = top.sort_values("abs_gap", ascending=False).head(TOTAL_MOVIES if show_all else SHOWN_MOVIES)
+    pregunta(T["q_peliculas"], concl.get("peliculas", ""), None if show_all else concl.get("peliculas_note"))
+    top = load("movie_gaps", d0=d0, d1=d1, hours=hours, plaza=plaza, limit=TOTAL_MOVIES).head(TOTAL_MOVIES if show_all else SHOWN_MOVIES)
     order = top["title"].tolist()
     long = top.melt(id_vars=["title"], value_vars=["share_cinemex", "share_cinepolis"], var_name="chain", value_name="share")
     long["chain"] = long["chain"].str.replace("share_", "", regex=False)
@@ -204,15 +170,13 @@ with seccion("peliculas"):
     long["cinemas"] = [ti.loc[t, f"cinemas_{c}"] for t, c in zip(long["title"], long["chain"])]
     long = long[long["shows"] > 0]
     long["Cadena"] = long["chain"].map(CHAIN_LABEL)
-    top["delta"] = top.apply(lambda r: "solo Cinépolis" if r.shows_cinemex == 0 else
-                             "solo Cinemex" if r.shows_cinepolis == 0 else pp(r.gap_pp), axis=1)
-    top["gana"] = top.apply(lambda r: "cmx" if (r.shows_cinepolis == 0 or (r.shows_cinemex > 0 and r.gap_pp >= 0)) else "cnp", axis=1)
+    top["delta"] = [EXCLUSIVE_LABEL.get(e) or pp(g) for e, g in zip(top["exclusive"], top["gap_pp"])]
     leyenda([("Cinemex", RED), ("Cinépolis", INK)])
     y_axis = alt.Y("title:N", sort=order, title=None, axis=alt.Axis(labelLimit=300, labelColor=GRAY_DARK, labelFontSize=12.5,
                                                                     ticks=False, domain=False, labelPadding=10))
     color = alt.Color("Cadena:N", scale=alt.Scale(domain=CHAIN_DOMAIN, range=CHAIN_RANGE), legend=None)
     rule = alt.Chart(long).mark_rule(strokeWidth=2, color=NEUTRAL).encode(
-        y=y_axis, x=alt.X("min(share):Q", title="% de las funciones del periodo", axis=alt.Axis(grid=True, tickCount=6)),
+        y=y_axis, x=alt.X("min(share):Q", title=T["peliculas_axis"], axis=alt.Axis(grid=True, tickCount=6)),
         x2="max(share):Q")
     dots = alt.Chart(long).mark_circle(size=120, opacity=1).encode(
         y=y_axis, x="share:Q", color=color,
@@ -221,29 +185,23 @@ with seccion("peliculas"):
                  alt.Tooltip("shows:Q", title="Funciones"), alt.Tooltip("cinemas:Q", title="Cines")])
     delta = alt.Chart(top).mark_text(align="left", fontSize=12.5, fontWeight="bold").encode(
         y=alt.Y("title:N", sort=order, axis=None), x=alt.value(4), text="delta:N",
-        color=alt.Color("gana:N", scale=alt.Scale(domain=["cmx", "cnp"], range=[RED, GRAY_DARK]), legend=None),
+        color=alt.Color("leader:N", scale=alt.Scale(domain=["cinemex", "cinepolis"], range=[RED, GRAY_DARK]), legend=None),
         tooltip=[alt.Tooltip("title:N", title="Película"),
                  alt.Tooltip("share_cinemex:Q", title="% programación Cinemex", format=".1f"),
                  alt.Tooltip("share_cinepolis:Q", title="% programación Cinépolis", format=".1f"),
                  alt.Tooltip("gap_pp:Q", title="Δ pp (Cinemex − Cinépolis)", format="+.1f")]
     ).properties(width=110, height=alt.Step(24))
     chart(alt.hconcat((rule + dots).properties(width=620, height=alt.Step(24)), delta, spacing=6).resolve_scale(y="shared"))
-    st.toggle(f"Ver las {TOTAL_MOVIES} películas", key="all_movies")
-    leerla("peliculas",
-           "Cada fila es una película; los puntos son el porcentaje de la programación que le dedica cada cadena y la "
-           "línea entre ellos, la diferencia (rojo: Cinemex apuesta más). Un solo punto es una exclusiva. Se ordenan por "
-           f"tamaño de la diferencia entre las {TOTAL_MOVIES} películas con más funciones del periodo. Los títulos se emparejan "
-           "aunque cada cadena los escriba distinto (reestrenos, aniversarios, eventos en vivo, variantes de formato como "
-           "Infinity Vision), con reglas explícitas y una tabla de equivalencias revisada a mano.")
+    st.toggle(T["peliculas_all"].format(n=TOTAL_MOVIES), key="all_movies")
+    leerla("peliculas", T["leer_peliculas"].format(total=TOTAL_MOVIES))
 
 # --- Horarios: heatmap ---------------------------------------------------------------------------------
 with seccion("horarios"):
-    pregunta("¿Estamos en el horario donde vive la taquilla?", concl.get("franjas", ""))
+    pregunta(T["q_horarios"], concl.get("franjas", ""))
     hm = load("heatmap_day_slot", d0=d0, d1=d1, hours=hours, plaza=plaza)
     if hm.empty:
-        st.info("Sin funciones en el periodo.")
+        st.info(T["empty_period"])
     else:
-        hm["gap_pp"] = (hm["share_cinemex"].fillna(0) - hm["share_cinepolis"].fillna(0)).round(1)
         hm["Día"] = hm["weekday"].map(lambda i: WEEKDAY_LABEL[int(i)])
         hm["Franja"] = hm["slot"].map(SLOT_SHORT)
         hm["label"] = hm["gap_pp"].map(pp).str.replace(" pp", "")
@@ -265,15 +223,11 @@ with seccion("horarios"):
         text = base.mark_text(fontSize=13.5, fontWeight="bold").encode(
             text="label:N", color=alt.condition(f"abs(datum.gap_pp) > {lim * 0.5}", alt.value(PAPER), alt.value(INK)))
         chart((cells + text).properties(height=alt.Step(46), width=alt.Step(134)), width="content")
-    leerla("horarios",
-           "Cada celda es la diferencia, en puntos porcentuales, entre la parte de parrilla que Cinemex pone en esa franja y "
-           "la que pone Cinépolis. Rojo: ponemos más; oscuro: pone más Cinépolis. Solo aparecen los días del periodo elegido; "
-           "la semana se completa cuando ambas cadenas la publican (miércoles o jueves). La ocupación real por franja se "
-           "añadirá con el muestreo de asientos.")
+    leerla("horarios", T["leer_horarios"])
 
 # --- Formatos e idioma: barras -------------------------------------------------------------------------
 with seccion("formatos"):
-    pregunta("¿Con qué formatos e idiomas competimos?", concl.get("formatos", ""))
+    pregunta(T["q_formatos"], concl.get("formatos", ""))
     mx = load("mix", d0=d0, d1=d1, hours=hours, plaza=plaza)
     if not mx.empty:
         mx["Cadena"] = mx["chain"].map(CHAIN_LABEL)
@@ -284,7 +238,8 @@ with seccion("formatos"):
             sub["Grupo"] = sub["bucket"].map(label_map)
             sub["orden"] = sub["bucket"].map({b: i for i, b in enumerate(buckets)})
             sub["label"] = sub["share"].map(lambda v: f"{v:.0f} %" if v >= 7 else "")
-            sub["light"] = sub["orden"] >= (2 if dim == "format" else 1)   # tonos claros: texto oscuro
+            # Tonos claros: texto oscuro.
+            sub["light"] = sub["orden"] >= (2 if dim == "format" else 1)
             domain = [label_map[b] for b in buckets]
             with col:
                 leyenda(list(zip(domain, palette)), square=True)
@@ -300,42 +255,35 @@ with seccion("formatos"):
                 labels = alt.Chart(sub).mark_text(fontSize=11.5, fontWeight="bold").encode(
                     y=alt.Y("Cadena:N", sort=CHAIN_DOMAIN), x=alt.X("share:Q", stack="normalize", bandPosition=0.5),
                     order=alt.Order("orden:Q"), text="label:N", detail="Grupo:N",
-                    color=alt.condition("datum.light", alt.value("#7A2233"), alt.value(PAPER)))
+                    color=alt.condition("datum.light", alt.value(RED_RAMP_TEXT), alt.value(PAPER)))
                 chart((bars + labels).properties(height=90))
-    leerla("formatos",
-           "Cada barra es el 100 % de las funciones de una cadena en el periodo. Premium / VIP agrupa Premium, Platino, VIP y "
-           "Confort; Gran formato agrupa IMAX, XE, ScreenX, Dolby Atmos y Jumbo. “Español” incluye doblada y en español original.")
+    leerla("formatos", T["leer_formatos"])
 
 # --- Preventa: nuestras funciones en preventa (panel diario del plano público) -----------------------------
 with seccion("preventa"):
-    pregunta("¿Qué preventa se está vendiendo?", concl.get("preventa", ""))
+    pregunta(T["q_preventa"], concl.get("preventa", ""))
     pv = load("presale_compare", plaza=plaza)
     if pv.empty:
-        st.info("Aún no hay lecturas de preventa en esta zona. El pase corre a diario sobre los títulos en preventa de ambas "
-                "cadenas, en las plazas donde se leen planos.")
+        st.info(T["preventa_empty"])
     else:
-        pv["Título"] = pv["title"].map(lambda t: t if len(t) <= 42 else t[:41].rstrip() + "…")
-        long = pd.concat([pv.assign(chain=c, sold_pct=pv[f"sold_pct_{c}"], shows=pv[f"shows_{c}"], pace=pv[f"pace_pct_day_{c}"],
-                                    sold=pv[f"sold_{c}"], seats=pv[f"seats_{c}"])
-                          for c in CHAINS], ignore_index=True)
-        long = long[long["shows"] > 0].copy()
+        long = load("presale_by_chain", plaza=plaza)
+        long["Título"] = long["title"].map(lambda t: t if len(t) <= 42 else t[:41].rstrip() + "…")
         long["Cadena"] = long["chain"].map(CHAIN_LABEL)
-        long["Estreno"] = long["release_date"].map(lambda d: date_es(d, with_year=False) if isinstance(d, str) else "—")
-        long["Vendido"] = long["sold_pct"].map(lambda v: f"{v:.0f} %")
-        long["Butacas"] = long.apply(lambda r: f"{int(r.sold):,} de {int(r.seats):,}", axis=1)
-        long["Ritmo"] = long["pace"].map(lambda v: f"{v:+.1f} puntos del aforo al día".replace("-", "−") if pd.notna(v)
-                                         else "se mide desde la segunda lectura")
+        long["Estreno"] = long["release_date"].map(lambda d: date_es(d, with_year=False) if isinstance(d, str) else CT["presale_no_release"])
+        long["Vendido"] = long["sold_pct"].map(lambda v: CT["percent"].format(value=f"{v:.0f}"))
+        long["Butacas"] = long.apply(lambda r: CT["presale_seats_value"].format(sold=f"{int(r.sold):,}", seats=f"{int(r.seats):,}"), axis=1)
+        long["Ritmo"] = long["pace_pct_day"].map(lambda v: CT["presale_pace_value"].format(pace=f"{v:+.1f}".replace("-", "−")) if pd.notna(v)
+                                         else CT["presale_pace_pending"])
         other = {"cinemex": CHAIN_LABEL["cinepolis"], "cinepolis": CHAIN_LABEL["cinemex"]}
-        long["En la otra cadena"] = long.apply(
-            lambda r: "también en preventa" if r.status == "ambas" else
-            f"{other[r.chain]} no lo exhibe" if r.status.startswith("exclusiva") else
-            f"{other[r.chain]} lo exhibe, fuera de su preventa", axis=1)
-        long["Etiqueta"] = long.apply(lambda r: r.Vendido if r.status == "ambas" else
-                                      f"{r.Vendido} · {'exclusiva' if r.status.startswith('exclusiva') else 'la otra lo exhibe'}", axis=1)
-        tooltip = [alt.Tooltip("title:N", title="Título"), alt.Tooltip("Cadena:N"), alt.Tooltip("Estreno:N"),
-                   alt.Tooltip("shows:Q", title="Funciones leídas"), alt.Tooltip("Butacas:N", title="Butacas vendidas"),
-                   alt.Tooltip("Vendido:N", title="% del aforo vendido"), alt.Tooltip("Ritmo:N"), alt.Tooltip("En la otra cadena:N")]
-        x = alt.X("sold_pct:Q", title="% de las butacas del panel ya vendidas", scale=alt.Scale(domain=[0, 100]),
+        long["En la otra cadena"] = [PRESALE_OTHER_LABEL[k].format(other=other[c]) for k, c in zip(long["in_other_chain"], long["chain"])]
+        long["Etiqueta"] = [CT["presale_tagged"].format(sold=v, tag=PRESALE_TAG[k]) if k in PRESALE_TAG else v
+                            for v, k in zip(long["Vendido"], long["in_other_chain"])]
+        tooltip = [alt.Tooltip("title:N", title=CT["presale_title"]), alt.Tooltip("Cadena:N", title=CT["chain"]),
+                   alt.Tooltip("Estreno:N", title=CT["presale_release"]),
+                   alt.Tooltip("shows:Q", title=CT["presale_shows"]), alt.Tooltip("Butacas:N", title=CT["presale_seats"]),
+                   alt.Tooltip("Vendido:N", title=CT["presale_sold"]), alt.Tooltip("Ritmo:N", title=CT["presale_pace"]),
+                   alt.Tooltip("En la otra cadena:N", title=CT["presale_other"])]
+        x = alt.X("sold_pct:Q", title=CT["presale_axis"], scale=alt.Scale(domain=[0, 100]),
                   axis=alt.Axis(grid=True, values=[0, 25, 50, 75, 100], labelExpr="datum.value + ' %'"))
         color = alt.Color("Cadena:N", scale=alt.Scale(domain=CHAIN_DOMAIN, range=CHAIN_RANGE), legend=None)
 
@@ -353,102 +301,90 @@ with seccion("preventa"):
         leyenda([("Cinemex", RED), ("Cinépolis", INK)])
         both = long[long["status"] == "ambas"]
         if not both.empty:
-            md('<p class="nota"><b>En preventa en ambas cadenas</b>: la comparación directa.</p>')
+            md(f'<p class="nota">{T["preventa_both"]}</p>')
             presale_bars(both, paired=True)
         single = long[long["status"] != "ambas"]
         if not single.empty:
-            md('<p class="nota"><b>En preventa en una sola cadena</b>: “exclusiva” si la otra no lo tiene en su cartelera; '
-               '“la otra lo exhibe” si lo programa sin anunciarlo como preventa.</p>')
+            md(f'<p class="nota">{T["preventa_single"]}</p>')
             presale_bars(single, paired=False)
-        pick = st.selectbox("Curva de venta de", pv["title"].tolist(), key="preventa_titulo")
+        pick = st.selectbox(T["curve_pick"], pv["title"].tolist(), key="preventa_titulo")
         row = pv.set_index("title").loc[pick]
         curves = [load("presale_curve", title_norm=row[f"title_norm_{c}"], chain=c, plaza=plaza).assign(Cadena=CHAIN_LABEL[c])
                   for c in CHAINS if isinstance(row[f"title_norm_{c}"], str)]
         curve = pd.concat(curves, ignore_index=True) if curves else pd.DataFrame()
         if len(curve) > 1:
             line = alt.Chart(curve).mark_line(point=alt.OverlayMarkDef(size=40)).encode(
-                x=alt.X("days_to_start:Q", title="Días antes de la función", scale=alt.Scale(reverse=True)),
-                y=alt.Y("sold_pct:Q", title="% de las butacas vendidas", scale=alt.Scale(domain=[0, 100]),
+                x=alt.X("days_to_start:Q", title=CT["curve_x"], scale=alt.Scale(reverse=True)),
+                y=alt.Y("sold_pct:Q", title=CT["curve_y"], scale=alt.Scale(domain=[0, 100]),
                         axis=alt.Axis(values=[0, 25, 50, 75, 100], labelExpr="datum.value + ' %'")),
                 color=color,
-                tooltip=[alt.Tooltip("Cadena:N"), alt.Tooltip("days_to_start:Q", title="Días antes"),
-                         alt.Tooltip("readings:Q", title="Lecturas"), alt.Tooltip("sold_pct:Q", title="% vendido", format=".1f")])
+                tooltip=[alt.Tooltip("Cadena:N", title=CT["chain"]), alt.Tooltip("days_to_start:Q", title=CT["curve_days"]),
+                         alt.Tooltip("readings:Q", title=CT["curve_readings"]), alt.Tooltip("sold_pct:Q", title=CT["curve_sold"], format=".1f")])
             chart(line.properties(height=220))
         else:
-            st.caption("La curva aparece cuando el título tiene lecturas a distintas distancias de su función.")
-    leerla("preventa",
-           "Son los títulos en preventa de cada cadena: la página de preventas de Cinemex y la de \"Próximamente\" de Cinépolis, "
-           "hasta su estreno (en un evento de una noche, hasta que empieza). Arriba, los títulos que las dos cadenas tienen en "
-           "preventa; abajo, los de una sola, marcados como exclusiva cuando la otra cadena no los tiene en su cartelera de la "
-           "zona. Por cadena, cada título tiene un panel fijo de hasta 30 funciones repartidas entre cines y "
-           "cada día se lee su plano de asientos. La barra es el % de las butacas de ese panel que ya se vendieron, así una "
-           "sala IMAX no pesa más que una tradicional y las dos cadenas se comparan aunque tengan salas de distinto tamaño. "
-           "Desde la segunda lectura se mide el ritmo: cuántos puntos de su aforo vende cada día (en el detalle al pasar el "
-           "cursor). La curva junta todas las lecturas del título según cuántos días faltaban para la función. Las funciones "
-           "de Cinépolis cuyo plano responde \"ya no está disponible\" antes de empezar no entran: coinciden con funciones "
-           "casi agotadas, así que su % vendido real puede ser algo mayor.")
+            st.caption(T["curve_pending"])
+    leerla("preventa", T["leer_preventa"])
 
 # ============ CAPA 3 ============
-capa(3, "Detalle y apéndice",
-     "Todo colapsado con una línea de resumen visible: quien lo necesita lo abre, quien no, no paga el costo visual.")
+capa(3, T["layer3"], T["layer3_desc"])
 
 # --- Indicadores del periodo (el antiguo KPI strip) --------------------------------------------------
 offered = load("offered_seats", d0=d0, d1=d1, hours=hours, plaza=plaza).set_index("chain")
-cc = load("concentration", d0=d0, d1=d1, hours=hours, plaza=plaza).set_index("chain") if True else None
+cc = load("concentration", d0=d0, d1=d1, hours=hours, plaza=plaza).set_index("chain")
 cm = offered.loc["cinemex"] if "cinemex" in offered.index else None
 cp = offered.loc["cinepolis"] if "cinepolis" in offered.index else None
-resumen = f"{us.shows_per_cinema:.1f} vs {them.shows_per_cinema:.1f} funciones por cine y día"
-if cm is not None and cp is not None and has(cm.seats_offered) and has(cp.seats_offered):
-    resumen += f" · {int(cm.seats_offered):,} vs {int(cp.seats_offered):,} butacas ofertadas"
-with apendice("kpis", "Indicadores del periodo", resumen):
+with_seats = cm is not None and cp is not None and has(cm.seats_offered) and has(cp.seats_offered)
+resumen = T["kpis_summary"].format(us=f"{us.shows_per_cinema:.1f}", them=f"{them.shows_per_cinema:.1f}")
+if with_seats:
+    resumen += T["kpis_summary_seats"].format(us=f"{int(cm.seats_offered):,}", them=f"{int(cp.seats_offered):,}")
+KPI = T["kpi"]
+with apendice("kpis", T["kpis_title"], resumen):
     weekend = bool(us.weekend_shows and them.weekend_shows)
     rows = [
-        ["Funciones por cine y día", n(us.shows_per_cinema, 1), n(them.shows_per_cinema, 1),
+        [KPI["shows_per_cinema"], n(us.shows_per_cinema, 1), n(them.shows_per_cinema, 1),
          f"{100.0 * (us.shows_per_cinema - them.shows_per_cinema) / them.shows_per_cinema:+.1f} %".replace("-", "−")],
-        ["Funciones publicadas", n(us.shows), n(them.shows), ""],
-        ["Cines con cartelera", n(us.cinemas), n(them.cinemas), ""],
-        *([["Share de horario prime (vie–dom desde 6 PM)", f"{us.pct_prime:.1f} %", f"{them.pct_prime:.1f} %", pp(us.pct_prime - them.pct_prime)]
+        [KPI["shows"], n(us.shows), n(them.shows), ""],
+        [KPI["cinemas"], n(us.cinemas), n(them.cinemas), ""],
+        *([[KPI["prime"], f"{us.pct_prime:.1f} %", f"{them.pct_prime:.1f} %", pp(us.pct_prime - them.pct_prime)]
            if weekend else
-           ["Share de 6 PM en adelante", f"{us.pct_evening:.1f} %", f"{them.pct_evening:.1f} %", pp(us.pct_evening - them.pct_evening)]]
+           [KPI["evening"], f"{us.pct_evening:.1f} %", f"{them.pct_evening:.1f} %", pp(us.pct_evening - them.pct_evening)]]
           if full_day else []),
-        ["Share de funciones subtituladas", f"{us.pct_subtitled:.1f} %", f"{them.pct_subtitled:.1f} %", pp(us.pct_subtitled - them.pct_subtitled)],
-        ["Títulos distintos en cartelera", n(us.movies), n(them.movies), f"{int(us.movies - them.movies):+d}".replace("-", "−")],
+        [KPI["subtitled"], f"{us.pct_subtitled:.1f} %", f"{them.pct_subtitled:.1f} %", pp(us.pct_subtitled - them.pct_subtitled)],
+        [KPI["movies"], n(us.movies), n(them.movies), f"{int(us.movies - them.movies):+d}".replace("-", "−")],
     ]
-    if cm is not None and cp is not None and has(cm.seats_offered) and has(cp.seats_offered):
-        rows += [["Butacas ofertadas", n(cm.seats_offered), n(cp.seats_offered),
+    if with_seats:
+        rows += [[KPI["seats_offered"], n(cm.seats_offered), n(cp.seats_offered),
                   f"{100.0 * (cm.seats_offered - cp.seats_offered) / cp.seats_offered:+.1f} %".replace("-", "−")],
-                 ["Butacas por función", n(cm.avg_seats_per_show), n(cp.avg_seats_per_show), ""]]
-    if cc is not None and "cinemex" in cc.index and "cinepolis" in cc.index:
-        rows += [["Peso de las 3 películas más programadas", f"{cc.loc['cinemex'].top3_pct:.1f} %", f"{cc.loc['cinepolis'].top3_pct:.1f} %",
+                 [KPI["seats_per_show"], n(cm.avg_seats_per_show), n(cp.avg_seats_per_show), ""]]
+    if "cinemex" in cc.index and "cinepolis" in cc.index:
+        rows += [[KPI["top3"], f"{cc.loc['cinemex'].top3_pct:.1f} %", f"{cc.loc['cinepolis'].top3_pct:.1f} %",
                   pp(cc.loc["cinemex"].top3_pct - cc.loc["cinepolis"].top3_pct)],
-                 ["Índice de concentración (HHI)", n(cc.loc["cinemex"].hhi), n(cc.loc["cinepolis"].hhi), ""],
-                 ["Títulos distintos por complejo", n(cc.loc["cinemex"].titles_per_cinema, 1), n(cc.loc["cinepolis"].titles_per_cinema, 1), ""]]
-    table(["Indicador", "Cinemex", "Cinépolis", "Δ"], [[r[0], (r[1], "cmx"), (r[2], "cnp"), r[3]] for r in rows], num_cols=(1, 2, 3))
-    md('<p class="nota">Las diferencias entre porcentajes van en puntos porcentuales; las de cantidades, en % relativo. '
-       'Butacas ofertadas = aforo de la sala por cada función del periodo (máximo de boletos vendibles), no butacas físicas. '
-       'HHI: suma de los cuadrados del share de cada título; por debajo de 1,500 la parrilla está repartida, por encima de 2,500 concentrada.</p>')
+                 [KPI["hhi"], n(cc.loc["cinemex"].hhi), n(cc.loc["cinepolis"].hhi), ""],
+                 [KPI["titles_per_cinema"], n(cc.loc["cinemex"].titles_per_cinema, 1), n(cc.loc["cinepolis"].titles_per_cinema, 1), ""]]
+    table(T["kpis_headers"], [[r[0], (r[1], "cmx"), (r[2], "cnp"), r[3]] for r in rows], num_cols=(1, 2, 3))
+    md(f'<p class="nota">{T["kpis_note"]}</p>')
 
 # --- Cambios en la cartelera publicada -----------------------------------------------------------------
 # Los cambios del competidor valen como comportamiento semanal, no como alerta: Cinemex programa por semana de cine.
-CARTELERA_KINDS = [k for k in KINDS if k != "availability"]   # la ocupación es una medida, no un cambio de cartelera
+# La ocupación es una medida, no un cambio de cartelera.
+CARTELERA_KINDS = [k for k in KINDS if k != "availability"]
 by_kind = load("events_by_kind", since_hours=24 * 7, plaza=plaza)
 ev = {(r.chain, r.kind): int(r.n) for r in by_kind.itertuples()} if not by_kind.empty else {}
 g = lambda c, k: ev.get((c, k), 0)  # noqa: E731
-resumen = (f"7 días: {g('cinemex', 'removed'):,} canceladas nuestras vs {g('cinepolis', 'removed'):,} de Cinépolis · "
-           f"{g('cinemex', 'moved'):,} vs {g('cinepolis', 'moved'):,} cambios de horario o sala") if ev else "Sin cambios en los últimos 7 días"
-with apendice("cambios", "¿Cómo ha movido Cinépolis su cartelera esta semana?", resumen):
+resumen = (T["cambios_summary"].format(us_removed=f"{g('cinemex', 'removed'):,}", them_removed=f"{g('cinepolis', 'removed'):,}",
+                                       us_moved=f"{g('cinemex', 'moved'):,}", them_moved=f"{g('cinepolis', 'moved'):,}")
+           if ev else T["cambios_none"])
+with apendice("cambios", T["cambios_title"], resumen):
     if ev:
-        table(["Cadena", "Nuevas", "Canceladas", "Horario/sala", "Idioma/formato"],
+        table(T["cambios_headers"],
               [[(CHAIN_LABEL[c], "cmx" if c == "cinemex" else "cnp")] + [f"{g(c, k):,}" for k in CARTELERA_KINDS] for c in CHAINS],
               num_cols=(1, 2, 3, 4))
-    md('<p class="nota">Últimos 7 días. ' + " ".join(f"<b>{KIND_LABEL[k]}.</b> {KIND_HELP[k]}" for k in CARTELERA_KINDS) +
-       " Cuando una cadena publica la semana siguiente (miércoles o jueves) aparecen miles de funciones nuevas de golpe; "
-       "eso es publicación, no cambios sobre lo ya anunciado. Se lee como comportamiento semanal del competidor (cuánto cancela, "
-       "de qué títulos, cuándo publica), no como alerta: la programación se decide por semana de cine.</p>")
-    kinds = st.multiselect("Registro por función", CARTELERA_KINDS, default=CARTELERA_KINDS, format_func=lambda k: KIND_LABEL[k])
+    md(f'<p class="nota">{T["cambios_note_lead"]} ' + " ".join(f"<b>{KIND_LABEL[k]}.</b> {KIND_HELP[k]}" for k in CARTELERA_KINDS) +
+       f' {T["cambios_note_tail"]}</p>')
+    kinds = st.multiselect(T["cambios_log"], CARTELERA_KINDS, default=CARTELERA_KINDS, format_func=lambda k: KIND_LABEL[k])
     events = load("recent_events", limit=300, kinds=kinds or None, plaza=plaza)
     if events.empty:
-        st.info("Sin cambios de ese tipo.")
+        st.info(T["cambios_empty"])
     else:
         st.dataframe(pretty(events.drop(columns=["show_id", "date"])), width="stretch", hide_index=True, height=360)
 
@@ -459,13 +395,13 @@ if not pr.empty:
 
     def par(b, d):
         a, c = P.get(("cinemex", b, d)), P.get(("cinepolis", b, d))
-        return f"{FORMAT_LABEL[b]} {DAY_TYPE_LABEL[d].lower()}: ${a:,.0f} vs ${c:,.0f}" if a and c else None
+        return (T["precios_pair"].format(format=FORMAT_LABEL[b], day=DAY_TYPE_LABEL[d].lower(), us=f"{a:,.0f}", them=f"{c:,.0f}")
+                if a and c else None)
     bits = [x for x in (par("traditional", "promo"), par("premium", "weekend")) if x]
-    ratios = [P[("cinepolis", b, d)] / P[("cinemex", b, d)] - 1 for b in ("traditional", "premium", "large") for d in ("weekday", "promo", "weekend")
-              if ("cinemex", b, d) in P and ("cinepolis", b, d) in P and P[("cinemex", b, d)]]
-    if ratios and min(ratios) > 0:
-        bits.insert(0, f"Cinépolis cobra {100 * min(ratios):.0f}–{100 * max(ratios):.0f} % más en tradicional, premium y gran formato")
-    with apendice("precios", "Precio del boleto por formato y tipo de día", " · ".join(bits)):
+    ps = load_raw("price_summary", plaza=plaza)
+    if ps["markup_min_pct"] is not None:
+        bits.insert(0, T["precios_markup"].format(min=f"{ps['markup_min_pct']:.0f}", max=f"{ps['markup_max_pct']:.0f}"))
+    with apendice("precios", T["precios_title"], " · ".join(bits)):
         rows = []
         for b in FORMAT_BUCKETS:
             for d in ("weekday", "promo", "weekend"):
@@ -474,12 +410,9 @@ if not pr.empty:
                     continue
                 delta = f"{100.0 * (c - a) / a:+.0f} %".replace("-", "−") if a and c else ""
                 rows.append([FORMAT_LABEL[b], DAY_TYPE_LABEL[d], (f"${a:,.0f}" if a else "—", "cmx"), (f"${c:,.0f}" if c else "—", "cnp"), delta])
-        table(["Formato", "Tipo de día", "Cinemex", "Cinépolis", "Δ Cinépolis vs Cinemex"], rows, num_cols=(2, 3, 4))
-        n_cin = pr.groupby("chain").cinemas.max()
-        md('<p class="nota">Mediana del boleto de adulto regular entre los cines muestreados ('
-           + ", ".join(f"{CHAIN_LABEL[c]}: {int(v)} cines" for c, v in n_cin.items())
-           + "). Una función por cine, formato y tipo de día, renovada cada semana. Martes y miércoles son los días de precio "
-             "reducido en ambas cadenas. Precios en pesos, sin cargo por servicio. Se excluyen eventos y matinés.</p>")
+        table(T["precios_headers"], rows, num_cols=(2, 3, 4))
+        cinemas = ", ".join(T["precios_cinemas"].format(chain=CHAIN_LABEL[c], n=int(v)) for c, v in sorted(ps["cinemas"].items()))
+        md(f'<p class="nota">{T["precios_note"].format(cinemas=cinemas)}</p>')
         st.dataframe(pretty(pr[["chain", "format_bucket", "day_type", "samples", "cinemas", "median_price", "min_price", "max_price"]]),
                      width="stretch", hide_index=True)
 
@@ -487,141 +420,132 @@ if not pr.empty:
 cap = load("capacity_summary", plaza=plaza)
 if not cap.empty:
     C = cap.set_index("chain")
-    resumen = " · ".join(f"{CHAIN_LABEL[c]}: {int(r.screens)} salas, {int(r.seats):,} butacas, sala típica de {int(r.avg_seats)}"
+    resumen = " · ".join(T["butacas_summary"].format(chain=CHAIN_LABEL[c], screens=int(r.screens), seats=f"{int(r.seats):,}",
+                                                     avg=int(r.avg_seats))
                          for c, r in C.iterrows())
-    with apendice("butacas", "Salas y butacas por complejo", resumen):
-        table(["Cadena", "Complejos", "Salas", "Butacas", "Sala típica", "Más chica", "Más grande", "Salas < 80 (VIP)"],
+    with apendice("butacas", T["butacas_title"], resumen):
+        table(T["butacas_headers"],
               [[(CHAIN_LABEL[c], "cmx" if c == "cinemex" else "cnp"), n(r.cinemas), n(r.screens), n(r.seats), n(r.avg_seats),
                 n(r.min_seats), n(r.max_seats), n(r.small)] for c, r in C.iterrows()], num_cols=range(1, 8))
-        md('<p class="nota">Aforo medido una vez por sala en el plano de asientos de la función más próxima (se excluyen asientos '
-           'fuera de servicio). Butacas físicas, no ofertadas.</p>')
-        chain_sel = st.radio("Cadena", CHAINS, format_func=lambda c: CHAIN_LABEL[c], horizontal=True, key="cap_chain")
+        md(f'<p class="nota">{T["butacas_note"]}</p>')
+        chain_sel = st.radio(T["chain"], CHAINS, format_func=lambda c: CHAIN_LABEL[c], horizontal=True, key="cap_chain")
         c1, c2 = st.columns([3, 2])
         bt = load("offered_by_title", d0=d0, d1=d1, limit=TOTAL_MOVIES, chain=chain_sel, hours=hours, plaza=plaza)
         with c1:
-            st.markdown(f"**Funciones frente a butacas por película ({CHAIN_LABEL[chain_sel]})**")
+            st.markdown(f"**{SEATS_CHART_TEXT['title'].format(chain=CHAIN_LABEL[chain_sel])}**")
             if bt.empty:
-                st.info("Sin funciones con aforo conocido en el periodo.")
+                st.info(T["butacas_empty"])
             else:
                 bt["title"] = bt["title"].str.strip()
                 longb = bt.melt(id_vars=["title", "shows", "seats", "avg_seats"], value_vars=["share_shows", "share_seats"],
                                 var_name="medida", value_name="share")
-                longb["Medida"] = longb["medida"].map({"share_shows": "% de funciones", "share_seats": "% de butacas"})
+                longb["Medida"] = longb["medida"].map(COLUMN_LABEL)
+                measures = [COLUMN_LABEL["share_shows"], COLUMN_LABEL["share_seats"]]
                 orderb = bt["title"].tolist()
                 yb = alt.Y("title:N", sort=orderb, title=None, axis=alt.Axis(labelLimit=260, labelColor=GRAY_DARK, ticks=False, domain=False))
                 ruleb = alt.Chart(longb).mark_rule(strokeWidth=2, color=NEUTRAL).encode(
-                    y=yb, x=alt.X("min(share):Q", title=f"% del total de {CHAIN_LABEL[chain_sel]} en el periodo"), x2="max(share):Q")
+                    y=yb, x=alt.X("min(share):Q", title=SEATS_CHART_TEXT["axis"].format(chain=CHAIN_LABEL[chain_sel])), x2="max(share):Q")
                 dotsb = alt.Chart(longb).mark_point(size=110, filled=True, opacity=1).encode(
                     y=yb, x="share:Q",
-                    shape=alt.Shape("Medida:N", scale=alt.Scale(domain=["% de funciones", "% de butacas"], range=["circle", "square"]),
+                    shape=alt.Shape("Medida:N", scale=alt.Scale(domain=measures, range=["circle", "square"]),
                                     legend=alt.Legend(orient="top", title=None)),
-                    color=alt.Color("Medida:N", scale=alt.Scale(domain=["% de funciones", "% de butacas"], range=[NEUTRAL, CHAIN_COLOR[chain_sel]]),
+                    color=alt.Color("Medida:N", scale=alt.Scale(domain=measures, range=[NEUTRAL, CHAIN_COLOR[chain_sel]]),
                                     legend=alt.Legend(orient="top", title=None)),
-                    tooltip=[alt.Tooltip("title:N", title="Película"), alt.Tooltip("Medida:N"),
-                             alt.Tooltip("share:Q", title="%", format=".1f"), alt.Tooltip("shows:Q", title="Funciones"),
-                             alt.Tooltip("seats:Q", title="Butacas", format=","), alt.Tooltip("avg_seats:Q", title="Butacas por sala")])
+                    tooltip=[alt.Tooltip("title:N", title=COLUMN_LABEL["title"]), alt.Tooltip("Medida:N", title=SEATS_CHART_TEXT["measure"]),
+                             alt.Tooltip("share:Q", title=SEATS_CHART_TEXT["share"], format=".1f"), alt.Tooltip("shows:Q", title=COLUMN_LABEL["shows"]),
+                             alt.Tooltip("seats:Q", title=COLUMN_LABEL["seats"], format=","), alt.Tooltip("avg_seats:Q", title=COLUMN_LABEL["avg_seats"])])
                 chart((ruleb + dotsb).properties(height=alt.Step(24)))
-                md('<p class="nota">El círculo claro es la parte de las funciones de la cadena que ocupa la película; el cuadro, la parte de '
-                   'sus butacas ofertadas. Cuando el cuadro queda a la derecha, la película va en salas más grandes que el promedio.</p>')
+                md(f'<p class="nota">{T["butacas_chart_note"]}</p>')
         with c2:
-            st.markdown("**Salas y butacas por complejo**")
+            st.markdown(f"**{T['butacas_title']}**")
             bc = load("capacity_by_cinema", chain=chain_sel, plaza=plaza)
             st.dataframe(pretty(bc[["cinema_name", "screens", "seats", "avg_seats", "min_seats", "max_seats"]]),
                          width="stretch", hide_index=True, height=420)
 
 # --- Historial de una función y cartelera tal como estaba ------------------------------------------------
-with apendice("historia", "Historial de una función y cartelera tal como estaba",
-              f"elige cine, fecha y sala · historia desde el {date_es(FIRST_SNAPSHOT.isoformat())}"):
-    md('<p class="nota" style="margin-top:0">Qué le pasó a cada función (cuándo se publicó, cambios de hora, sala, idioma o formato, '
-       'cancelación) y cómo estaba la cartelera de esa sala en cualquier captura anterior. La reconstrucción es exacta desde el 9 de '
-       'septiembre de 2026; antes, las funciones ya concluidas no dejaban rastro.</p>')
+with apendice("historia", T["historia_title"], T["historia_summary"].format(date=date_es(FIRST_SNAPSHOT.isoformat()))):
+    md(f'<p class="nota" style="margin-top:0">{T["historia_lead"]}</p>')
     h1, h2, h3, h4 = st.columns([1, 2, 1.4, 1])
-    chain_h = h1.selectbox("Cadena", CHAINS, format_func=lambda c: CHAIN_LABEL[c], key="h_chain")
+    chain_h = h1.selectbox(T["chain"], CHAINS, format_func=lambda c: CHAIN_LABEL[c], key="h_chain")
     cins = load("cinemas", chain=chain_h, plaza=plaza)
-    cine_h = h2.selectbox("Cine", cins.cinema_id.tolist(), format_func=dict(zip(cins.cinema_id, cins.cinema_name)).get, key="h_cine")
+    cine_h = h2.selectbox(T["cinema"], cins.cinema_id.tolist(), format_func=dict(zip(cins.cinema_id, cins.cinema_name)).get, key="h_cine")
     dates_h = load("dates_known", chain=chain_h, cinema_id=cine_h).date.tolist()
-    fecha_h = h3.selectbox("Fecha", dates_h, index=dates_h.index(today_s) if today_s in dates_h else max(len(dates_h) - 1, 0),
+    fecha_h = h3.selectbox(T["date"], dates_h, index=dates_h.index(today_s) if today_s in dates_h else max(len(dates_h) - 1, 0),
                            format_func=lambda d: date_es(d, with_year=False), key="h_date")
     fo = load("functions_on", chain=chain_h, cinema_id=cine_h, date=fecha_h)
     if fo.empty:
-        st.info("Sin funciones conocidas para ese cine y fecha.")
+        st.info(T["no_functions"])
     else:
         screens = sorted(fo.screen.dropna().unique(), key=lambda x: (len(str(x)), str(x)))
-        sala_h = h4.selectbox("Sala", ["Todas"] + list(screens), key="h_screen")
-        sub = fo if sala_h == "Todas" else fo[fo.screen == sala_h]
-        st.markdown(f"**Funciones conocidas · {len(sub)}** ({int((sub.status == 'current').sum())} vigentes, "
-                    f"{int((sub.status == 'removed').sum())} canceladas, {int((sub.status == 'expired').sum())} concluidas)")
+        sala_h = h4.selectbox(T["screen"], [T["all_screens"]] + list(screens), key="h_screen")
+        sub = fo if sala_h == T["all_screens"] else fo[fo.screen == sala_h]
+        status = T["functions_status"].format(current=int((sub.status == "current").sum()), removed=int((sub.status == "removed").sum()),
+                                              expired=int((sub.status == "expired").sum()))
+        st.markdown(f"**{T['functions_count'].format(n=len(sub))}** {status}")
         st.dataframe(pretty(sub[["datetime_local", "screen", "movie_title", "language", "format", "status", "first_seen"]]),
                      width="stretch", hide_index=True, height=min(400, 38 * (len(sub) + 1)))
-        opciones = {r.show_id: f"{time_12(r.datetime_local[11:16])} · sala {r.screen} · {r.movie_title}" for r in sub.itertuples()}
-        show_h = st.selectbox("Función", list(opciones), format_func=opciones.get, key="h_show")
+        opciones = {r.show_id: T["function_option"].format(time=time_12(r.datetime_local[11:16]), screen=r.screen, title=r.movie_title)
+                    for r in sub.itertuples()}
+        show_h = st.selectbox(T["function"], list(opciones), format_func=opciones.get, key="h_show")
         tl = load_raw("showtime_timeline", chain=chain_h, show_id=show_h, date=fecha_h)
-        st.markdown("**Línea de tiempo de la función**")
+        st.markdown(f"**{T['timeline']}**")
         if not tl:
-            st.info("Sin eventos registrados para esta función.")
+            st.info(T["timeline_empty"])
         else:
             def cambio(ch):
                 fmt = (lambda v: time_12(v[11:16]) if isinstance(v, str) and len(v) >= 16 else (v or "—")) if ch["field"] == "datetime_local" else (lambda v: v or "—")
-                return f"{FIELD_LABEL.get(ch['field'], ch['field'])}: {fmt(ch['before'])} → {fmt(ch['after'])}"
-            table(["Cuándo", "Qué pasó", "Detalle"],
+                return T["timeline_change"].format(field=FIELD_LABEL.get(ch["field"], ch["field"]), before=fmt(ch["before"]), after=fmt(ch["after"]))
+            table(T["timeline_headers"],
                   [[local_time(e["detected_at"]), KIND_LABEL.get(e["kind"], e["kind"]), "; ".join(cambio(ch) for ch in e["changes"])] for e in tl])
         first = tl[0]["detected_at"] if tl else FIRST_SNAPSHOT.isoformat()
         snaps = load("snapshot_times", chain=chain_h, since=first, until=datetime.now(ZoneInfo("UTC")).isoformat(timespec="seconds"))
-        st.markdown("**Cartelera de la sala tal como estaba en una captura**")
+        st.markdown(f"**{T['board_title']}**")
         if len(snaps) < 2:
-            st.info("Hace falta más de una captura desde que se publicó la función para reconstruir la cartelera.")
+            st.info(T["board_few"])
         else:
             opts = snaps.taken_at.tolist()
-            as_of = st.select_slider("Captura", options=opts, value=opts[-1], format_func=local_time, key="h_asof")
+            as_of = st.select_slider(T["board_capture"], options=opts, value=opts[-1], format_func=local_time, key="h_asof")
             board = load("board_as_of", chain=chain_h, cinema_id=cine_h, date=fecha_h, as_of=as_of)
-            if sala_h != "Todas":
+            if sala_h != T["all_screens"]:
                 board = board[board.screen == sala_h]
             if board.empty:
-                st.info("En esa captura no había funciones publicadas para esta sala y fecha.")
+                st.info(T["board_empty"])
             else:
                 board["changes"] = board["changed_fields"].map(lambda fs: ", ".join(FIELD_LABEL.get(f, f) for f in fs) if isinstance(fs, list) else "")
                 st.dataframe(pretty(board[["datetime_local", "screen", "movie_title", "language", "format", "availability", "vs_now", "changes"]]),
                              width="stretch", hide_index=True, height=min(400, 38 * (len(board) + 1)))
-                md('<p class="nota">"Frente a hoy" compara cada función con la cartelera vigente: igual, cambió después (y en qué) o ya no '
-                   'está publicada. Mueve el control para ver la cartelera en capturas anteriores.</p>')
+                md(f'<p class="nota">{T["board_note"]}</p>')
 
 # --- Ocupación muestreada -----------------------------------------------------------------------------
 occ = load("occupancy_summary", plaza=plaza)
 cal = load("semaphore_calibration", chain="cinemex")
-n_samples = int(occ.samples.sum()) if not occ.empty else 0
-weighted = 100.0 * occ.sold.sum() / occ.seats.sum() if n_samples and occ.seats.sum() else 0.0
-levels = int((occ.availability != "(sin color)").sum()) if n_samples else 0
-resumen = (f"{n_samples} funciones medidas de Cinépolis · {weighted:.1f} % de butacas vendidas en promedio · "
-           + (f"{levels} niveles de color para calibrar" if levels else "aún sin semáforos de color para calibrar")
-           + (" · semáforo de Cinemex calibrado" if not cal.empty else " · semáforo de Cinemex sin calibrar"))
-with apendice("ocupacion", "Ocupación medida tras el inicio de cada función", resumen):
+occ_total = load_raw("occupancy_total", plaza=plaza)[0]
+n_samples, weighted, levels = occ_total["samples"], occ_total["sold_pct"], occ_total["levels"]
+resumen = T["ocupacion_summary"].format(
+    n=n_samples, pct=f"{weighted:.1f}",
+    levels=T["ocupacion_levels"].format(levels=levels) if levels else T["ocupacion_no_levels"],
+    calibrated=T["ocupacion_calibrated"] if not cal.empty else T["ocupacion_uncalibrated"])
+with apendice("ocupacion", T["ocupacion_title"], resumen):
     if n_samples == 0:
-        st.info("Aún no hay medidas. El pase corre cada hora y lee el plano de las funciones de Cinépolis que empezaron hace 15 a 75 minutos.")
+        st.info(T["ocupacion_empty"])
     else:
-        st.markdown(f"**Cinépolis.** {n_samples} funciones medidas después de empezar; {weighted:.1f} % de las butacas vendidas. Es la "
-                    "asistencia final de cada función y la base del modelo de consumo. La tabla cruza el color del semáforo del sitio con "
-                    "el porcentaje real vendido, para calibrar qué significa cada color.")
+        st.markdown(T["ocupacion_cinepolis"].format(n=n_samples, pct=f"{weighted:.1f}"))
         st.dataframe(pretty(occ[["availability", "samples", "avg_sold_pct", "min_sold_pct", "max_sold_pct"]]), width="stretch", hide_index=True)
     if cal.empty:
-        st.markdown("**Cinemex.** Publica alta, media o baja disponibilidad por función. Al calibrar cada nivel contra planos reales "
-                    "(una pasada única, por la tarde-noche, cuando existen los tres niveles) el semáforo se convierte en % vendido "
-                    "estimado para todas sus funciones.")
+        st.markdown(T["ocupacion_cinemex_pending"])
     else:
         est = load("estimated_occupancy", d0=d0, d1=d1, chain="cinemex", hours=hours, plaza=plaza)
         if not est.empty and has(est.iloc[0].seats_occupied_est):
             e = est.iloc[0]
-            st.markdown(f"**Cinemex.** {int(e.seats_occupied_est):,} butacas ocupadas estimadas de {int(e.seats_offered):,} ofertadas en el "
-                        f"periodo ({e.occupancy_pct_est:.1f} %), a partir del nivel de disponibilidad de cada función y su calibración "
-                        f"({int(e.shows_estimated):,} de {int(e.shows):,} funciones estimables).")
+            st.markdown(T["ocupacion_cinemex"].format(occupied=f"{int(e.seats_occupied_est):,}", offered=f"{int(e.seats_offered):,}",
+                                                      pct=f"{e.occupancy_pct_est:.1f}", estimated=f"{int(e.shows_estimated):,}",
+                                                      shows=f"{int(e.shows):,}"))
         st.dataframe(pretty(cal.rename(columns={"level": "availability"})[["availability", "samples", "sold_pct", "min_sold_pct", "max_sold_pct"]]),
                      width="stretch", hide_index=True)
     if n_samples:
-        st.markdown("**Últimas funciones medidas (Cinépolis)**")
+        st.markdown(f"**{T['ocupacion_recent']}**")
         st.dataframe(pretty(load("occupancy_recent", limit=30, plaza=plaza)), width="stretch", hide_index=True, height=300)
-    md('<p class="nota">Se promueve a Capa 2 cuando la tabla de calibración tenga niveles de color con muestras suficientes. '
-       'Mientras tanto no compite por atención.</p>')
+    md(f'<p class="nota">{T["ocupacion_note"]}</p>')
 
-md(f'<p class="pie">Fuentes: cartelera pública de Cinemex y Cinépolis, capturada tres veces al día para los cines de la Ciudad de México '
-   f'y área metropolitana; aforo por sala de ambas cadenas leído de los planos de asientos; ocupación medida tras el inicio de cada '
-   f'función en Cinépolis; precios de lista muestreados por cine, formato y tipo de día; menú de dulcería de Cinépolis con precio por complejo; catálogo de dulcería a domicilio de ambas cadenas en Rappi y DiDi Food. Las películas se emparejan entre '
-   f'cadenas por título, con reglas para reestrenos, aniversarios y eventos y una tabla de equivalencias revisada a mano.{"" if full_day else f" Filtro activo: solo funciones que empiezan {esc(hours_label(hours))}."} Historia desde el {esc(date_es(FIRST_SNAPSHOT.isoformat()))}.</p>')
+hours_filter = "" if full_day else T["footer_filter"].format(hours=esc(hours_label(hours)))
+md(f'<p class="pie">{T["footer"].format(filter=hours_filter, date=esc(date_es(FIRST_SNAPSHOT.isoformat())))}</p>')

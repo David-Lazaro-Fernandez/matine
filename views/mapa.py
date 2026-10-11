@@ -8,11 +8,15 @@ import pydeck as pdk
 from ui.common import *  # noqa: F401,F403
 
 T = MAP_TEXT
-_MIN_RADIUS, _MAX_RADIUS = 5, 22         # píxeles: no crecen con el zoom, así los cines vecinos no se tapan
-_SPREAD = 0.0012                         # grados (~130 m): cuánto se abren los cines que comparten edificio
-_ZOOM = {None: 4.3}                        # nacional; una plaza se ve completa con el zoom por defecto
+# Píxeles: no crecen con el zoom, así los cines vecinos no se tapan.
+_MIN_RADIUS, _MAX_RADIUS = 5, 22
+# Grados (~130 m): cuánto se abren los cines que comparten edificio.
+_SPREAD = 0.0012
+# Nacional; una plaza se ve completa con el zoom por defecto.
+_ZOOM = {None: 4.3}
 _DEFAULT_ZOOM = 9.6
-_SPAN_ZOOM = ((0.01, 14), (0.05, 12.5), (0.15, 11), (0.4, 10), (2, 8), (float("inf"), 4.3))   # grados de separación → zoom
+# Grados de separación → zoom.
+_SPAN_ZOOM = ((0.01, 14), (0.05, 12.5), (0.15, 11), (0.4, 10), (2, 8), (float("inf"), 4.3))
 
 if not config.DB_PATH.exists():
     st.info(T["no_db"])
@@ -145,7 +149,8 @@ with seccion("mapa-mapa"):
                          "whiteSpace": "pre", "lineHeight": "1.45"}}
     layer = pdk.Layer("ScatterplotLayer", data=data, id="cines",
                       get_position=["lng", "lat"], get_radius="radius", get_fill_color="color",
-                      radius_units="'pixels'",   # pydeck toma un texto suelto como expresión JS: el literal va entre comillas
+                      # pydeck toma un texto suelto como expresión JS: el literal va entre comillas.
+                      radius_units="'pixels'",
                       get_line_color=rgb(PAPER), line_width_min_pixels=1, stroked=True, pickable=True, auto_highlight=True)
     view = pdk.ViewState(latitude=float(data.lat.mean()), longitude=float(data.lng.mean()), zoom=zoom_for(data, plaza, cinema_ids))
     event = st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view, tooltip=tooltip, map_style=BASEMAP_STYLE),

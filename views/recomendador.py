@@ -8,8 +8,10 @@ from streamlit_js_eval import get_geolocation
 from ui.common import *  # noqa: F401,F403
 
 T = RECOMMEND_TEXT
-_CDMX_CENTER = (19.4326, -99.1332)        # Zócalo, hasta que hay punto de partida
-_DAYS_AHEAD = 13                           # las cadenas publican hasta el miércoles de la semana siguiente
+# Zócalo, hasta que hay punto de partida.
+_CDMX_CENTER = (19.4326, -99.1332)
+# Las cadenas publican hasta el miércoles de la semana siguiente.
+_DAYS_AHEAD = 13
 _PER_CINEMA, _LIMIT = 3, 40
 _MARKER_RADIUS = 7
 

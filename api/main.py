@@ -19,17 +19,22 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
-from typing_extensions import TypedDict  # Pydantic lo exige así antes de Python 3.12
+
+# Pydantic lo exige así antes de Python 3.12.
+from typing_extensions import TypedDict
 
 import analytics
 from analytics import recommender
 from scraper import config
 
-DAYS_AHEAD = 1                     # el demo solo ofrece hoy y mañana
+# El demo solo ofrece hoy y mañana.
+DAYS_AHEAD = 1
 MAX_PEOPLE = 20
 MAX_RADIUS_KM = 15.0
-PER_CINEMA = 6                     # todos los cines del radio salen, sin entregar su cartelera entera
-_CACHE_SIZE = 16                   # solo `opciones` y `salud`: iguales para todos y chicas
+# Todos los cines del radio salen, sin entregar su cartelera entera.
+PER_CINEMA = 6
+# Solo `opciones` y `salud`: iguales para todos y chicas.
+_CACHE_SIZE = 16
 _MAX_TRACKED_IPS = 10_000
 
 

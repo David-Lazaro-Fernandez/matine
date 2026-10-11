@@ -1,9 +1,11 @@
 """Textos para directivos. Cualquier cosa que se muestre a un usuario sale de aquí, no de los
 nombres internos (chain, kind, franjas, buckets)."""
 
-US = "cinemex"            # la cadena del cliente: en las frases hablamos en primera persona
+# La cadena del cliente: en las frases hablamos en primera persona.
+US = "cinemex"
 THEM = "cinepolis"
-COMPARED = (US, THEM)      # las cadenas del head-to-head; la Cineteca se captura pero no entra a los shares
+# Las cadenas del head-to-head; la Cineteca se captura pero no entra a los shares.
+COMPARED = (US, THEM)
 
 CHAIN_LABEL = {"cinemex": "Cinemex", "cinepolis": "Cinépolis", "cineteca": "Cineteca Nacional", "cineteca_gdl": "Cineteca FICG",
                "cineteca_mty": "Cineteca Nuevo León", "wtc": "Cinemas WTC", "tonala": "Cine Tonalá", "cinemania": "Cinemanía",
@@ -13,25 +15,43 @@ CHAIN_LABEL = {"cinemex": "Cinemex", "cinepolis": "Cinépolis", "cineteca": "Cin
 
 # Paleta (ver DESIGN.md). El rojo significa Cinemex o acción; Cinépolis va en tinta (casi negro) para
 # no competir con él. Cinemex siempre primero en las escalas, nunca se ciclan.
-RED = "#E31837"            # rojo Cinemex
-RED_DARK = "#9E0F26"       # hover / activo; primer tono de la rampa
-RED_SOFT = "#FDEDF0"       # fondo suave para chips y hover
-INK = "#191A1E"            # texto fuerte; serie Cinépolis
-GRAY_DARK = "#3A3C42"      # texto de etiquetas en gráficas
-GRAY = "#5C6068"           # texto secundario
-GRAY_LIGHT = "#F6F6F4"     # fondo de página
-LINE = "#E4E5E9"           # bordes y divisores
-PAPER = "#FFFFFF"          # tarjetas
-INDEP = "#8C8E95"          # gris medio: serie de la Cineteca, cine independiente (el centro de DIVERGING)
+# Rojo Cinemex.
+RED = "#E31837"
+# Hover / activo; primer tono de la rampa.
+RED_DARK = "#9E0F26"
+# Fondo suave para chips y hover.
+RED_SOFT = "#FDEDF0"
+# Texto fuerte; serie Cinépolis.
+INK = "#191A1E"
+# Texto de etiquetas en gráficas.
+GRAY_DARK = "#3A3C42"
+# Texto secundario.
+GRAY = "#5C6068"
+# Fondo de página.
+GRAY_LIGHT = "#F6F6F4"
+# Bordes y divisores.
+LINE = "#E4E5E9"
+# Tarjetas.
+PAPER = "#FFFFFF"
+# Gris medio: serie de la Cineteca, cine independiente (el centro de DIVERGING).
+INDEP = "#8C8E95"
 CHAIN_COLOR = {"cinemex": RED, "cinepolis": INK, "cineteca": INDEP, "cineteca_gdl": INDEP, "cineteca_mty": INDEP,
                "wtc": INDEP, "tonala": INDEP, "cinemania": INDEP, "papalote_mty": INDEP,
                "cinery": INDEP, "epic": INDEP, "raly": INDEP, "cabanas": INDEP}
-NEUTRAL = "#C9CBD0"        # líneas de referencia (la barra del dumbbell)
-GRID = "#ECEDEF"           # rejilla de gráficas
-RED_RAMP = [RED_DARK, RED, "#F08497", "#F7CDD5"]                 # ordinal de un solo tono para cubetas ordenadas
-DIVERGING = [INK, INDEP, "#EFEFEF", "#F6B7C2", RED]          # Cinépolis (tinta) ↔ centro ↔ Cinemex (rojo)
-WARN = "#B45309"           # ámbar: estado con problema, solo en la página de operaciones (el rojo es Cinemex)
-OK = "#2F6F4E"             # verde apagado: estado sano, solo en la página de operaciones
+# Líneas de referencia (la barra del dumbbell).
+NEUTRAL = "#C9CBD0"
+# Rejilla de gráficas.
+GRID = "#ECEDEF"
+# Ordinal de un solo tono para cubetas ordenadas.
+RED_RAMP = [RED_DARK, RED, "#F08497", "#F7CDD5"]
+# Texto sobre los dos tonos claros de `RED_RAMP`.
+RED_RAMP_TEXT = "#7A2233"
+# Cinépolis (tinta) ↔ centro ↔ Cinemex (rojo).
+DIVERGING = [INK, INDEP, "#EFEFEF", "#F6B7C2", RED]
+# Ámbar: estado con problema, solo en la página de operaciones (el rojo es Cinemex).
+WARN = "#B45309"
+# Verde apagado: estado sano, solo en la página de operaciones.
+OK = "#2F6F4E"
 
 # Franjas horarias: (clave, hora inicio, hora fin exclusiva, etiqueta). La matiné 10–12 va aparte
 # porque existe en fin de semana y es donde una cadena puede ganar barato.
@@ -50,7 +70,8 @@ PRIME_START_HOUR = 18
 # Filtro global de franja: solo se puede cortar en los límites de SLOTS, así ninguna franja queda partida.
 HOUR_MARKS = sorted({lo for _, lo, _, _ in SLOTS} | {hi for _, _, hi, _ in SLOTS})
 FULL_DAY = (0, 24)
-HOUR_PRESETS = {"Todo el día": FULL_DAY, "Después de las 6 PM": (PRIME_START_HOUR, 24), "Matiné, antes de las 12 PM": (0, 12)}            # horario prime: vie–dom de 6:00 P.M. en adelante
+# Horario prime: vie–dom de 6:00 P.M. en adelante.
+HOUR_PRESETS = {"Todo el día": FULL_DAY, "Después de las 6 PM": (PRIME_START_HOUR, 24), "Matiné, antes de las 12 PM": (0, 12)}
 PRIME_LABEL = "viernes a domingo, de 6:00 P.M. en adelante"
 
 WEEKDAY_LABEL = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -61,6 +82,54 @@ FORMAT_LABEL = {"premium": "Premium / VIP", "large": "Gran formato", "3d4d": "3D
 LANGUAGE_LABEL = {"spanish": "Español", "subtitled": "Subtitulada", "original": "Español", "other": "Otro"}
 PLATFORM_LABEL = {"rappi": "Rappi", "didi": "DiDi Food"}
 CINEMA_TYPE_LABEL = {"vip": "VIP", "traditional": "Tradicional"}
+# Ejes y tooltips de las gráficas de dulcería (views/dulceria.py, dashboard/components/dulceria/).
+CONCESSION_CHART_TEXT = {"price_axis": "Pesos", "product": "Producto", "chain": "Cadena", "median": "Mediana",
+                         "delta_pct": "Δ Cinépolis vs Cinemex %", "cinema": "Complejo", "price": "Precio", "cinema_type": "Tipo",
+                         # Un VIP y un tradicional del mismo centro comercial tienen el mismo nombre.
+                         "vip_cinema": "{name} VIP"}
+# Textos de la página de dulcería (views/dulceria.py, dashboard/app/dulceria/).
+DULCERIA_TEXT = {
+    "title": "Dulcería: <span>Cinemex</span> frente a Cinépolis",
+    "meta_zone": "Zona",
+    "meta_room": "Sala",
+    "meta_room_value": "menú en línea de Cinépolis por complejo",
+    "meta_delivery": "A domicilio",
+    "meta_delivery_value": "Rappi y DiDi Food, ambas cadenas",
+    "meta_note": "Nuestro tablero de sala llega con tus datos",
+    "no_db": "Aún no hay datos: la base no existe todavía. Ver la página de cartelera.",
+    "layer1": "Lo que importa hoy",
+    "layer1_desc": "El hallazgo de dulcería, si cruza su umbral; el mismo que aparece en la cartelera.",
+    "no_findings": "La brecha de dulcería no cruza el umbral de relevancia.",
+    "layer2": "Evidencia",
+    "layer2_desc": "Precio en sala por complejo (Cinépolis) y comparación a domicilio, plataforma contra plataforma.",
+    "question": "¿Cómo compite nuestra dulcería con la de Cinépolis?",
+    "question_note": "En sala solo tenemos el menú de Cinépolis; nuestra lista llega con tus datos. La comparación directa es "
+                     "a domicilio, plataforma contra plataforma.",
+    "empty": "Aún no hay lecturas de dulcería.",
+    "delivery_title": "A domicilio: precio mediano por tipo de producto",
+    "platform": "Plataforma",
+    "both": "Ambas",
+    "delivery_empty": "Sin lecturas de dulcería a domicilio.",
+    "compare_headers": ["Producto comparable", "Cinemex", "Nuestro producto", "Cinépolis", "Su producto", "Δ Cinépolis vs Cinemex"],
+    "room_title": "En sala: {chain} fija el precio por complejo",
+    "product": "Producto",
+    "room_note": "{product}: de ${min} a ${max} en {cinemas} complejos, {prices} precios distintos; la línea punteada es la "
+                 "mediana (${median}).",
+    "detail": "Detalle: canasta de Cinépolis por complejo, catálogo a domicilio y tiendas",
+    "basket_headers": ["Producto", "Complejos", "Mediana", "Mínimo", "Máximo", "Máx. vs mín.", "Precios distintos"],
+    "summary_headers": ["Plataforma", "Cadena", "Tiendas", "Productos", "% con precio único", "Última lectura"],
+    "chain": "Cadena",
+    "leer": "A domicilio se compara la mediana entre tiendas de cada cadena en la misma plataforma (Rappi, DiDi Food), agrupando "
+            "productos por tipo porque cada cadena los nombra distinto; es el catálogo para llevar (Mega Palomitas de 230 g, refresco "
+            "en lata), no el tablero de sala, y las porciones difieren: nuestro combo básico lleva dos latas y el de Cinépolis un refresco. "
+            "En sala solo existe el menú en línea de Cinépolis, por complejo; palomitas y refresco van por tamaño y se muestra el "
+            "tamaño base. Cinemex tiene apagada la venta de dulcería en línea, así que nuestro tablero de sala llega con tus datos. "
+            "Uber Eats no se lee porque sus términos prohíben la extracción.",
+    "back": "Volver a la cartelera",
+    "footer": "Fuentes: menú de dulcería en línea de Cinépolis por complejo; catálogo de dulcería a domicilio de ambas cadenas en "
+              "Rappi y DiDi Food, renovado cada semana. Cinemex tiene apagada la venta de dulcería en línea. Historia desde el "
+              "{date}.",
+}
 # Plazas (claves de scraper/plazas.py) y el alcance nacional (`plaza=None` en analytics). El título de la cartelera
 # nombra la plaza elegida; en nacional dice "nacional".
 PLAZA_LABEL = {"cdmx": "CDMX", "gdl": "Guadalajara", "mty": "Monterrey"}
@@ -72,6 +141,19 @@ ZONE_TEXT = {
     "title": "Cartelera {plaza}",
     "title_national": "Cartelera nacional",
     "page_title": "Cartelera · Cinemex frente a Cinépolis",
+}
+# Selector de periodo de la cartelera. `{d0}` y `{d1}` son fechas de `date_es` sin año; `{state}` es de PUBLICATION_LABEL.
+PERIOD_TEXT = {
+    "header": "Periodo",
+    "select": "Semana o día a analizar",
+    "today": "Hoy",
+    "tomorrow": "Mañana",
+    "week": "Resto de la semana de cine (hasta el {d1})",
+    "next_week": "Semana de cine siguiente ({d0} a {d1}){state}",
+    "custom": "Elegir fechas",
+    "custom_range": "Del … al …",
+    "from": "Del",
+    "to": "Al",
 }
 
 
@@ -103,6 +185,26 @@ FIELD_LABEL = {"datetime_local": "Hora", "screen": "Sala", "language": "Idioma",
                "premium_tier": "Tipo de sala", "movie_id": "Película", "availability": "Ocupación"}
 STATUS_LABEL = {"current": "Vigente", "removed": "Cancelada", "expired": "Concluida"}
 VS_NOW_LABEL = {"same": "Igual que hoy", "changed": "Cambió después", "gone": "Ya no está publicada"}
+
+# Cartelera: la llave es la que devuelve `analytics/` (movie_gaps, week_publication, presale_by_chain).
+EXCLUSIVE_LABEL = {"cinemex": "solo Cinemex", "cinepolis": "solo Cinépolis"}
+PUBLICATION_LABEL = {"partial": " · publicada parcialmente", "published": " · publicada"}
+# `{other}` es el nombre de la otra cadena.
+PRESALE_OTHER_LABEL = {"presale": "también en preventa", "absent": "{other} no lo exhibe",
+                       "shown": "{other} lo exhibe, fuera de su preventa"}
+PRESALE_TAG = {"absent": "exclusiva", "shown": "la otra lo exhibe"}
+# Ejes y detalles de las gráficas de formatos y preventa de la cartelera. `{…}` son números ya formateados.
+CARTELERA_CHART_TEXT = {
+    "chain": "Cadena", "group": "Grupo", "mix_share": "% de su programación", "mix_shows": "Funciones",
+    "percent": "{value} %",
+    "presale_title": "Título", "presale_release": "Estreno", "presale_no_release": "—",
+    "presale_shows": "Funciones leídas", "presale_seats": "Butacas vendidas", "presale_seats_value": "{sold} de {seats}",
+    "presale_sold": "% del aforo vendido", "presale_pace": "Ritmo", "presale_pace_value": "{pace} puntos del aforo al día",
+    "presale_pace_pending": "se mide desde la segunda lectura", "presale_other": "En la otra cadena",
+    "presale_tagged": "{sold} · {tag}", "presale_axis": "% de las butacas del panel ya vendidas",
+    "curve_x": "Días antes de la función", "curve_y": "% de las butacas vendidas", "curve_days": "Días antes",
+    "curve_readings": "Lecturas", "curve_sold": "% vendido",
+}
 
 KIND_HELP = {
     "added": "Apareció una función que no estaba en la cartelera publicada.",
@@ -146,30 +248,281 @@ COLUMN_LABEL = {
 DAY_TYPE_LABEL = {"weekday": "Lunes y jueves", "promo": "Martes y miércoles", "weekend": "Viernes a domingo"}
 AVAILABILITY_LABEL = {"#FFBE06": "Amarillo", "#FF804A": "Naranja", "#A2ACBA": "Gris", "(sin color)": "Sin color",
                       "high": "Alta disponibilidad", "mid": "Media", "low": "Baja"}
+# Gráfica de funciones frente a butacas por película (apéndice "butacas" de la cartelera). Las series y los demás títulos
+# del tooltip salen de COLUMN_LABEL.
+SEATS_CHART_TEXT = {
+    "title": "Funciones frente a butacas por película ({chain})",
+    "axis": "% del total de {chain} en el periodo",
+    "measure": "Medida",
+    "share": "%",
+}
+# Textos de la página de cartelera (views/cartelera.py, dashboard/app/page.tsx). `{…}` son valores ya formateados.
+# Las negritas con `**` son markdown; las de `<b>` van en HTML.
+CARTELERA_TEXT = {
+    "title": "{plaza}: <span>Cinemex</span> frente a Cinépolis",
+    "no_db": "Aún no hay datos: la base {path} no existe. La cartelera se captura a las {times}; la siguiente captura es a "
+             "las {next} y tarda de 15 a 30 minutos. Para no esperar: `make snapshot` (o `systemctl start "
+             "absolut-cinema-snapshot.service` en el servidor), o copia `data/` desde la máquina donde ya corre. Esta página "
+             "se refresca sola.",
+    "no_db_web": "Aún no hay datos: la base de la cartelera no existe todavía. La primera captura tarda de 15 a 30 minutos. "
+                 "Para no esperar: `make snapshot` (o `systemctl start absolut-cinema-snapshot.service` en el servidor).",
+    "no_shows": "La base existe pero todavía no tiene funciones capturadas. Revisa `data/logs/run.log`.",
+    "no_board": "No hay cartelera publicada de ambas cadenas para {range}.",
+    "meta_period": "Periodo:",
+    "meta_hours": "Franja:",
+    "meta_cinemas": "cines",
+    "meta_shows": "funciones publicadas",
+    "meta_capture": "Última captura:",
+    "nav": ["Lo que importa hoy", "Evidencia", "Detalle"],
+    "stale_none": "No hay ninguna captura buena de {name}.",
+    "stale_error": "La última captura de {name} falló y el dato vigente tiene {age} minutos. Detalle técnico: {error}",
+    "stale_old": "El dato de {name} tiene {age} minutos sin actualizarse; el scraper puede estar detenido.",
+    # Filtro de franja y guía de lectura (barra lateral en Streamlit, barra de filtros en el dashboard).
+    "hours_header": "Franja horaria",
+    "hours_free": "Rango libre",
+    "hours_slider": "Hora de inicio de la función",
+    "hours_from": "Desde",
+    "hours_to": "Hasta",
+    "hours_caption": "Solo funciones que empiezan {hours}. Las participaciones se calculan dentro de esa franja.",
+    "read_header": "Cómo leer las cifras",
+    "read_body": "Todo se compara en **porcentaje de la programación de cada cadena** (share), no en totales: las cadenas "
+                 "tienen distinto número de cines y salas en cada zona. Las diferencias entre porcentajes van en **puntos "
+                 "porcentuales (pp)**.",
+    "read_today": " Para hoy solo se cuentan funciones que aún no han empezado, en ambas cadenas.",
+    "glossary_header": "Glosario",
+    "glossary": [
+        "**Función.** Una proyección de una película en una sala a una hora.",
+        "**Aforo.** Butacas vendibles de una sala; se mide una vez por sala en el plano de asientos.",
+        "**Butacas ofertadas.** Suma del aforo de la sala por cada función del periodo: el máximo de boletos que la cadena "
+        "podría vender en esos días. Un cine con 10 salas de 150 butacas y 5 funciones por sala oferta 7,500 al día.",
+        "**Butacas ocupadas.** Boletos vendidos. En Cinépolis se leen del plano a una hora de la función; en Cinemex se "
+        "estiman a partir de su semáforo de disponibilidad, calibrado con planos reales.",
+        "**Ocupación.** Butacas ocupadas entre butacas ofertadas.",
+        "**Share.** Parte de la programación de una cadena que se lleva una película, franja o formato.",
+        "**Puntos porcentuales (pp).** Diferencia entre dos porcentajes. De 18 % a 21 % son +3 pp.",
+        "**Semana de cine.** De jueves a miércoles; es lo que ambas cadenas publican completo.",
+        "**Horario prime.** Viernes a domingo de 6:00 P.M. en adelante.",
+    ],
+    "capture_caption": "La cartelera se captura a las {times} y los planos de asientos cada hora{refresh}.",
+    "refresh_caption": "; esta página se refresca cada {ttl} segundos",
+    # Capa 1.
+    "layer1": "Lo que importa hoy",
+    "layer1_desc": "Hallazgos redactados como decisión, cada uno con sus números de soporte. Si un dato no cambia una "
+                   "decisión esta semana, no vive aquí.",
+    "no_findings": "Ninguna diferencia cruza el umbral de relevancia en este periodo. La evidencia completa está en la Capa 2.",
+    "link_dulceria": "Ver el módulo de dulcería: precios en sala y a domicilio",
+    # Capa 2.
+    "layer2": "Evidencia por pregunta",
+    "layer2_desc": "Cada sección abre con la conclusión; el gráfico es la prueba, no el mensaje. Las guías de lectura van "
+                   "colapsadas.",
+    "empty_period": "Sin funciones en el periodo.",
+    "q_resumen": "¿Cómo se reparte la programación de la semana?",
+    "resumen_headers": ["", "Película", "Cines Cinemex", "Funciones", "% cadena", "Cines Cinépolis", "Funciones", "% cadena",
+                        "Δ funciones", "Δ pp", "Cinépolis / Cinemex"],
+    "resumen_rest": "Resto",
+    "resumen_total": "Total de programación",
+    "leer_resumen": "Es la tabla del reporte diario, calculada para la Ciudad de México y la semana de cine (jueves a "
+                    "miércoles) del periodo elegido; el reporte del cliente es nacional y por semana calendario, así que las "
+                    "cifras no coinciden. Por cadena: cines que exhiben la película, funciones y qué parte de la programación "
+                    "de esa cadena representan. Δ funciones es Cinemex menos Cinépolis; Δ pp, la diferencia entre "
+                    "participaciones; la última columna, cuántas funciones pone Cinépolis por cada una nuestra. \"Resto\" "
+                    "agrupa las demás películas (sus cines no se suman porque se repiten). La pestaña de las 6 PM cuenta solo "
+                    "funciones que empiezan de 6:00 P.M. en adelante y no depende del filtro de franja de la barra lateral. "
+                    "Con el día en curso solo cuentan funciones que no han empezado.",
+    "q_peliculas": "¿A qué películas les damos más pantalla que Cinépolis?",
+    "peliculas_axis": "% de las funciones del periodo",
+    "peliculas_all": "Ver las {n} películas",
+    "peliculas_tooltip": "{title} · {chain}: {share} % de su programación · {shows} funciones · {cinemas} cines",
+    "leer_peliculas": "Cada fila es una película; los puntos son el porcentaje de la programación que le dedica cada cadena y "
+                      "la línea entre ellos, la diferencia (rojo: Cinemex apuesta más). Un solo punto es una exclusiva. Se "
+                      "ordenan por tamaño de la diferencia entre las {total} películas con más funciones del periodo. Los "
+                      "títulos se emparejan aunque cada cadena los escriba distinto (reestrenos, aniversarios, eventos en vivo, "
+                      "variantes de formato como Infinity Vision), con reglas explícitas y una tabla de equivalencias revisada "
+                      "a mano.",
+    "q_horarios": "¿Estamos en el horario donde vive la taquilla?",
+    "horarios_tooltip": "{day} · {slot} · % parrilla Cinemex {share_cinemex} · % parrilla Cinépolis {share_cinepolis} · "
+                        "Δ pp {gap} · Funciones Cinemex {shows_cinemex} · Funciones Cinépolis {shows_cinepolis}",
+    "leer_horarios": "Cada celda es la diferencia, en puntos porcentuales, entre la parte de parrilla que Cinemex pone en esa "
+                     "franja y la que pone Cinépolis. Rojo: ponemos más; oscuro: pone más Cinépolis. Solo aparecen los días "
+                     "del periodo elegido; la semana se completa cuando ambas cadenas la publican (miércoles o jueves). La "
+                     "ocupación real por franja se añadirá con el muestreo de asientos.",
+    "q_formatos": "¿Con qué formatos e idiomas competimos?",
+    "leer_formatos": "Cada barra es el 100 % de las funciones de una cadena en el periodo. Premium / VIP agrupa Premium, "
+                     "Platino, VIP y Confort; Gran formato agrupa IMAX, XE, ScreenX, Dolby Atmos y Jumbo. “Español” incluye "
+                     "doblada y en español original.",
+    "q_preventa": "¿Qué preventa se está vendiendo?",
+    "preventa_empty": "Aún no hay lecturas de preventa en esta zona. El pase corre a diario sobre los títulos en preventa de "
+                      "ambas cadenas, en las plazas donde se leen planos.",
+    "preventa_both": "<b>En preventa en ambas cadenas</b>: la comparación directa.",
+    "preventa_single": "<b>En preventa en una sola cadena</b>: “exclusiva” si la otra no lo tiene en su cartelera; “la otra "
+                       "lo exhibe” si lo programa sin anunciarlo como preventa.",
+    "curve_pick": "Curva de venta de",
+    "curve_pending": "La curva aparece cuando el título tiene lecturas a distintas distancias de su función.",
+    "leer_preventa": "Son los títulos en preventa de cada cadena: la página de preventas de Cinemex y la de \"Próximamente\" "
+                     "de Cinépolis, hasta su estreno (en un evento de una noche, hasta que empieza). Arriba, los títulos que "
+                     "las dos cadenas tienen en preventa; abajo, los de una sola, marcados como exclusiva cuando la otra "
+                     "cadena no los tiene en su cartelera de la zona. Por cadena, cada título tiene un panel fijo de hasta 30 "
+                     "funciones repartidas entre cines y cada día se lee su plano de asientos. La barra es el % de las "
+                     "butacas de ese panel que ya se vendieron, así una sala IMAX no pesa más que una tradicional y las dos "
+                     "cadenas se comparan aunque tengan salas de distinto tamaño. Desde la segunda lectura se mide el ritmo: "
+                     "cuántos puntos de su aforo vende cada día (en el detalle al pasar el cursor). La curva junta todas las "
+                     "lecturas del título según cuántos días faltaban para la función. Las funciones de Cinépolis cuyo plano "
+                     "responde \"ya no está disponible\" antes de empezar no entran: coinciden con funciones casi agotadas, "
+                     "así que su % vendido real puede ser algo mayor.",
+    # Capa 3.
+    "layer3": "Detalle y apéndice",
+    "layer3_desc": "Todo colapsado con una línea de resumen visible: quien lo necesita lo abre, quien no, no paga el costo "
+                   "visual.",
+    "kpis_title": "Indicadores del periodo",
+    "kpis_summary": "{us} vs {them} funciones por cine y día",
+    "kpis_summary_seats": " · {us} vs {them} butacas ofertadas",
+    "kpis_headers": ["Indicador", "Cinemex", "Cinépolis", "Δ"],
+    "kpi": {
+        "shows_per_cinema": "Funciones por cine y día",
+        "shows": "Funciones publicadas",
+        "cinemas": "Cines con cartelera",
+        "prime": "Share de horario prime (vie–dom desde 6 PM)",
+        "evening": "Share de 6 PM en adelante",
+        "subtitled": "Share de funciones subtituladas",
+        "movies": "Títulos distintos en cartelera",
+        "seats_offered": "Butacas ofertadas",
+        "seats_per_show": "Butacas por función",
+        "top3": "Peso de las 3 películas más programadas",
+        "hhi": "Índice de concentración (HHI)",
+        "titles_per_cinema": "Títulos distintos por complejo",
+    },
+    "kpis_note": "Las diferencias entre porcentajes van en puntos porcentuales; las de cantidades, en % relativo. Butacas "
+                 "ofertadas = aforo de la sala por cada función del periodo (máximo de boletos vendibles), no butacas "
+                 "físicas. HHI: suma de los cuadrados del share de cada título; por debajo de 1,500 la parrilla está "
+                 "repartida, por encima de 2,500 concentrada.",
+    "cambios_title": "¿Cómo ha movido Cinépolis su cartelera esta semana?",
+    "cambios_summary": "7 días: {us_removed} canceladas nuestras vs {them_removed} de Cinépolis · {us_moved} vs {them_moved} "
+                       "cambios de horario o sala",
+    "cambios_none": "Sin cambios en los últimos 7 días",
+    "cambios_headers": ["Cadena", "Nuevas", "Canceladas", "Horario/sala", "Idioma/formato"],
+    "cambios_note_lead": "Últimos 7 días.",
+    "cambios_note_tail": "Cuando una cadena publica la semana siguiente (miércoles o jueves) aparecen miles de funciones nuevas "
+                         "de golpe; eso es publicación, no cambios sobre lo ya anunciado. Se lee como comportamiento semanal "
+                         "del competidor (cuánto cancela, de qué títulos, cuándo publica), no como alerta: la programación se "
+                         "decide por semana de cine.",
+    "cambios_log": "Registro por función",
+    "cambios_empty": "Sin cambios de ese tipo.",
+    "precios_title": "Precio del boleto por formato y tipo de día",
+    "precios_pair": "{format} {day}: ${us} vs ${them}",
+    "precios_markup": "Cinépolis cobra {min}–{max} % más en tradicional, premium y gran formato",
+    "precios_headers": ["Formato", "Tipo de día", "Cinemex", "Cinépolis", "Δ Cinépolis vs Cinemex"],
+    "precios_cinemas": "{chain}: {n} cines",
+    "precios_note": "Mediana del boleto de adulto regular entre los cines muestreados ({cinemas}). Una función por cine, "
+                    "formato y tipo de día, renovada cada semana. Martes y miércoles son los días de precio reducido en "
+                    "ambas cadenas. Precios en pesos, sin cargo por servicio. Se excluyen eventos y matinés.",
+    "butacas_title": "Salas y butacas por complejo",
+    "butacas_summary": "{chain}: {screens} salas, {seats} butacas, sala típica de {avg}",
+    "butacas_headers": ["Cadena", "Complejos", "Salas", "Butacas", "Sala típica", "Más chica", "Más grande",
+                        "Salas < 80 (VIP)"],
+    "butacas_note": "Aforo medido una vez por sala en el plano de asientos de la función más próxima (se excluyen asientos "
+                    "fuera de servicio). Butacas físicas, no ofertadas.",
+    "chain": "Cadena",
+    "butacas_empty": "Sin funciones con aforo conocido en el periodo.",
+    "butacas_chart_note": "El círculo claro es la parte de las funciones de la cadena que ocupa la película; el cuadro, la "
+                          "parte de sus butacas ofertadas. Cuando el cuadro queda a la derecha, la película va en salas más "
+                          "grandes que el promedio.",
+    "historia_title": "Historial de una función y cartelera tal como estaba",
+    "historia_summary": "elige cine, fecha y sala · historia desde el {date}",
+    "historia_lead": "Qué le pasó a cada función (cuándo se publicó, cambios de hora, sala, idioma o formato, cancelación) y "
+                     "cómo estaba la cartelera de esa sala en cualquier captura anterior. La reconstrucción es exacta desde "
+                     "el 9 de septiembre de 2026; antes, las funciones ya concluidas no dejaban rastro.",
+    "cinema": "Cine",
+    "date": "Fecha",
+    "screen": "Sala",
+    "all_screens": "Todas",
+    "no_functions": "Sin funciones conocidas para ese cine y fecha.",
+    "functions_count": "Funciones conocidas · {n}",
+    "functions_status": "({current} vigentes, {removed} canceladas, {expired} concluidas)",
+    "function": "Función",
+    "function_option": "{time} · sala {screen} · {title}",
+    "timeline": "Línea de tiempo de la función",
+    "timeline_empty": "Sin eventos registrados para esta función.",
+    "timeline_headers": ["Cuándo", "Qué pasó", "Detalle"],
+    "timeline_change": "{field}: {before} → {after}",
+    "board_title": "Cartelera de la sala tal como estaba en una captura",
+    "board_few": "Hace falta más de una captura desde que se publicó la función para reconstruir la cartelera.",
+    "board_capture": "Captura",
+    "board_empty": "En esa captura no había funciones publicadas para esta sala y fecha.",
+    "board_note": "\"Frente a hoy\" compara cada función con la cartelera vigente: igual, cambió después (y en qué) o ya no "
+                  "está publicada. Mueve el control para ver la cartelera en capturas anteriores.",
+    "ocupacion_title": "Ocupación medida tras el inicio de cada función",
+    "ocupacion_summary": "{n} funciones medidas de Cinépolis · {pct} % de butacas vendidas en promedio · {levels}{calibrated}",
+    "ocupacion_levels": "{levels} niveles de color para calibrar",
+    "ocupacion_no_levels": "aún sin semáforos de color para calibrar",
+    "ocupacion_calibrated": " · semáforo de Cinemex calibrado",
+    "ocupacion_uncalibrated": " · semáforo de Cinemex sin calibrar",
+    "ocupacion_empty": "Aún no hay medidas. El pase corre cada hora y lee el plano de las funciones de Cinépolis que "
+                       "empezaron hace 15 a 75 minutos.",
+    "ocupacion_cinepolis": "**Cinépolis.** {n} funciones medidas después de empezar; {pct} % de las butacas vendidas. Es la "
+                           "asistencia final de cada función y la base del modelo de consumo. La tabla cruza el color del "
+                           "semáforo del sitio con el porcentaje real vendido, para calibrar qué significa cada color.",
+    "ocupacion_cinemex_pending": "**Cinemex.** Publica alta, media o baja disponibilidad por función. Al calibrar cada nivel "
+                                 "contra planos reales (una pasada única, por la tarde-noche, cuando existen los tres "
+                                 "niveles) el semáforo se convierte en % vendido estimado para todas sus funciones.",
+    "ocupacion_cinemex": "**Cinemex.** {occupied} butacas ocupadas estimadas de {offered} ofertadas en el periodo ({pct} %), a "
+                         "partir del nivel de disponibilidad de cada función y su calibración ({estimated} de {shows} "
+                         "funciones estimables).",
+    "ocupacion_recent": "Últimas funciones medidas (Cinépolis)",
+    "ocupacion_note": "Se promueve a Capa 2 cuando la tabla de calibración tenga niveles de color con muestras suficientes. "
+                      "Mientras tanto no compite por atención.",
+    "footer": "Fuentes: cartelera pública de Cinemex y Cinépolis, capturada tres veces al día para los cines de la Ciudad de "
+              "México y área metropolitana; aforo por sala de ambas cadenas leído de los planos de asientos; ocupación "
+              "medida tras el inicio de cada función en Cinépolis; precios de lista muestreados por cine, formato y tipo de "
+              "día; menú de dulcería de Cinépolis con precio por complejo; catálogo de dulcería a domicilio de ambas cadenas "
+              "en Rappi y DiDi Food. Las películas se emparejan entre cadenas por título, con reglas para reestrenos, "
+              "aniversarios y eventos y una tabla de equivalencias revisada a mano.{filter} Historia desde el {date}.",
+    "footer_filter": " Filtro activo: solo funciones que empiezan {hours}.",
+}
+
+
+# Partes de fechas y horas. `date_es`, `range_es` y `time_12` las usan aquí y en dashboard/lib/format.ts.
+DATE_TEXT = {
+    "weekdays": ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
+    "months": ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
+               "noviembre", "diciembre"],
+    "am": "A.M.",
+    "pm": "P.M.",
+    "date": "{weekday} {day} de {month}",
+    "with_year": "{date} de {year}",
+    "range": "del {d0} al {d1}",
+    "weekdays_short": ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"],
+    "months_short": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"],
+}
+# Etiquetas del filtro de franja (`hour_mark`, `hours_label`). `{h0}` y `{h1}` son horas de `hour_12`.
+HOURS_TEXT = {
+    "opening": "apertura",
+    "midnight": "medianoche",
+    "full_day": "Todo el día",
+    "from": "de {h0} en adelante",
+    "until": "antes de {h1}",
+    "range": "de {h0} a {h1}",
+}
 
 
 def hour_12(hour, minute=0):
     """17 -> '5:00 P.M.'; 0 -> '12:00 A.M.'"""
-    suffix = "A.M." if hour < 12 else "P.M."
+    suffix = DATE_TEXT["am"] if hour < 12 else DATE_TEXT["pm"]
     h = hour % 12 or 12
     return f"{h}:{minute:02d} {suffix}"
 
 
 def hour_mark(hour):
     """Etiqueta de una marca del filtro de franja: 18 -> '6:00 P.M.', 24 -> 'medianoche', 0 -> 'apertura'."""
-    return "apertura" if hour == 0 else "medianoche" if hour == 24 else hour_12(hour)
+    return HOURS_TEXT["opening"] if hour == 0 else HOURS_TEXT["midnight"] if hour == 24 else hour_12(hour)
 
 
 def hours_label(hours):
     """'Todo el día', 'de 6:00 P.M. en adelante', 'antes de 12:00 P.M.' o 'de 10:00 A.M. a 3:00 P.M.'."""
     h0, h1 = hours or FULL_DAY
     if (h0, h1) == FULL_DAY:
-        return "Todo el día"
-    if h1 == 24:
-        return f"de {hour_12(h0)} en adelante"
-    if h0 == 0:
-        return f"antes de {hour_12(h1)}"
-    return f"de {hour_12(h0)} a {hour_12(h1)}"
+        return HOURS_TEXT["full_day"]
+    key = "from" if h1 == 24 else "until" if h0 == 0 else "range"
+    return HOURS_TEXT[key].format(h0=hour_12(h0), h1=hour_12(h1))
 
 
 def time_12(hhmm):
@@ -182,25 +535,22 @@ def date_es(iso, with_year=True):
     """'2026-09-07' -> 'lunes 7 de septiembre de 2026'"""
     from datetime import date
     d = date.fromisoformat(iso)
-    dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-    meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
-             "septiembre", "octubre", "noviembre", "diciembre"]
-    s = f"{dias[d.weekday()]} {d.day} de {meses[d.month - 1]}"
-    return f"{s} de {d.year}" if with_year else s
+    s = DATE_TEXT["date"].format(weekday=DATE_TEXT["weekdays"][d.weekday()], day=d.day, month=DATE_TEXT["months"][d.month - 1])
+    return DATE_TEXT["with_year"].format(date=s, year=d.year) if with_year else s
 
 
 def range_es(d0, d1):
+    """'2026-09-07','2026-09-09' -> 'del lunes 7 de septiembre al miércoles 9 de septiembre de 2026'"""
     if d0 == d1:
         return date_es(d0)
-    return f"del {date_es(d0, with_year=False)} al {date_es(d1)}"
+    return DATE_TEXT["range"].format(d0=date_es(d0, with_year=False), d1=date_es(d1))
 
 
 def range_short(d0, d1):
     """'2026-09-08','2026-09-09' -> 'mar 8 – mié 9 sep 2026'"""
     from datetime import date
     a, b = date.fromisoformat(d0), date.fromisoformat(d1)
-    dias = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
-    meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+    dias, meses = DATE_TEXT["weekdays_short"], DATE_TEXT["months_short"]
     if a == b:
         return f"{dias[a.weekday()]} {a.day} {meses[a.month - 1]} {a.year}"
     if a.month == b.month:
@@ -264,6 +614,10 @@ AUTH_TEXT = {
     "change_role": "Cambiar rol",
     "done": "Listo.",
     "mail_failed": "La cuenta quedó creada pero el correo no salió: {error}. Usa “Reenviar enlace” más tarde.",
+    "session_expired": "Tu sesión terminó. Vuelve a entrar.",
+    "admin_only": "Solo los administradores pueden ver esta página.",
+    "deactivate_confirm": "{name} ya no podrá entrar hasta que reactives su cuenta.",
+    "cancel": "Cancelar",
 }
 MAIL_INVITE = {
     "subject": "Tu acceso a Absolut Cinema",
@@ -321,6 +675,8 @@ DATA_TEXT = {
     "download": "Descargar CSV",
     "empty": "No hay renglones con esos filtros.",
     "no_history": "El archivo histórico aún no tiene esta tabla poblada.",
+    "money": "${v}",
+    "cinema_option": "{chain} · {cinema}",
 }
 COLUMN_LABEL.update({
     "city_id": "Ciudad / área", "state_id": "Estado", "plaza": "Plaza", "sample_cinema": "Cine de muestra", "timezone": "Zona horaria",
@@ -417,9 +773,12 @@ COLUMN_LABEL.update({
 })
 
 # --- Mapa de cines (analytics/cinema_locations.py, views/mapa.py) ---
+# Estilo de mosaicos del mapa base: gratuito y sin clave. El dashboard de Streamlit lo cambia con AC_BASEMAP_STYLE.
+BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron"
 MAP_ATTRIBUTION = '© <a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 
-MAP_METRIC = {    # métrica → (etiqueta, formato del valor, qué destaca)
+# Métrica → (etiqueta, formato del valor, qué destaca).
+MAP_METRIC = {
     "shows": ("Funciones", "{:,.0f}", "Más funciones"),
     "screens": ("Salas", "{:,.0f}", "Más salas"),
     "seats": ("Butacas", "{:,.0f}", "Más butacas"),
@@ -481,12 +840,14 @@ RECOMMEND_SORT = {"distance": "Más cerca", "price": "Más barato", "time": "Má
 SNACK_LABEL = {"none": "Sin dulcería", "best": "Lo más barato para el grupo", "popcorn": "Palomitas y refresco por persona",
                "combo_1": "Un combo por persona", "combo_2": "Un combo cada dos", "combo_3": "Un combo cada tres",
                "combo_4": "Un combo cada cuatro"}
-SNACK_SINGLE = "Palomitas y refresco"      # el relleno de una persona en el desglose
+# El relleno de una persona en el desglose.
+SNACK_SINGLE = "Palomitas y refresco"
 _TWO_FOR_ONE = "2 boletos al precio de adulto más alto de la semana"
 _LOOP_PAIR = "2 boletos 2D, palomitas grandes y 2 refrescos grandes"
 _LOOP_SOLO = "1 boleto 2D, palomitas medianas, refresco mediano y nachos con queso"
 _ONE_PER_ACCOUNT = "Uno por cuenta."
-PROMO = {    # llave → (nombre, "combo" o "2x1", qué incluye, programa o None, qué más pide), de los términos de cada cadena
+# Llave → (nombre, "combo" o "2x1", qué incluye, programa o None, qué más pide), de los términos de cada cadena.
+PROMO = {
     "cmx_lunes": ("Combo Lunes", "combo", _LOOP_PAIR, "loop", _ONE_PER_ACCOUNT),
     "cmx_individual_lunes": ("Combo Individual Lunes", "combo", _LOOP_SOLO, "loop", _ONE_PER_ACCOUNT),
     "cmx_martes_2x1": ("Martes 2x1", "2x1", "Un boleto gratis por cada boleto igual que compras", "loop",
@@ -505,12 +866,14 @@ PROMO = {    # llave → (nombre, "combo" o "2x1", qué incluye, programa o None
     "cp_martes_2x1": ("Martes 2x1", "2x1", _TWO_FOR_ONE, "club", "Se compra el mismo martes."),
     "cp_miercoles_2x1": ("Miércoles 2x1", "2x1", _TWO_FOR_ONE, None, "Solo en la app o la web de Cinépolis, el mismo miércoles."),
 }
-PROMO_PROGRAM = {    # programa → (nombre corto, qué es), de los términos de cada programa
+# Programa → (nombre corto, qué es), de los términos de cada programa.
+PROMO_PROGRAM = {
     "loop": ("Loop", "Cinemex Loop es el programa de lealtad de Cinemex. El nivel One es gratis y tiene los mismos "
                      "combos y precios que los de pago."),
     "club": ("Club Cinépolis", "Club Cinépolis es el programa de lealtad de Cinépolis. Registrarse es gratis."),
 }
-GROUP_LABEL = {    # tipo de boleto → (singular, plural)
+# Tipo de boleto → (singular, plural).
+GROUP_LABEL = {
     "adults": ("adulto", "adultos"), "children": ("niño", "niños"), "seniors": ("adulto mayor", "adultos mayores"),
 }
 RECOMMEND_TEXT = {
@@ -670,6 +1033,7 @@ OPS_TEXT = {
     "raw_dir": "Crudo (data/raw)",
     "backups_dir": "Respaldos locales",
     "disk_free": "Espacio libre en disco",
+    "disk_free_value": "{free} de {total} · {dir}",
     # Logs.
     "logs": "Registros",
     "logs_lead": "La cola de cada log de data/logs. La línea más reciente va al final.",
@@ -699,3 +1063,28 @@ COLUMN_LABEL.update({
     "unit": "Unidad", "label": "Alcance", "last_at": "Última captura", "last_ok": "OK", "last_error": "Último error",
     "avg_calls": "Llamadas (media)", "avg_duration_s": "Duración media (s)", "avg_shows": "Funciones (media)",
 })
+
+# Rótulos fijos de los componentes de capa (`capa`, `leerla` en ui/common.py y dashboard/components/common.tsx).
+LAYER_TEXT = {"tag": "CAPA {num}", "read_it": "Cómo leerla"}
+# Título de cada página en la navegación. La llave es la ruta del dashboard; `cartelera` es la raíz.
+PAGE_LABEL = {
+    "cartelera": "Cartelera",
+    "mapa": MAP_TEXT["nav"],
+    "recomendador": RECOMMEND_TEXT["nav"],
+    "dulceria": "Dulcería",
+    "independientes": INDEP_TEXT["nav"],
+    "datos": DATA_TEXT["title"],
+    "usuarios": AUTH_TEXT["users_title"],
+    "operaciones": OPS_TEXT["title"],
+}
+
+# Módulos del riel de navegación del dashboard. Cada uno agrupa las páginas de un plan.
+MODULE_LABEL = {
+    "cartelera": "Cartelera",
+    "dulceria": "Dulcería",
+    "datos": DATA_TEXT["title"],
+    "admin": "Administración",
+}
+
+# Nombre de cada página dentro del panel de su módulo.
+NAV_LABEL = {**PAGE_LABEL, "cartelera": "Resumen", "dulceria": "En sala", "domicilio": "A domicilio"}

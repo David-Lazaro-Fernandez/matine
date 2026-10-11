@@ -14,17 +14,23 @@ del dashboard). Solo librería estándar; las etiquetas para el usuario viven en
 
 PLAZAS = {
     "cdmx": {"cinepolis": ("cdmx",),
-             "cinemex": ("15", "16", "17", "18", "19", "20"),                      # Centro, Nor-oriente, Norte, Oriente, Poniente, Sur
-             "cineteca": ("001", "002", "003"),                                    # Cineteca: Chapultepec, de las Artes, México (Xoco)
+             # Centro, Nor-oriente, Norte, Oriente, Poniente, Sur.
+             "cinemex": ("15", "16", "17", "18", "19", "20"),
+             # Cineteca: Chapultepec, de las Artes, México (Xoco).
+             "cineteca": ("001", "002", "003"),
              # Los independientes de la demo ¿A dónde ir?
              "wtc": ("01",), "tonala": ("roma-sur",), "cinemania": ("loreto",)},
     "gdl": {"cinepolis": ("guadalajara", "tlajomulco"),
-            "cinemex": ("35", "38"),                                               # Guadalajara, Tonalá
-            "cineteca_gdl": ("ficg", "cineforo"),                                 # Cineteca FICG (Zapopan), Cineforo UdeG
+            # Guadalajara, Tonalá.
+            "cinemex": ("35", "38"),
+            # Cineteca FICG (Zapopan), Cineforo UdeG.
+            "cineteca_gdl": ("ficg", "cineforo"),
             "cinery": ("1",), "cabanas": ("museo",)},
     "mty": {"cinepolis": ("monterrey",),
-            "cinemex": ("42", "43", "44", "46", "47", "48", "49", "104"),         # Apodaca … Salinas Victoria
-            "cineteca_mty": ("centro-artes",),                                     # Cineteca NL, Parque Fundidora
+            # Apodaca … Salinas Victoria.
+            "cinemex": ("42", "43", "44", "46", "47", "48", "49", "104"),
+            # Cineteca NL, Parque Fundidora.
+            "cineteca_mty": ("centro-artes",),
             # La Megapantalla IMAX de Papalote, también en el Parque Fundidora.
             "papalote_mty": ("fundidora",),
             "epic": ("0000000001",), "raly": ("madero",)},

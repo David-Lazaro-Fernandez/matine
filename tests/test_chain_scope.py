@@ -6,7 +6,8 @@ import pytest
 import analytics
 from analytics import plaza as plaza_scope
 
-D0, D1 = "2026-09-25", "2026-10-07"      # la semana grabada de Cinemex y Cinépolis, y el día grabado de la Cineteca
+# La semana grabada de Cinemex y Cinépolis, y el día grabado de la Cineteca.
+D0, D1 = "2026-09-25", "2026-10-07"
 _HEAD_TO_HEAD = {
     "kpis": lambda c, p: analytics.kpis(c, D0, D1, from_now=False, plaza=p),
     "mix": lambda c, p: analytics.mix(c, D0, D1, from_now=False, plaza=p),

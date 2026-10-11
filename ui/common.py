@@ -31,6 +31,7 @@ from analytics.labels import (  # noqa: E402
     CHAIN_LABEL,
     CINEMA_TYPE_LABEL,
     COLUMN_LABEL,
+    CONCESSION_CHART_TEXT,
     DATA_TEXT,
     DATASET_HELP,
     DATASET_LABEL,
@@ -54,6 +55,7 @@ from analytics.labels import (  # noqa: E402
     KIND_LABEL,
     LANGUAGE_BUCKETS,
     LANGUAGE_LABEL,
+    LAYER_TEXT,
     LINE,
     MAP_ATTRIBUTION,
     MAP_METRIC,
@@ -72,6 +74,7 @@ from analytics.labels import (  # noqa: E402
     RED_SOFT,
     ROLE_HELP,
     ROLE_LABEL,
+    SEATS_CHART_TEXT,
     SLOT_SHORT,
     SLOTS,
     SNACK_LABEL,
@@ -95,19 +98,23 @@ from scraper.health import MAX_AGE_MIN  # noqa: E402  (umbral de captura vieja, 
 
 # Mapa base de las páginas con mapa: estilo vectorial de OpenFreeMap (sin clave, uso comercial permitido, datos de
 # OpenStreetMap). Los mosaicos raster de CARTO piden clave desde 2026-09 y muestran "API KEY REQUIRED".
-BASEMAP_STYLE = os.environ.get("AC_BASEMAP_STYLE", "https://tiles.openfreemap.org/styles/positron")
+BASEMAP_STYLE = os.environ.get("AC_BASEMAP_STYLE", analytics.labels.BASEMAP_STYLE)
 _MAPLIBRE_JS = "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"
 _MAPLIBRE_CSS = "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css"
 _MAPLIBRE_LEAFLET_JS = "https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"
-TTL = 60  # segundos; los planos de asientos escriben cada 15 min y la cartelera tres veces al día
+# Segundos; los planos de asientos escriben cada 15 min y la cartelera tres veces al día.
+TTL = 60
 TZ = ZoneInfo("America/Mexico_City")
-SNAPSHOT_TIMES = job_registry.daily_times(job_keys.SNAPSHOT)  # horas de captura de cartelera, del registro
+# Horas de captura de cartelera, del registro.
+SNAPSHOT_TIMES = job_registry.daily_times(job_keys.SNAPSHOT)
 KINDS = ["added", "removed", "moved", "changed", "availability"]
 CHAINS = ["cinemex", "cinepolis"]
 CHAIN_DOMAIN = [CHAIN_LABEL[c] for c in CHAINS]
 CHAIN_RANGE = [CHAIN_COLOR[c] for c in CHAINS]
-FIRST_SNAPSHOT = date(2026, 9, 7)          # inicio de la historia; los paneles de tendencia dependen de ella
-SHOWN_MOVIES, TOTAL_MOVIES = 8, 15         # dumbbell: las de mayor diferencia, y todas al pedirlo
+# Inicio de la historia; los paneles de tendencia dependen de ella.
+FIRST_SNAPSHOT = date(2026, 9, 7)
+# Dumbbell: las de mayor diferencia, y todas al pedirlo.
+SHOWN_MOVIES, TOTAL_MOVIES = 8, 15
 FONT = "Archivo, system-ui, sans-serif"
 
 PAGE_TITLE = ZONE_TEXT["page_title"]
@@ -436,7 +443,7 @@ def chart(c, width="stretch"):
 
 
 def capa(num, title, desc, roja=False, anchor=None):
-    md(f'<div class="capa-tag" id="{anchor or f"capa{num}"}"><span class="num{" roja" if roja else ""}">CAPA {num}</span>'
+    md(f'<div class="capa-tag" id="{anchor or f"capa{num}"}"><span class="num{" roja" if roja else ""}">{esc(LAYER_TEXT["tag"].format(num=num))}</span>'
        f'<h2>{esc(title)}</h2></div><p class="capa-desc">{esc(desc)}</p>')
 
 
@@ -452,13 +459,14 @@ def pregunta(texto, conclusion, nota=None):
 
 def leerla(slug, texto):
     with st.container(key=f"leerla-{slug}"):
-        with st.expander("Cómo leerla"):
+        with st.expander(LAYER_TEXT["read_it"]):
             st.markdown(texto)
 
 
 def apendice(slug, title, resumen):
     """Expander con línea de resumen visible: quien lo necesita lo abre."""
-    label = f"{title}  :gray[· {resumen}]".replace("$", "\\$") if resumen else title   # $ escapado: si no, LaTeX
+    # $ escapado: si no, LaTeX.
+    label = f"{title}  :gray[· {resumen}]".replace("$", "\\$") if resumen else title
     return st.container(key=f"apendice-{slug}").expander(label)
 
 

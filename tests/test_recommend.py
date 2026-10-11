@@ -33,7 +33,8 @@ def _price(conn, row, tickets):
 
 
 def _menu(conn, cinema_id, prices):
-    sampled_at = datetime.now(timezone.utc).isoformat()      # una lectura del menú: todos sus productos a la misma hora
+    # Una lectura del menú: todos sus productos a la misma hora.
+    sampled_at = datetime.now(timezone.utc).isoformat()
     for product, cents in prices.items():
         conn.execute("""INSERT INTO concession_price (chain, cinema_id, sampled_at, category, product_id, product_name, price_cents)
                         VALUES ('cinepolis', ?, ?, 'Clásicos', ?, ?, ?)""", (cinema_id, sampled_at, product, product, cents))
@@ -45,7 +46,8 @@ def _first_unpriced(conn, start):
 
 def test_each_person_pays_their_own_ticket(conn):
     first = _first_unpriced(conn, FORUM_TEPIC)
-    assert analytics.recommend(conn, *FORUM_TEPIC, **WIDE) == []                      # sin lecturas no hay precio
+    # Sin lecturas no hay precio.
+    assert analytics.recommend(conn, *FORUM_TEPIC, **WIDE) == []
     _price(conn, first, TICKETS["cinemex"])
     priced = analytics.recommend(conn, *FORUM_TEPIC, adults=2, children=1, seniors=1, **WIDE)
     assert {(r["cinema_id"], r["format_bucket"], r["day_type"]) for r in priced} == \
@@ -58,7 +60,8 @@ def test_each_person_pays_their_own_ticket(conn):
 def test_a_promotion_is_not_taken_for_a_child_ticket():
     general, child, senior = rec._ticket_prices(json.dumps([{"name": n, "cents": c} for n, c in TICKETS["cinepolis"]]), 9000)
     assert (general, child, senior) == (90.0, 70.0, 65.0)
-    assert rec._ticket_prices(json.dumps([{"name": "ADULTO", "cents": 8000}]), 8000) == (80.0, 80.0, 80.0)   # sin boleto de niño
+    # Sin boleto de niño.
+    assert rec._ticket_prices(json.dumps([{"name": "ADULTO", "cents": 8000}]), 8000) == (80.0, 80.0, 80.0)
 
 
 def test_snacks_come_from_the_menu_of_each_cinepolis(conn):
@@ -66,7 +69,8 @@ def test_snacks_come_from_the_menu_of_each_cinepolis(conn):
     _price(conn, first, TICKETS["cinepolis"])
     _menu(conn, first["cinema_id"], {"Palomitas": 9000, "Refresco": 6000, "Combo Clásico": 25000})
     combo = analytics.recommend(conn, *GALERIAS_HMO, adults=3, snacks="combo_2", **WIDE)
-    assert {(r["tickets_total"], r["snacks_total"], r["total"]) for r in combo} == {(270.0, 500.0, 770.0)}   # 2 combos para 3
+    # 2 combos para 3.
+    assert {(r["tickets_total"], r["snacks_total"], r["total"]) for r in combo} == {(270.0, 500.0, 770.0)}
     assert combo[0]["snacks_items"] == [{"name": "Combo Clásico", "units": 2, "price": 250.0}]
     popcorn = analytics.recommend(conn, *GALERIAS_HMO, adults=2, snacks="popcorn", **WIDE)
     assert {r["snacks_total"] for r in popcorn} == {300.0}
@@ -75,7 +79,8 @@ def test_snacks_come_from_the_menu_of_each_cinepolis(conn):
 def test_without_a_snack_price_the_show_goes_apart(conn):
     first = _first_unpriced(conn, FORUM_TEPIC)
     _price(conn, first, TICKETS["cinemex"])
-    assert analytics.recommend(conn, *FORUM_TEPIC, snacks="combo_2", **WIDE) == []      # Cinemex no publica menú en sala
+    # Cinemex no publica menú en sala.
+    assert analytics.recommend(conn, *FORUM_TEPIC, snacks="combo_2", **WIDE) == []
     apart = analytics.recommend(conn, *FORUM_TEPIC, snacks="combo_2", status="snacks_unpriced", **WIDE)
     assert apart and {(r["snacks_total"], r["total"], r["tickets_total"]) for r in apart} == {(None, None, 160.0)}
     summary = analytics.recommend_summary(conn, *FORUM_TEPIC, snacks="combo_2", d0=D0, d1=D1, from_now=False)
@@ -137,7 +142,8 @@ def test_one_search_gives_what_the_separate_calls_give(conn):
     assert found["titles"] == analytics.recommend_titles(conn, *FORUM_TEPIC, d0=D0, d1=D1, from_now=False)
     title = found["titles"][-1]["title_norm"]
     only = analytics.recommend_search(conn, *FORUM_TEPIC, title_norm=title, **common)
-    assert only["titles"] == found["titles"]                                          # el filtro no vacía la lista
+    # El filtro no vacía la lista.
+    assert only["titles"] == found["titles"]
     assert {r["title_norm"] for r in only["unpriced"]} <= {title}
 
 
@@ -221,7 +227,8 @@ def test_a_building_is_one_site_with_every_show(conn):
     site = found["sites"][0]
     assert {c["cinema_name"] for c in site["cinemas"]} == {"Forum Tepic", "Forum Tepic Platino"}
     inside = analytics.recommend_search(conn, *FORUM_TEPIC, per_cinema=1, site=(site["lat"], site["lng"]), **near)
-    assert len(inside["complete"]) == site["shows"] > len(found["complete"])           # sin tope por cine
+    # Sin tope por cine.
+    assert len(inside["complete"]) == site["shows"] > len(found["complete"])
 
 
 MENU = {"Palomitas": 90.0, "Refresco": 60.0, "Combo Clásico": 250.0, "Maxicombo Nachos": 330.0}
@@ -229,26 +236,34 @@ MENU = {"Palomitas": 90.0, "Refresco": 60.0, "Combo Clásico": 250.0, "Maxicombo
 
 def test_the_cheapest_mix_covers_the_whole_group():
     assert rec._snack_plan(MENU, "best", None, 3, 0) == (330.0, [{"name": "Maxicombo Nachos", "units": 1, "price": 330.0}])
-    assert rec._snack_plan(MENU, "best", None, 5, 0)[0] == 580.0                     # Maxicombo para 3 + Clásico para 2
+    # Maxicombo para 3 + Clásico para 2.
+    assert rec._snack_plan(MENU, "best", None, 5, 0)[0] == 580.0
     assert rec._snack_plan(MENU, "best", None, 1, 0) == (150.0, [{"name": "Palomitas y refresco", "units": 1, "price": 150.0}])
-    assert rec._snack_plan({"Combo Clásico": 250.0}, "best", None, 3, 0) is None       # sin palomitas sueltas, 3 no se cubre
+    # Sin palomitas sueltas, 3 no se cubre.
+    assert rec._snack_plan({"Combo Clásico": 250.0}, "best", None, 3, 0) is None
     assert rec._snack_plan({}, "best", None, 2, 0) is None
 
 
 def test_a_combo_covers_only_who_it_is_for():
     menu = {**MENU, "Combo Junior": 100.0, "Combo Individual Con Cerveza": 120.0}
-    assert rec._snack_plan(menu, "best", None, 1, 1)[0] == 220.0                     # Junior para el niño, cerveza para el adulto
-    assert rec._snack_plan(menu, "best", None, 0, 2)[0] == 200.0                     # dos Junior
+    # Junior para el niño, cerveza para el adulto.
+    assert rec._snack_plan(menu, "best", None, 1, 1)[0] == 220.0
+    # Dos Junior.
+    assert rec._snack_plan(menu, "best", None, 0, 2)[0] == 200.0
     no_junior = {k: v for k, v in menu.items() if k != "Combo Junior"}
-    assert rec._snack_plan(no_junior, "best", None, 0, 2)[0] == 250.0                # la cerveza no cubre a niños
-    assert rec._snack_plan(menu, "combo_1", None, 2, 0) is None                      # "cada N" no usa el de cerveza
+    # La cerveza no cubre a niños.
+    assert rec._snack_plan(no_junior, "best", None, 0, 2)[0] == 250.0
+    # "cada N" no usa el de cerveza.
+    assert rec._snack_plan(menu, "combo_1", None, 2, 0) is None
     assert rec._snack_plan({**menu, "Combo Crepa Individual": 140.0}, "combo_1", None, 2, 0)[0] == 280.0
 
 
 def test_a_chosen_combo_goes_one_per_its_maximum():
     assert rec._snack_plan(MENU, "none", "Maxicombo Nachos", 5, 0) == (660.0, [{"name": "Maxicombo Nachos", "units": 2, "price": 330.0}])
-    assert rec._snack_plan(MENU, "best", "Maxicombo Familiar", 2, 0) is None           # el cine no lo vende
-    assert rec._snack_plan(MENU, "combo_3", None, 4, 0)[0] == 660.0                  # un Maxicombo cada tres
+    # El cine no lo vende.
+    assert rec._snack_plan(MENU, "best", "Maxicombo Familiar", 2, 0) is None
+    # Un Maxicombo cada tres.
+    assert rec._snack_plan(MENU, "combo_3", None, 4, 0)[0] == 660.0
 
 
 def test_every_combo_in_the_table_is_valid():
@@ -274,7 +289,8 @@ def test_the_loop_combo_follows_the_day_and_the_cinema_list(conn):
     promos = {(r["cinema_id"], r["format_bucket"], datetime.fromisoformat(r["date"]).weekday()): r["promo"]
               for r in shows if r["chain"] == "cinemex"}
     forum = {day: c for (cinema, fmt, day), c in promos.items() if cinema == "156" and fmt == "traditional"}
-    assert forum[0]["price"] == forum[2]["price"] == 230.0 and forum[4]["price"] == 365.0       # Forum Tepic en los PDF
+    # Forum Tepic en los PDF.
+    assert forum[0]["price"] == forum[2]["price"] == 230.0 and forum[4]["price"] == 365.0
     assert forum[0]["name"] == "Combo Lunes" and forum[1]["name"] == "Combo Martes Pareja"
     assert forum[3]["price"] == 255.0 and forum[5] is forum[6] is None
     assert all(c is None or c["name"] == "Martes 2x1" for (_, fmt, _), c in promos.items() if fmt != "traditional")
@@ -292,7 +308,8 @@ def _names(r):
 
 def test_no_promo_in_presale_or_special_events():
     assert [p["price"] for p in rec._promos(_MONDAY, {})] == [230.0, 180.0]
-    assert rec._promos(_MONDAY, {("cinemex", "1"): "2026-10-01"}) == []                          # antes del estreno
+    # Antes del estreno.
+    assert rec._promos(_MONDAY, {("cinemex", "1"): "2026-10-01"}) == []
     assert _names({**_MONDAY, "distributor": "Fathom"}) == _names({**_MONDAY, "genre": "Documental|Concierto"}) == []
     assert _names({**_CINEPOLIS, "distributor": "+QueCine"}) == []
 
@@ -323,7 +340,8 @@ def test_cinemex_promos_follow_the_day_and_the_room():
     assert rec._promos(thursday, {})[0]["price"] == 255.0
     assert rec._promos({**thursday, "cinema_name": "Antara Market"}, {})[0]["price"] == 310.0
     assert _names({**tuesday, "cinema_name": "Antara Market"}) == ["Martes 2x1"]
-    assert _names({**_MONDAY, "date": "2026-10-03"}) == []                                          # sábado: nada
+    # Sábado: nada.
+    assert _names({**_MONDAY, "date": "2026-10-03"}) == []
 
 
 def test_cinepolis_promos_follow_the_day_and_the_room():
@@ -339,8 +357,10 @@ def test_cinepolis_promos_follow_the_day_and_the_room():
     assert promo({**tuesday, "experience": "SCREENX"}) is promo({**tuesday, "week_max_cents": None}) is None
     assert promo({**wednesday, "format": "3D"})["name"] == "Miércoles 2x1"
     assert promo({**wednesday, "experience": "XE"}) is promo({**wednesday, "premium_tier": "vip"}) is None
-    assert promo({**wednesday, "date": "2026-09-16"}) is None                                     # 16 de septiembre
-    assert promo({**_CINEPOLIS, "date": "2026-10-01"}) is None                                    # jueves: nada
+    # 16 de septiembre.
+    assert promo({**wednesday, "date": "2026-09-16"}) is None
+    # Jueves: nada.
+    assert promo({**_CINEPOLIS, "date": "2026-10-01"}) is None
 
 
 def _show(tickets, snacks, total, adult=90.0, child=70.0, senior=70.0):
@@ -358,13 +378,17 @@ def _apply(r, promos, adults, children=0, snacks="best", combo=None, rest=lambda
 
 
 def test_a_combo_covers_two_people_and_prices_their_snacks():
-    r, promo = _show(180.0, None, None), _promo_for("combo", 230.0)          # Cinemex: sin precio de dulcería
+    # Cinemex: sin precio de dulcería.
+    r, promo = _show(180.0, None, None), _promo_for("combo", 230.0)
     assert _apply(r, [promo], 2, rest=lambda a, k: None) is promo
     assert promo["applied"] and (r["tickets_total"], r["snacks_total"], r["total"]) == (230.0, 0.0, 230.0)
-    r, promo = _show(372.0, None, None, adult=116.0), _promo_for("combo", 230.0)   # 2 adultos y 2 niños (Tezontle)
+    # 2 adultos y 2 niños (Tezontle).
+    r, promo = _show(372.0, None, None, adult=116.0), _promo_for("combo", 230.0)
     _apply(r, [promo], 2, 2, rest=lambda a, k: None)
-    assert promo["applied"] and (r["tickets_total"], r["total"]) == (370.0, None)       # el resto, sin precio de dulcería
-    r, promo = _show(320.0, None, None), _promo_for("combo", 230.0)                    # con boletos a 90 sale más caro
+    # El resto, sin precio de dulcería.
+    assert promo["applied"] and (r["tickets_total"], r["total"]) == (370.0, None)
+    # Con boletos a 90 sale más caro.
+    r, promo = _show(320.0, None, None), _promo_for("combo", 230.0)
     _apply(r, [promo], 2, 2, rest=lambda a, k: None)
     assert not promo["applied"] and r["tickets_total"] == 320.0
 
@@ -373,16 +397,19 @@ def test_the_combo_range_counts_its_high_price():
     r, promo = _show(180.0, 150.0, 330.0), _promo_for("combo", 245.0, 270.0)
     _apply(r, [promo], 2)
     assert promo["applied"] and r["total"] == 270.0
-    r, promo = _show(180.0, 80.0, 260.0), _promo_for("combo", 245.0, 270.0)  # más caro que sin promoción
+    # Más caro que sin promoción.
+    r, promo = _show(180.0, 80.0, 260.0), _promo_for("combo", 245.0, 270.0)
     _apply(r, [promo], 2)
     assert not promo["applied"] and r["total"] == 260.0
 
 
 def test_a_two_for_one_replaces_the_pairs_that_save_the_most():
-    r, promo = _show(340.0, 0.0, 340.0), _promo_for("2x1", 100.0)            # Cinépolis: 3 adultos a 90 y 1 niño a 70
+    # Cinépolis: 3 adultos a 90 y 1 niño a 70.
+    r, promo = _show(340.0, 0.0, 340.0), _promo_for("2x1", 100.0)
     _apply(r, [promo], 3, 1, snacks="none")
     assert promo["applied"] and r["total"] == 340.0 - 180.0 + 100.0
-    r, promo = _show(460.0, 0.0, 460.0), _promo_for("2x1", 90.0, uses=3, pays_one=True)   # Loop: 4 adultos y 2 niños
+    # Loop: 4 adultos y 2 niños.
+    r, promo = _show(460.0, 0.0, 460.0), _promo_for("2x1", 90.0, uses=3, pays_one=True)
     _apply(r, [promo], 4, 2, snacks="none")
     assert r["total"] == 460.0 - 90.0 - 90.0 - 70.0
 
@@ -390,11 +417,14 @@ def test_a_two_for_one_replaces_the_pairs_that_save_the_most():
 def test_the_group_uses_the_cheapest_promo_of_the_day():
     two_for_one = _promo_for("2x1", 90.0, uses=3, pays_one=True)
     pair, solo = _promo_for("combo", 340.0), _promo_for("combo", 240.0, people=1)
-    r = _show(180.0, None, None)                                              # pareja con dulcería en Cinemex
+    # Pareja con dulcería en Cinemex.
+    r = _show(180.0, None, None)
     assert _apply(r, [two_for_one, pair, solo], 2, rest=lambda a, k: None) is pair and r["total"] == 340.0
-    r = _show(90.0, None, None)                                               # una persona
+    # Una persona.
+    r = _show(90.0, None, None)
     assert _apply(r, [two_for_one, pair, solo], 1, rest=lambda a, k: None) is solo and r["total"] == 240.0
-    r = _show(180.0, 0.0, 180.0)                                              # pareja sin dulcería
+    # Pareja sin dulcería.
+    r = _show(180.0, 0.0, 180.0)
     assert _apply(r, [two_for_one, pair, solo], 2, snacks="none") is two_for_one and r["total"] == 90.0
 
 

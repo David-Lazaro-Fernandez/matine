@@ -16,7 +16,8 @@ from scripts import capture_fixtures as fixtures  # noqa: E402
 def capture_db(tmp_path, monkeypatch):
     """Fábrica: `capture_db("cinemex", "cineteca")` devuelve una conexión con la captura grabada de esas cadenas escrita
     por `run.commit`, con `title_key` registrada como la registra `analytics.connect()`."""
-    monkeypatch.setattr(config, "LOG_DIR", tmp_path)      # run.commit registra en run.log: fuera del log real
+    # `run.commit` registra en run.log: fuera del log real.
+    monkeypatch.setattr(config, "LOG_DIR", tmp_path)
     opened = []
 
     def make(*chains):

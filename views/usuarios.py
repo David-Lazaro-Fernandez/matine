@@ -48,7 +48,8 @@ with col_manage, seccion("administrar-cuenta"):
     if others.empty:
         st.caption(AUTH_TEXT["done"])
     else:
-        labels = {str(r.id): f"{r.name} · {r.email}" for r in others.itertuples()}   # claves texto: estables entre reruns
+        # Claves texto: estables entre reruns.
+        labels = {str(r.id): f"{r.name} · {r.email}" for r in others.itertuples()}
         target = int(st.selectbox(AUTH_TEXT["pick_account"], options=list(labels), format_func=labels.get, key="target_user"))
         row = others[others["id"] == target].iloc[0]
         b1, b2 = st.columns(2)
@@ -57,8 +58,8 @@ with col_manage, seccion("administrar-cuenta"):
         else:
             act = b1.button(AUTH_TEXT["activate"], key="activate", width="stretch")
         resend = b2.button(AUTH_TEXT["resend_link"], key="resend", width="stretch")
-        # El selector lleva la cuenta en su clave: así al cambiar de cuenta arranca en el rol actual de esa cuenta y
-        # el cambio solo ocurre con el botón, nunca por arrastrar el estado del selector anterior.
+        # El selector lleva la cuenta en su clave. Al cambiar de cuenta, arranca en el rol actual de esa cuenta. El rol
+        # solo cambia con el botón, nunca por el estado del selector anterior.
         r1, r2 = st.columns([3, 2])
         new_role = r1.selectbox(AUTH_TEXT["change_role"], options=list(ROLE_LABEL), format_func=ROLE_LABEL.get,
                                 index=list(ROLE_LABEL).index(row["role"]), key=f"new_role_{target}", label_visibility="collapsed")
