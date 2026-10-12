@@ -359,7 +359,7 @@ sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
 - `data/` está fuera de git. No versiones la base, el crudo ni los logs.
 - La descripción de un PR sigue `.claude/rules/pull-requests.md`: Summary (Problem, Solution y pocos puntos) y Test Plan,
   en ASD-STE100.
-- La rama principal es `main`. No hagas commit ni push salvo que se te pida. La rama `stable` la mueve GitHub Actions
+- La rama principal es `main`. No hagas commit ni push salvo que se te pida, excepto un cambio pequeño (abajo). La rama `stable` la mueve GitHub Actions
   (`.github/workflows/tests.yml`) cuando las pruebas pasan en `main`, y es lo que el servidor despliega
   (`make deploy`, cada 15 min): no la muevas a mano. Si un commit rompe las pruebas, `stable` se queda atrás hasta que se
   arregle; por eso una prueba que falla en CI bloquea el despliegue de todo lo posterior.
@@ -368,3 +368,7 @@ sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
   desde la rama de la que dependa. Dos agentes nunca escriben en la misma carpeta. Así varios agentes trabajan en
   paralelo y cada rama entra a `main` con su merge, sin pisar el trabajo de otro. El worktree se borra al integrar su
   rama (`git worktree remove`).
+- **Un cambio pequeño se integra solo.** Un cambio de pocas líneas y sin decisión abierta, como una constante, un texto
+  o un dato de configuración, no espera a que se pida el commit. Se hace en su worktree, se prueba con la compuerta que
+  le toca (`make check` o `pnpm run build`), se hace merge a `main` y se borran el worktree y la rama. Si la prueba
+  falla, no hay merge.
