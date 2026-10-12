@@ -1,8 +1,8 @@
-"""Conexión de solo lectura a la base del scraper, con `title_key` disponible en SQL."""
+"""Conexión de solo lectura a la base del scraper, con `title_key` y `distributor_key` disponibles en SQL."""
 import sqlite3
 from pathlib import Path
 
-from scraper import config, normalize, titles
+from scraper import config, distributors, normalize, titles
 
 
 def connect(path=None):
@@ -22,6 +22,8 @@ def register(conn):
     `norm_title(texto)`, para las búsquedas del explorador sin mayúsculas ni acentos."""
     conn.create_function("title_key", 1, titles.title_key, deterministic=True)
     conn.create_function("norm_title", 1, normalize.norm_title, deterministic=True)
+    conn.create_function("distributor_key", 1, distributors.distributor_key, deterministic=True)
+    conn.create_function("distributor_kind", 1, distributors.distributor_kind, deterministic=True)
     return conn
 
 
