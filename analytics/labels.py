@@ -287,6 +287,7 @@ CARTELERA_TEXT = {
     "hours_from": "Desde",
     "hours_to": "Hasta",
     # Capa 1.
+    "suggestions": "Qué sugerimos",
     "no_findings": "Ninguna diferencia cruza el umbral de relevancia en este periodo. La evidencia completa está en la Capa 2.",
     # Capa 2.
     "empty_period": "Sin funciones en el periodo.",
@@ -1046,7 +1047,7 @@ DISTRIBUTOR_KIND_LABEL = {"distribuidor": "Distribuidora", "programa_propio": "P
                        "sin_clasificar": "Sin clasificar", "sin_conciliar": "Sin conciliar"}
 
 # Rótulos fijos de los componentes de capa (`capa`, `leerla` en ui/common.py y dashboard/components/common.tsx).
-LAYER_TEXT = {"read_it": "Cómo leerla", "evidence": "Ver la evidencia"}
+LAYER_TEXT = {"read_it": "Cómo leerla", "evidence": "Ver más"}
 # Pantalla Cines de la Cartelera (dashboard/components/cartelera/cines.tsx, analytics/cinema_sales.py).
 CINES_TEXT = {
     "q_ranking": "Venta por cine",
@@ -1076,8 +1077,8 @@ CINES_TEXT = {
 }
 # Cifras de una tarjeta de hallazgo (`analytics.findings`), por la unidad que trae cada una. `{value}` ya va formateado.
 FINDING_UNIT = {"pct": "{value} %", "pp": "{value} pp", "pct_diff": "{value} %", "money": "${value}", "count": "{value}",
-                "pace": "{value} pts/día"}
-FINDING_TEXT = {"versus": "frente a", "theme": "Tema"}
+                "pace": "{value} % del aforo por día"}
+FINDING_TEXT = {"versus": "frente a", "theme": "Tema", "up": "▲", "down": "▼"}
 FINDING_THEME_LABEL = {"programacion": "Programación", "preventa": "Preventa", "precios": "Precios", "cines": "Cines",
                        "dulceria": "Dulcería", "independientes": "Independientes"}
 # Descargas de cada gráfica y cada tarjeta de hallazgo; "Ver datos" abre el explorador de Datos con el periodo.

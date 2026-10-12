@@ -243,7 +243,7 @@ el timer lo note. Si añades un flujo de captura, añade su cobertura ahí y su 
   `snapshots.db` en solo lectura, cierra la conexión y guarda el resultado 60 s). `api/internal.py` solo los registra.
   Páginas: Cartelera (cinco pantallas, una pregunta cada una, en `components/cartelera/cartelera-page.tsx`: Hallazgos en
   `/`, Programación semanal, Preventa, Precios y butacas, Cines (en `app/cines/`, sin periodo), Historial de funciones; zona, periodo y franja en la barra), Mapa, ¿A dónde ir?
-  (recomendador), Dulcería, Independientes, Datos (explorador de `snapshots.db`, `analytics/datasets.py`) y, solo para
+  (recomendador; fuera del menú, se abre por su dirección), Dulcería, Independientes, Datos (explorador de `snapshots.db`, `analytics/datasets.py`) y, solo para
   admin, Usuarios y, solo para staff, Operaciones. Un módulo que responde una pregunta propia del cliente y no depende del periodo va en
   su página; lo demás, en la cartelera. **Excepción:** Independientes sí depende del periodo y aun así va aparte, para
   que la Cineteca nunca se mezcle con los shares Cinemex↔Cinépolis.

@@ -62,8 +62,10 @@ type ModuleKey = keyof typeof MODULE_LABEL;
 type Icon = React.ComponentType<{ className?: string }>;
 
 // Cada módulo se contrata aparte: Cartelera trae las páginas de películas, Dulcería las de precios de dulcería.
+// Las páginas van por valor para el negocio: primero lo que decide la programación de la semana, al final las consultas.
+// ¿A dónde ir? no va en el menú porque es la demo para el público. Su página sigue en /recomendador/.
 const MODULES: { key: ModuleKey; icon: Icon; iconSelected: Icon; pages: PageKey[] }[] = [
-  { key: 'cartelera', icon: MoviesAndTv24Regular, iconSelected: MoviesAndTv24Filled, pages: ['cartelera', 'programacion', 'preventa', 'precios', 'cines', 'historial', 'mapa', 'recomendador', 'independientes', 'distribuidoras'] },
+  { key: 'cartelera', icon: MoviesAndTv24Regular, iconSelected: MoviesAndTv24Filled, pages: ['cartelera', 'programacion', 'preventa', 'cines', 'precios', 'distribuidoras', 'mapa', 'independientes', 'historial'] },
   { key: 'dulceria', icon: Food24Regular, iconSelected: Food24Filled, pages: ['dulceria', 'domicilio'] },
   { key: 'datos', icon: Database24Regular, iconSelected: Database24Filled, pages: ['datos'] },
   { key: 'admin', icon: Settings24Regular, iconSelected: Settings24Filled, pages: ['usuarios', 'operaciones'] },

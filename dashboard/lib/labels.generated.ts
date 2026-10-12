@@ -661,6 +661,7 @@ export const CARTELERA_TEXT = {
   "hours_free": "Rango libre",
   "hours_from": "Desde",
   "hours_to": "Hasta",
+  "suggestions": "Qué sugerimos",
   "no_findings": "Ninguna diferencia cruza el umbral de relevancia en este periodo. La evidencia completa está en la Capa 2.",
   "empty_period": "Sin funciones en el periodo.",
   "q_resumen": "¿Cómo se reparte la programación de la semana?",
@@ -1465,7 +1466,7 @@ export const DISTRIBUTOR_KIND_LABEL = {
 
 export const LAYER_TEXT = {
   "read_it": "Cómo leerla",
-  "evidence": "Ver la evidencia"
+  "evidence": "Ver más"
 } as const;
 
 export const CINES_TEXT = {
@@ -1509,12 +1510,14 @@ export const FINDING_UNIT = {
   "pct_diff": "{value} %",
   "money": "${value}",
   "count": "{value}",
-  "pace": "{value} pts/día"
+  "pace": "{value} % del aforo por día"
 } as const;
 
 export const FINDING_TEXT = {
   "versus": "frente a",
-  "theme": "Tema"
+  "theme": "Tema",
+  "up": "▲",
+  "down": "▼"
 } as const;
 
 export const FINDING_THEME_LABEL = {
