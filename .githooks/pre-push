@@ -3,5 +3,8 @@
 # `make hooks` (git config core.hooksPath .githooks). Para una emergencia: git push --no-verify.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+# Git exporta GIT_DIR al hook. Las pruebas que usan git en una carpeta temporal lo heredan y escriben en este repo.
+# shellcheck disable=SC2046
+unset $(git rev-parse --local-env-vars)
 echo ">> pre-push: make check"
 make check
