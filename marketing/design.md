@@ -15,8 +15,8 @@ alguien en dirección comercial o revenue management de **una cadena de cine que
 sin acceso al producto — decidiendo si vale la pena pedir una demo. Su trabajo en la página es uno
 solo: entender qué hace el producto en los primeros diez segundos y decidir si escribe.
 
-No es un blog y no necesita servidor: es contenido estático (`next.config.mjs` usa `output: 'export'`). Tiene tres
-rutas: la portada, `/a-donde-ir/`, la demo pública del recomendador (§7), que le enseña a cualquiera —no solo a una
+No es un blog y no necesita servidor: es contenido estático (`next.config.mjs` usa `output: 'export'`). Tiene cuatro
+rutas: la portada, `/precios/` (§4.1), `/a-donde-ir/`, la demo pública del recomendador (§7), que le enseña a cualquiera —no solo a una
 cadena— lo que Matiné sabe de la cartelera con datos reales, y `/request-demo/`, el formulario para pedir una demo.
 Todo "Solicitar acceso" lleva ahí (`DEMO_URL` en `lib/site.ts`).
 
@@ -114,6 +114,16 @@ marca. Un componente por sección en `components/`, en este orden:
 9. **`footer-section.tsx`.** Marca + dos columnas (Producto, Contacto) + barra inferior. Sin redes
    sociales ni "todos los sistemas operativos": no hay página de estado pública.
 
+### 4.1 `/precios/`
+
+`components/pricing.tsx` y, debajo, las secciones de la portada `pilot-section`, `ai-section` y `cta-section`. Ningún
+plan publica precio (decisión 2026-10-12): cada tarjeta lleva "Contactar ventas" a `/request-demo/`. Pestañas Cadenas y Distribuidoras (`.rec-tabs`); Distribuidoras es una puerta "En evaluación"
+mientras ese módulo no se vende. Tres planes con lista acumulativa ("Todo lo de Esencial, más:"), el de en medio
+"Recomendado"; lo no construido lleva su `.ai__status`. Siguen los puestos (`.hgrid`), la tabla por categorías
+(`.price-table`, en celular se desplaza dentro de su caja con la primera columna fija), "Ayuda para elegir" y las
+preguntas frecuentes (`.faq`, `<details>` nativo). Las únicas cifras son los 15 puestos iniciales y las del calendario
+de captura.
+
 **Movimiento.** Toda transición y animación usa la curva `--ease-out` (`cubic-bezier(0.22, 1, 0.36, 1)`), también el
 movimiento del mapa de `/a-donde-ir/` (MapLibre recibe esa misma curva, leída de la variable). Las únicas en `linear`
 son las continuas o de tiempo: la cinta del hero y la barra de progreso de "Cómo funciona". La excepción es el menú de opciones de
@@ -149,6 +159,7 @@ clase con otro nombre para lo mismo:
 | `.hgrid__*` | Rejilla con hairlines (gap 1 px sobre `--line`) |
 | `.cta__*` | Llamado final enmarcado |
 | `.footer__*` | Pie |
+| `.price-hero`, `.plans`, `.plan__*`, `.price-table*`, `.faq__*` | `/precios/`: tarjetas de plan, tabla comparativa y preguntas frecuentes |
 | `.demo`, `.demo__*` | `/request-demo/`: a la izquierda qué ofrece la demo; a la derecha, sobre tinta, el formulario en cuatro pasos (correo, datos, cadena, operación) con indicador de pasos |
 | `.rec-stage*`, `.rec-dock*`, `.rec-card*`, `.rec-ask*`, `.rec-menu*`, `.rec-screen*`, `.rec-tabs*`, `.rec__*` | `/a-donde-ir/`: pantalla de búsqueda (mapa a pantalla completa con velo, barra que baja al pie, ficha de cine, menú de opciones) y de resultados (pestañas, tabla que en celular se vuelve tarjetas) |
 
