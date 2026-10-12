@@ -1032,8 +1032,11 @@ DISTRIBUTOR_TEXT = {
     "q_gaps": "¿Con qué distribuidora se separa más nuestra programación de la de Cinépolis?",
     "question": "¿Cuántos cines, salas y funciones tiene cada distribuidora en cada cadena?",
     "no_data": "Sin funciones en el periodo.",
-    "gap_columns": {"distributor": "Distribuidora", "kind": "Tipo", "share_cinemex": "% de nuestras funciones",
-                    "share_cinepolis": "% de las de Cinépolis", "gap_pp": "Diferencia (pp)"},
+    "gap_axis": "% de las funciones del periodo",
+    "gap_tooltip": "{distributor} · {chain}: {share} % de su programación · {shows} funciones",
+    "leer_gaps": "Cada fila es una distribuidora; los puntos son el porcentaje de la programación que le dedica cada cadena "
+                 "y a la derecha, la diferencia (rojo: Cinemex le da más). Un solo punto es una distribuidora que la otra "
+                 "cadena no programa. Las películas que cada cadena atribuye a una distribuidora distinta no entran.",
     "columns": {"distributor": "Distribuidora", "kind": "Tipo", "chain": "Cadena", "cinemas": "Cines", "share_cinemas": "% de cines",
                 "screens": "Salas", "shows": "Funciones", "share_shows": "% de funciones",
                 "large_shows": "Premium o gran formato"},
