@@ -752,5 +752,5 @@ def distributor_conclusions(conn, d0=None, d1=None, from_now=True, hours=None, p
     if unreconciled:
         shows = sum(r["shows"] for r in unreconciled)
         out["sin_conciliar"] = (f"{shows:,} funciones son de títulos con distinta distribuidora en cada cadena y quedan "
-                                "fuera de la brecha hasta decidirlas en scraper/title_distributors.csv.")
+                                "fuera de la brecha.")
     return out
