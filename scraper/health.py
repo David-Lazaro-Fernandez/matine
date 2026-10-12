@@ -34,7 +34,7 @@ from zoneinfo import ZoneInfo
 from jobs import keys as job_keys
 from jobs import registry as job_registry
 
-from . import config, sample, states, store, titles
+from . import config, distributors, sample, states, store, titles
 
 # Tres capturas al día: el hueco normal más largo (20:30 → 07:30) es de 11 h.
 MAX_AGE_MIN = 12 * 60
@@ -161,6 +161,18 @@ def check(conn, hours=24, now=None):
     if report["title_candidates"]:
         report["problems"].append(f"{report['title_candidates']} par(es) de títulos entre cadenas por revisar "
                                   "(correr scripts/title_pairs.py y aceptar o rechazar)")
+    # Títulos con distinta distribuidora en cada cadena que nadie ha decidido en scraper/title_distributors.csv.
+    names_by_title = {}
+    for title_norm, distributor in conn.execute("""SELECT DISTINCT title_norm, distributor FROM current_showtime
+                                                   WHERE chain IN ('cinemex', 'cinepolis') AND title_norm <> ''"""):
+        name = distributors.distributor_key(distributor)
+        if name:
+            names_by_title.setdefault(titles.title_key(title_norm), set()).add(name)
+    report["unreconciled_distributors"] = distributors.unreconciled(names_by_title)
+    if report["unreconciled_distributors"]:
+        report["problems"].append(f"{len(report['unreconciled_distributors'])} título(s) con distinta distribuidora en cada cadena "
+                                  "(decidir en scraper/title_distributors.csv): " + ", ".join(
+                                      f"{t} ({' / '.join(names)})" for t, names in report["unreconciled_distributors"][:5]))
     cinemas = [dict(r) for r in conn.execute("SELECT chain, cinema_id, name FROM cinema ORDER BY chain, cinema_id")]
     report["unmapped_cinemas"] = states.unmapped(cinemas)
     if report["unmapped_cinemas"]:

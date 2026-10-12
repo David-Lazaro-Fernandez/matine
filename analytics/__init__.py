@@ -23,13 +23,13 @@ from .delivery import (
     delivery_stores,
     delivery_summary,
 )
-from .findings import conclusions, findings, independent_conclusions
+from .distributors import distributor_gaps, distributor_reach
+from .findings import conclusions, distributor_conclusions, findings, independent_conclusions
 from .headlines import headlines
 from .history import board_as_of, cinemas, dates_known, functions_on, showtime_timeline, snapshot_times
 from .independents import independent_overlap, independent_slots, independent_summary, independent_titles
 from .plaza import plaza_coverage, plazas
 from .presale import presale_by_chain, presale_compare, presale_curve, presale_ranking
-from .providers import provider_reach
 from .queries import (
     capture_status,
     cinema_week,
@@ -90,5 +90,7 @@ __all__ = [
     "cinema_highlights", "cinema_map", "cinema_sites", "chain_occupancy", "cinema_occupancy", "competitor_sites", "main_rivals", "recommend", "recommend_options", "recommend_search",
     "recommend_summary", "recommend_titles",
     "independent_conclusions", "independent_overlap", "independent_slots", "independent_summary", "independent_titles",
-    "provider_reach",
+    "distributor_conclusions",
+    "distributor_gaps",
+    "distributor_reach",
 ]

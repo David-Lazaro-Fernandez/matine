@@ -1,6 +1,7 @@
-"""Página Proveedores: cuántos cines, salas y funciones de cada cadena da cada distribuidor.
+"""Página Distribuidoras: cuántos cines, salas y funciones de cada cadena da cada distribuidora.
 
-`GET /api/proveedores` devuelve `providers`, las filas de `analytics.provider_reach`. El periodo y la franja son los de
+`GET /api/distribuidoras` devuelve `gaps` (`analytics.distributor_gaps`), `distributors`
+(`analytics.distributor_reach`) y `conclusions` (`analytics.distributor_conclusions`). El periodo y la franja son los de
 la Cartelera: sin `d0` ni `d1`, de hoy al miércoles de la semana de cine. `plaza` acota; sin ella es nacional. Solo
 Cinemex y Cinépolis: las cadenas independientes no traen distribuidor en la captura. Solo la ve el equipo de la
 plataforma (`staff`).
@@ -25,12 +26,14 @@ Plaza = Literal[tuple(plazas.PLAZAS)]
 Rows = list[dict[str, Any]]
 
 
-class Proveedores(TypedDict):
+class Distribuidoras(TypedDict):
     plaza: str | None
     d0: str
     d1: str
     hours: list[int]
-    providers: Rows
+    conclusions: dict[str, str]
+    gaps: Rows
+    distributors: Rows
 
 
 def _scope(plaza, d0, d1, h0, h1):
@@ -43,12 +46,14 @@ def _scope(plaza, d0, d1, h0, h1):
     return {"d0": d0, "d1": d1, "hours": (h0, h1), "plaza": plaza}
 
 
-@router.get("/proveedores")
-def proveedores(plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
-                h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Proveedores:
-    """Alcance por distribuidor y cadena (`analytics.provider_reach`) con los filtros de la Cartelera."""
+@router.get("/distribuidoras")
+def distribuidoras(plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
+                h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Distribuidoras:
+    """Brecha y alcance por distribuidora con los filtros de la Cartelera."""
     scope = _scope(plaza, d0, d1, h0, h1)
-    key = ("proveedores", analytics.today(), scope["d0"], scope["d1"], scope["hours"], scope["plaza"])
+    key = ("distribuidoras", analytics.today(), scope["d0"], scope["d1"], scope["hours"], scope["plaza"])
     return read(key, lambda conn: {"plaza": plaza, "d0": scope["d0"], "d1": scope["d1"],
                                    "hours": list(scope["hours"]),
-                                   "providers": analytics.provider_reach(conn, **scope)})
+                                   "conclusions": analytics.distributor_conclusions(conn, **scope),
+                                   "gaps": analytics.distributor_gaps(conn, **scope),
+                                   "distributors": analytics.distributor_reach(conn, **scope)})

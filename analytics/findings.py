@@ -18,15 +18,19 @@ la parte de la programación en juego (0 a 1): un título chico que vende raro n
 cadena. El umbral decide si un hallazgo entra; `stake` solo decide el orden. `as_of` es la fecha del dato
 muestreado que sostiene el hallazgo (None si solo usa la cartelera vigente).
 `conclusions()` devuelve {resumen, peliculas, peliculas_note, franjas, formatos, preventa, dulceria}: la frase que abre cada
-sección de evidencia; `independent_conclusions()` lo mismo para la página de la oferta independiente."""
+sección de evidencia; `independent_conclusions()` lo mismo para la página de la oferta independiente, y
+`distributor_conclusions()` para la de distribuidoras."""
 import math
 from datetime import datetime, timedelta, timezone
+
+from scraper import distributors
 
 from .cinema_sales import DAYS as SALES_DAYS
 from .cinema_sales import chain_occupancy, main_rivals
 from .concessions import concession_basket
 from .db import rows
 from .delivery import delivery_compare
+from .distributors import distributor_gaps, distributor_reach
 from .independents import (
     INDEP_MIN_SAMPLES,
     INDEP_MIN_SOLD_PCT,
@@ -106,6 +110,8 @@ PRICE_MIN_CINEMAS = 5
 OCCUPANCY_MIN_PP = 2.0
 # Brecha del % vendido entre un lugar de Cinemex y su rival número uno, el Cinépolis cercano que más vende.
 RIVAL_MIN_PP = 15.0
+# Brecha del share de funciones de una distribuidora entre cadenas.
+DISTRIBUTOR_MIN_PP = 3.0
 
 # Ventanas de muestreo. El precio se renueva una vez por semana por cine, formato y tipo de día. Con 14 días cubrimos
 # una vuelta completa con holgura. La ocupación se mide cada hora y una semana de cine basta para leer la demanda.
@@ -716,4 +722,35 @@ def independent_conclusions(conn, d0=None, d1=None, hours=None):
         k = max(gaps, key=lambda k: (gaps[k], k))
         out["franjas"] = (f"La Cineteca pone {_pct(slots[('cineteca', k)])} de sus funciones {_slot_phrase(k)}, "
                           f"frente a {_pct(slots[(US, k)])} de las nuestras en CDMX ({_pp(gaps[k])}).")
+    return out
+
+
+def distributor_conclusions(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None):
+    """Frases de la página de distribuidoras: {brecha, sin_conciliar}. `brecha` nombra la distribuidora con la mayor
+    diferencia de share entre cadenas, o dice que ninguna cruza `DISTRIBUTOR_MIN_PP`; falta si no hay funciones.
+    `sin_conciliar` cuenta los títulos que la brecha deja fuera; falta si no hay ninguno. Los programas propios no
+    entran a la brecha: cada cadena tiene el suyo."""
+    reach = distributor_reach(conn, d0, d1, from_now=from_now, hours=hours, plaza=plaza)
+    if not reach:
+        return {}
+    out = {}
+    gaps = [g for g in distributor_gaps(conn, d0, d1, from_now=from_now, hours=hours, plaza=plaza)
+            if g["kind"] != "programa_propio"]
+    top = gaps[0] if gaps else None
+    if top and abs(top["gap_pp"]) >= DISTRIBUTOR_MIN_PP:
+        us, them = _pct(top[f"share_{US}"]), _pct(top[f"share_{THEM}"])
+        gap = f"{abs(top['gap_pp']):.1f} pp"
+        if top["gap_pp"] < 0:
+            out["brecha"] = (f"{THEM_NAME} le da a {top['distributor']} {gap} más de su programación que nosotros "
+                             f"({them} frente a {us}).")
+        else:
+            out["brecha"] = (f"Le damos a {top['distributor']} {gap} más de nuestra programación que {THEM_NAME} "
+                             f"({us} frente a {them}).")
+    else:
+        out["brecha"] = f"Ninguna distribuidora se separa {DISTRIBUTOR_MIN_PP:.0f} pp o más entre las dos cadenas."
+    unreconciled = [r for r in reach if r["kind"] == distributors.KIND_UNRECONCILED]
+    if unreconciled:
+        shows = sum(r["shows"] for r in unreconciled)
+        out["sin_conciliar"] = (f"{shows:,} funciones son de títulos con distinta distribuidora en cada cadena y quedan "
+                                "fuera de la brecha hasta decidirlas en scraper/title_distributors.csv.")
     return out

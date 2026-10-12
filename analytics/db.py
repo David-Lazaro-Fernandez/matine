@@ -19,11 +19,13 @@ def connect(path=None):
 def register(conn):
     """Registra en la conexión las funciones SQL de `analytics/`: `title_key(title_norm)`, la llave de título común a
     ambas cadenas (`scraper/titles.py`), por la que agrupan las consultas que comparan películas entre cadenas, y
-    `norm_title(texto)`, para las búsquedas del explorador sin mayúsculas ni acentos."""
+    `norm_title(texto)`, para las búsquedas del explorador sin mayúsculas ni acentos, y `distributor_key`,
+    `distributor_kind` y `title_distributor` (`scraper/distributors.py`)."""
     conn.create_function("title_key", 1, titles.title_key, deterministic=True)
     conn.create_function("norm_title", 1, normalize.norm_title, deterministic=True)
     conn.create_function("distributor_key", 1, distributors.distributor_key, deterministic=True)
     conn.create_function("distributor_kind", 1, distributors.distributor_kind, deterministic=True)
+    conn.create_function("title_distributor", 1, distributors.title_distributor, deterministic=True)
     return conn
 
 

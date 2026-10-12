@@ -1433,13 +1433,21 @@ export const OPS_TEXT = {
   ]
 } as const;
 
-export const PROVIDER_TEXT = {
-  "nav": "Proveedores",
-  "title": "Proveedores",
-  "question": "¿Cuántos cines, salas y funciones tiene cada distribuidor en cada cadena?",
+export const DISTRIBUTOR_TEXT = {
+  "nav": "Distribuidoras",
+  "title": "Distribuidoras",
+  "q_gaps": "¿Con qué distribuidora se separa más nuestra programación de la de Cinépolis?",
+  "question": "¿Cuántos cines, salas y funciones tiene cada distribuidora en cada cadena?",
   "no_data": "Sin funciones en el periodo.",
+  "gap_columns": {
+    "distributor": "Distribuidora",
+    "kind": "Tipo",
+    "share_cinemex": "% de nuestras funciones",
+    "share_cinepolis": "% de las de Cinépolis",
+    "gap_pp": "Diferencia (pp)"
+  },
   "columns": {
-    "provider": "Distribuidor",
+    "distributor": "Distribuidora",
     "kind": "Tipo",
     "chain": "Cadena",
     "cinemas": "Cines",
@@ -1451,11 +1459,12 @@ export const PROVIDER_TEXT = {
   }
 } as const;
 
-export const PROVIDER_KIND_LABEL = {
-  "distribuidor": "Distribuidor",
+export const DISTRIBUTOR_KIND_LABEL = {
+  "distribuidor": "Distribuidora",
   "programa_propio": "Programa propio",
   "evento": "Evento",
-  "sin_clasificar": "Sin clasificar"
+  "sin_clasificar": "Sin clasificar",
+  "sin_conciliar": "Sin conciliar"
 } as const;
 
 export const LAYER_TEXT = {
@@ -1545,7 +1554,7 @@ export const PAGE_LABEL = {
   "recomendador": "¿A dónde ir?",
   "dulceria": "Dulcería",
   "independientes": "Independientes",
-  "proveedores": "Proveedores",
+  "distribuidoras": "Distribuidoras",
   "datos": "Datos",
   "usuarios": "Usuarios",
   "operaciones": "Operaciones",
@@ -1585,7 +1594,7 @@ export const NAV_LABEL = {
   "recomendador": "¿A dónde ir?",
   "dulceria": "En sala",
   "independientes": "Independientes",
-  "proveedores": "Proveedores",
+  "distribuidoras": "Distribuidoras",
   "datos": "Datos",
   "usuarios": "Usuarios",
   "operaciones": "Operaciones",
