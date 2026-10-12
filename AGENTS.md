@@ -185,7 +185,7 @@ total aparte, 0.3 s.
 
 ## 4. Textos, colores y etiquetas
 
-- **Ningún nombre interno llega al usuario.** `chain`, `kind`, claves de franja y de cubeta se
+- **Ningún nombre interno llega al usuario**, tampoco rutas de archivos ni módulos. `chain`, `kind`, claves de franja y de cubeta se
   traducen en `analytics/labels.py`. Si un texto aparece en pantalla, sale de `labels.py` (etiquetas)
   o de `findings.py` (frases), nunca escrito en `dashboard/` ni en `api/`. `dashboard/` los lee de
   `lib/labels.generated.ts` (`make labels`).
