@@ -53,7 +53,7 @@ def dulceria(plaza: Literal[tuple(plazas.PLAZAS)] | None = None,
         return {
             "plaza": plaza, "platform": platform, "chain": chain, "product": chosen, "first_snapshot": FIRST_SNAPSHOT,
             "conclusion": concl.get("dulceria", ""),
-            "findings": [f for f in analytics.findings(conn, d0=w0, d1=w1, top=6, plaza=plaza) if f["topic"] == "dulceria"],
+            "findings": [f for f in analytics.findings(conn, d0=w0, d1=w1, top=None, plaza=plaza) if f["topic"] == "dulceria"],
             "concession_summary": analytics.concession_summary(conn, plaza=plaza),
             "basket": basket,
             "product_by_cinema": analytics.concession_product_by_cinema(conn, chosen, plaza=plaza) if chosen else [],

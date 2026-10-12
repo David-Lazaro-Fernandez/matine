@@ -29,7 +29,9 @@ def test_capture_status_flags_a_failed_attempt_an_old_capture_and_no_capture():
                      ("cineteca", "2026-10-09T02:00:00+00:00", 1, None),
                      ("cinery", "2026-10-10T14:00:00+00:00", 0, "Blocked"),
                      ("wtc", "2026-10-10T13:00:00+00:00", 0, "Blocked"),
-                     ("wtc", "2026-10-10T14:00:00+00:00", 1, None))
+                     ("wtc", "2026-10-10T14:00:00+00:00", 1, None),
+                     ("tonala", "2026-10-10T14:00:00+00:00", 1, None),
+                     ("tonala", "2026-10-10T17:30:00+00:00", None, None))
     out = {r["chain"]: r for r in queries.capture_status(conn, now=NOW)}
     assert list(out) == sorted(out)
     assert (out["cinemex"]["stale"], out["cinemex"]["age_min"], out["cinemex"]["error"]) == (False, 240.0, None)
@@ -38,6 +40,8 @@ def test_capture_status_flags_a_failed_attempt_an_old_capture_and_no_capture():
     assert (out["cinery"]["stale"], out["cinery"]["last_ok_at"], out["cinery"]["age_min"]) == (True, None, None)
     # Un fallo ya superado por una captura buena no avisa.
     assert out["wtc"]["stale"] is False
+    # Una captura en curso no tapa la última buena.
+    assert (out["tonala"]["stale"], out["tonala"]["age_min"]) == (False, 240.0)
 
 
 def test_week_publication_compares_with_the_fullest_day_of_this_week(monkeypatch):

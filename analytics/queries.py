@@ -96,24 +96,26 @@ def snapshot_health(conn, limit=20):
         FROM snapshot ORDER BY id DESC LIMIT ?""", (limit,))
 
 
-def capture_status(conn, limit=12, max_age_min=MAX_AGE_MIN, now=None):
-    """Estado de la captura por cadena, sobre los últimos `limit` snapshots. Por cadena: `last_ok_at` (taken_at de la
-    última captura buena, None si no hay), `age_min` (minutos desde ella, None si no hay), `error` (el del intento más
-    reciente si falló) y `stale`. Una cadena está desactualizada si su intento más reciente falló o si su última captura
-    buena tiene más de `max_age_min` minutos; un fallo ya superado por una captura buena no cuenta. Orden: chain."""
+def capture_status(conn, max_age_min=MAX_AGE_MIN, now=None):
+    """Estado de la captura por cadena. Por cadena: `last_ok_at` (taken_at de la última captura buena, None si no hay),
+    `age_min` (minutos desde ella, None si no hay), `error` (el del intento terminado más reciente si falló) y `stale`.
+    Una cadena está desactualizada si su intento terminado más reciente falló o si su última captura buena tiene más de
+    `max_age_min` minutos; un fallo ya superado por una captura buena no cuenta. Orden: chain."""
     now = now or datetime.now(timezone.utc)
-    latest, last_ok = {}, {}
-    for r in snapshot_health(conn, limit=limit):
-        latest.setdefault(r["chain"], r)
-        if r["ok"] == 1:
-            last_ok.setdefault(r["chain"], r["taken_at"])
+    # Una captura en curso tiene `ok` NULL hasta que termina. No cuenta como fallo.
+    latest = rows(conn, """
+        SELECT chain, ok, error,
+               (SELECT MAX(taken_at) FROM snapshot good WHERE good.chain = s.chain AND good.ok = 1) last_ok_at
+        FROM snapshot s
+        WHERE id IN (SELECT MAX(id) FROM snapshot WHERE ok IS NOT NULL GROUP BY chain)
+        ORDER BY chain""")
     out = []
-    for chain in sorted(latest):
-        failed = latest[chain]["ok"] != 1
-        last_good = last_ok.get(chain)
+    for r in latest:
+        failed = r["ok"] != 1
+        last_good = r["last_ok_at"]
         age_min = (now - datetime.fromisoformat(last_good)).total_seconds() / 60 if last_good else None
-        out.append({"chain": chain, "last_ok_at": last_good, "age_min": age_min,
-                    "error": latest[chain]["error"] if failed else None,
+        out.append({"chain": r["chain"], "last_ok_at": last_good, "age_min": age_min,
+                    "error": r["error"] if failed else None,
                     "stale": failed or age_min is None or age_min > max_age_min})
     return out
 

@@ -25,6 +25,8 @@ _STATUS = {
     "DuplicateEmail": 409,
     "LastAdmin": 409,
     "SelfChange": 409,
+    "WrongPassword": 403,
+    "InvalidImage": 422,
 }
 
 
@@ -106,6 +108,33 @@ def manage(actor_id, user_id, action, role=None):
     return _admin_action(fn)
 
 
+def profile(user_id):
+    """Perfil de la cuenta y logo de la organización (`auth.profile`)."""
+    return with_conn(lambda conn: auth.profile(conn, user_id))
+
+
+def update_profile(user_id, name, theme, avatar):
+    _call(lambda conn: auth.update_profile(conn, user_id, name, theme, avatar))
+    return profile(user_id)
+
+
+def change_email(user_id, email, password):
+    _call(lambda conn: auth.change_email(conn, user_id, email, password))
+    return profile(user_id)
+
+
+def change_password(request, response, user_id, current, new):
+    """Cambia la contraseña. `auth` cierra todas las sesiones, así que pone en `response` la cookie de la nueva."""
+    raw = _call(lambda conn: auth.change_password(conn, user_id, current, new, ip=client_ip(request),
+                                                  user_agent=request.headers.get("user-agent")))
+    _set_cookie(response, raw, SESSION_TTL_DAYS * 86400)
+
+
+def set_logo(actor_id, logo):
+    _call(lambda conn: auth.set_logo(conn, actor_id, logo))
+    return profile(actor_id)
+
+
 def list_users():
     """Todas las cuentas, sin el hash de la contraseña (`auth.list_users`)."""
     return with_conn(auth.list_users)
@@ -148,6 +177,13 @@ def _set_cookie(response, value, max_age):
 
 def _http_error(e):
     return HTTPException(_STATUS.get(type(e).__name__, 401), error_text(e))
+
+
+def _call(fn):
+    try:
+        return with_conn(fn)
+    except auth.AuthError as e:
+        raise _http_error(e) from None
 
 
 def _admin_action(fn):

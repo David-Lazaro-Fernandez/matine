@@ -93,7 +93,7 @@ def test_the_finding_waits_for_a_confirmed_seat_map(conn, monkeypatch):
     assert findings_module._independent_finding(conn, D0, D1, plaza="cdmx") is None
     monkeypatch.setattr(findings_module, "OCCUPANCY_CONFIRMED", True)
     found = findings_module._independent_finding(conn, D0, D1, plaza="cdmx")
-    assert found["topic"] == "independientes" and found["title"].startswith("Cocodrilos llena 85 %")
+    assert (found["topic"], found["label"], found["metric"]["value"]) == ("independientes", "Cineteca · Cocodrilos", 85.0)
     assert findings_module._independent_finding(conn, D0, D1, plaza="gdl") is None
     monkeypatch.setattr(findings_module, "INDEP_MIN_SOLD_PCT", 90.0)
     assert findings_module._independent_finding(conn, D0, D1, plaza="cdmx") is None

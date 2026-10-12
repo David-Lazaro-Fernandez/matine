@@ -1,6 +1,8 @@
 """Flujos de acceso que comparten las páginas del dashboard y la línea de comandos: entrar, salir, invitar,
 restablecer contraseña y administrar cuentas. Cada función cierra su propia transacción (`db.transaction`) y deja
 rastro en `audit`. Sin Streamlit."""
+import base64
+import binascii
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -9,7 +11,22 @@ from scraper import config
 
 from . import mail, security, sessions, users
 from .db import cursor, one, transaction
-from .errors import AccountInactive, AccountLocked, InvalidCredentials, MailFailed, TokenInvalid, WeakPassword
+from .errors import (
+                     AccountInactive,
+                     AccountLocked,
+                     DuplicateEmail,
+                     InvalidCredentials,
+                     InvalidImage,
+                     MailFailed,
+                     TokenInvalid,
+                     WeakPassword,
+                     WrongPassword,
+)
+
+THEMES = ("system", "light", "dark")
+# El navegador reduce la imagen antes de mandarla. 400 mil caracteres de base64 son unos 300 KB.
+IMAGE_MAX_CHARS = 400_000
+_IMAGE_TYPES = ("image/png", "image/jpeg", "image/webp")
 
 
 def link_for(raw):
@@ -149,6 +166,65 @@ def set_role(conn, actor_id, user_id, role):
         _audit(conn, actor_id, "set_role", user_id, {"role": role})
 
 
+def profile(conn, user_id):
+    """Perfil de la cuenta y el logo de la organización: `id`, `email`, `name`, `role`, `avatar`, `theme`, `logo`.
+    `avatar` y `logo` son URLs `data:` o None."""
+    row = one(conn, "SELECT id, email, name, role, avatar, theme FROM account WHERE id = ?", (user_id,))
+    logo = one(conn, "SELECT value FROM setting WHERE key = 'logo'")
+    return {**row, "logo": logo["value"] if logo else None}
+
+
+def update_profile(conn, user_id, name, theme, avatar):
+    """Cambia nombre, tema (`THEMES`) y avatar (None lo quita). Levanta `InvalidImage`."""
+    _check_image(avatar)
+    with transaction(conn):
+        with cursor(conn) as cur:
+            cur.execute("UPDATE account SET name = ?, theme = ?, avatar = ? WHERE id = ?",
+                        (name.strip(), theme, avatar, user_id))
+        _audit(conn, user_id, "update_profile", user_id, {"theme": theme})
+
+
+def change_email(conn, user_id, email, password):
+    """Cambia el correo de entrada si la contraseña actual coincide. Levanta `WrongPassword` o `DuplicateEmail`."""
+    email = security.normalize_email(email)
+    with transaction(conn):
+        _check_password(conn, user_id, password)
+        other = users.by_email(conn, email)
+        if other and other["id"] != user_id:
+            raise DuplicateEmail(email)
+        with cursor(conn) as cur:
+            cur.execute("UPDATE account SET email = ? WHERE id = ?", (email, user_id))
+        _audit(conn, user_id, "change_email", user_id, {"email": email})
+
+
+def change_password(conn, user_id, current, new, ip=None, user_agent=None):
+    """Cambia la contraseña, cierra todas las sesiones de la cuenta y emite una nueva. Devuelve el valor de la
+    cookie. Levanta `WrongPassword` o `WeakPassword`."""
+    now = datetime.now(timezone.utc)
+    with transaction(conn):
+        _check_password(conn, user_id, current)
+        problem = security.check_strength(new, users.by_id(conn, user_id)["email"])
+        if problem:
+            raise WeakPassword(problem)
+        users.set_password(conn, user_id, new)
+        sessions.revoke_all(conn, user_id, now)
+        raw = sessions.create(conn, user_id, ip=ip, user_agent=user_agent, now=now)
+        _audit(conn, user_id, "set_password", user_id, {"via": "profile"})
+    return raw
+
+
+def set_logo(conn, actor_id, logo):
+    """Fija el logo de la organización que ven todas las cuentas; None lo quita. Levanta `InvalidImage`."""
+    _check_image(logo)
+    with transaction(conn):
+        with cursor(conn) as cur:
+            cur.execute("""INSERT INTO setting (key, value, updated_at, updated_by) VALUES ('logo', ?, ?, ?)
+                           ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at,
+                                                           updated_by = excluded.updated_by""",
+                        (logo, datetime.now(timezone.utc), actor_id))
+        _audit(conn, actor_id, "set_logo", None, {"removed": logo is None})
+
+
 # --- privado ---------------------------------------------------------------------------------------
 # Hash de una contraseña aleatoria: contra él se verifica cuando el correo no existe, para que el tiempo de
 # respuesta no delate qué cuentas hay.
@@ -185,6 +261,25 @@ def _send(user, template, link, **ttl):
     # Boto3 tiene su propia jerarquía; aquí solo importa que no salió.
     except Exception as e:
         raise MailFailed(link, e) from e
+
+
+def _check_password(conn, user_id, password):
+    if not security.verify_password(password, users.password_hash(conn, user_id)):
+        raise WrongPassword()
+
+
+def _check_image(data_url):
+    """Acepta None o una URL `data:` de PNG, JPEG o WebP en base64 válido, de `IMAGE_MAX_CHARS` o menos.
+    SVG no entra: puede llevar código."""
+    if data_url is None:
+        return
+    header, _, payload = data_url.partition(",")
+    if len(data_url) > IMAGE_MAX_CHARS or header not in {f"data:{t};base64" for t in _IMAGE_TYPES}:
+        raise InvalidImage()
+    try:
+        base64.b64decode(payload, validate=True)
+    except binascii.Error:
+        raise InvalidImage() from None
 
 
 def _audit(conn, actor_id, action, target_id, detail):

@@ -162,7 +162,8 @@ _KM_PER_DEGREE = 111.32
 _AREA_MARGIN_DEG = 0.05
 
 
-def _distance_km(lat1, lng1, lat2, lng2):
+def distance_km(lat1, lng1, lat2, lng2):
+    """Distancia en línea recta (haversine), en km."""
     p1, p2 = math.radians(lat1), math.radians(lat2)
     a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lng2 - lng1) / 2) ** 2
     return 2 * _EARTH_KM * math.asin(math.sqrt(a))
@@ -401,7 +402,7 @@ def _candidates(conn, lat, lng, *, d0, d1, from_now, hours, radius_km, adults, c
         return _snack_plan(menus[cinema_id], snacks, None, grown, kids) if cinema_id in menus else None
     out = []
     for r in data:
-        r["distance_km"] = round(_distance_km(lat, lng, r["lat"], r["lng"]), 2)
+        r["distance_km"] = round(distance_km(lat, lng, r["lat"], r["lng"]), 2)
         if r["distance_km"] > radius_km:
             continue
         r["box_office_only"] = r["chain"] in config.BOX_OFFICE_ONLY

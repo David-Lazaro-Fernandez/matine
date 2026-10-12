@@ -4,17 +4,16 @@
 // Es la única página que muestra nombres internos (tablas, logs, módulos) tal cual. Es de lectura: nada escribe.
 import * as React from 'react';
 import {
-  Dropdown,
   Field,
   MessageBar,
   MessageBarBody,
-  Option,
   SpinButton,
   Subtitle1,
   Subtitle2,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import { DocumentText20Regular } from '@fluentui/react-icons';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Leyenda,
@@ -24,6 +23,7 @@ import {
   type Cell,
   SkeletonSeccion,
 } from '@/components/common';
+import { FilterMenu } from '@/components/filters';
 import { RunsChart, type RecentRun } from '@/components/operaciones/runs-chart';
 import { api, ApiError, query } from '@/lib/api';
 import { PILOT_TIMEZONE, fill, n } from '@/lib/format';
@@ -89,7 +89,7 @@ const useStyles = makeStyles({
   pendienteTitulo: { display: 'block', margin: `0 0 ${tokens.spacingVerticalXS}` },
   pendienteGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
     gap: tokens.spacingHorizontalL,
     marginTop: tokens.spacingVerticalM,
   },
@@ -233,7 +233,7 @@ export default function Page() {
 
   const header = (
     <>
-      <PageHeader title={OPS_TEXT.title} meta={[OPS_TEXT.lead]} />
+      <PageHeader title={OPS_TEXT.title} />
     </>
   );
   if (!data) {
@@ -423,18 +423,10 @@ export default function Page() {
       <Seccion slug="logs">
         <Encabezado titulo={OPS_TEXT.logs} lead={OPS_TEXT.logs_lead} />
         <div className={s.controles}>
-          <Field label={OPS_TEXT.log}>
-            <Dropdown value={data.logs[log]} selectedOptions={[log]}
-                      onOptionSelect={(_, d) => d.optionValue && set('log', d.optionValue)}>
-              {Object.entries(data.logs).map(([key, file]) => <Option key={key} value={key}>{file}</Option>)}
-            </Dropdown>
-          </Field>
-          <Field label={OPS_TEXT.lines}>
-            <Dropdown value={lines} selectedOptions={[lines]}
-                      onOptionSelect={(_, d) => d.optionValue && set('lines', d.optionValue)}>
-              {LINE_OPTIONS.map((v) => <Option key={v} value={v}>{v}</Option>)}
-            </Dropdown>
-          </Field>
+          <FilterMenu label={OPS_TEXT.log} icon={<DocumentText20Regular />} value={log}
+                      options={Object.entries(data.logs)} onChange={(value) => set('log', value)} />
+          <FilterMenu label={OPS_TEXT.lines} value={lines} short={`${OPS_TEXT.lines}: ${lines}`}
+                      options={LINE_OPTIONS.map((v) => [v, v])} onChange={(value) => set('lines', value)} />
         </div>
         {!tail.lines.length ? (
           <MessageBar intent="info"><MessageBarBody>{OPS_TEXT.log_empty}</MessageBarBody></MessageBar>

@@ -92,7 +92,7 @@ def independientes(d0: date | None = None, d1: date | None = None,
             **base,
             "venues": analytics.independent_summary(conn, **window, chain=INDEP_CHAIN),
             "conclusions": analytics.independent_conclusions(conn, **window),
-            "findings": [f for f in analytics.findings(conn, **window, top=20, plaza=plaza)
+            "findings": [f for f in analytics.findings(conn, **window, top=None, plaza=plaza)
                          if f["topic"] == "independientes"],
             "titles": analytics.independent_titles(conn, **window, chain=INDEP_CHAIN, limit=TOP_TITLES),
             "occupancy": occupancy,

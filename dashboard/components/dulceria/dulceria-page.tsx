@@ -4,13 +4,8 @@
 // Los datos salen de `GET /api/dulceria`. No depende del periodo: los precios de dulcería no cambian con la función.
 import * as React from 'react';
 import {
-  Dropdown,
-  Field,
   MessageBar,
   MessageBarBody,
-  Option,
-  Radio,
-  RadioGroup,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -18,7 +13,6 @@ import { useSearchParams } from 'next/navigation';
 import {
   Apendice,
   AppLink,
-  Capa,
   type Cell,
   type Finding,
   Hallazgo,
@@ -33,7 +27,7 @@ import {
 } from '@/components/common';
 import { DeliveryCompareBars, type DeliveryCompareRow } from '@/components/dulceria/delivery-compare-bars';
 import { ProductPriceByCinema, type ProductByCinemaRow } from '@/components/dulceria/product-price-by-cinema';
-import { PlazaSelector, usePlaza, useSetParams } from '@/components/filters';
+import { FilterMenu, PlazaSelector, usePlaza, useSetParams } from '@/components/filters';
 import { api, query } from '@/lib/api';
 import { date_es, fill, fixed, localTime, n, signed } from '@/lib/format';
 import {
@@ -42,9 +36,7 @@ import {
   COLUMN_LABEL,
   COMPARED,
   DULCERIA_TEXT as T,
-  NATIONAL_LABEL,
   PLATFORM_LABEL,
-  PLAZA_LABEL,
 } from '@/lib/labels.generated';
 
 type Chain = (typeof COMPARED)[number];
@@ -87,7 +79,7 @@ const STORE_COLUMNS = ['platform', 'store_name', 'products', 'median_price'];
 const useStyles = makeStyles({
   chartTitle: { fontWeight: tokens.fontWeightSemibold, margin: `0 0 ${tokens.spacingVerticalS}` },
   nota: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalXXS}` },
-  detail: { display: 'grid', gridTemplateColumns: '3fr 2fr', gap: tokens.spacingHorizontalL, '@media (max-width: 760px)': { gridTemplateColumns: '1fr' } },
+  detail: { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: tokens.spacingHorizontalL, '@media (max-width: 760px)': { gridTemplateColumns: 'minmax(0, 1fr)' } },
   scroll: { maxHeight: '360px', overflow: 'auto', minWidth: 0 },
   scrollShort: { maxHeight: '300px', overflow: 'auto' },
 });
@@ -138,28 +130,18 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
     api<Dulceria>(request).then((body) => { setData(body); setError(null); }, (e: Error) => setError(e.message));
   }, [request]);
 
-  const zoneLabel = plaza ? PLAZA_LABEL[plaza as keyof typeof PLAZA_LABEL] ?? plaza : NATIONAL_LABEL;
-  const meta = [
-    [`${T.meta_zone}:`, zoneLabel],
-    [`${T.meta_room}:`, T.meta_room_value],
-    [`${T.meta_delivery}:`, T.meta_delivery_value],
-    T.meta_note,
-  ] as const;
 
   const info = (text: string) => <MessageBar intent="info"><MessageBarBody>{text}</MessageBarBody></MessageBar>;
 
   const delivery = (d: Dulceria) => (
     <>
       <p className={s.chartTitle}>{T.delivery_title}</p>
-      <RadioGroup
-        layout="horizontal"
-        aria-label={T.platform}
+      <FilterMenu
+        label={T.platform}
         value={platform ?? BOTH}
-        onChange={(_, v) => setParams({ plataforma: v.value === BOTH ? null : v.value })}
-      >
-        <Radio value={BOTH} label={T.both} />
-        {PLATFORMS.map((p) => <Radio key={p} value={p} label={PLATFORM_LABEL[p]} />)}
-      </RadioGroup>
+        options={[[BOTH, T.both], ...PLATFORMS.map((p): [string, string] => [p, PLATFORM_LABEL[p]])]}
+        onChange={(value) => setParams({ plataforma: value === BOTH ? null : value })}
+      />
       {!d.delivery_compare.length ? info(T.delivery_empty) : (
         <>
           <DeliveryCompareBars rows={d.delivery_compare} />
@@ -186,14 +168,12 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
     return (
       <>
         <p className={s.chartTitle}>{fill(T.room_title, { chain: CHAIN_LABEL.cinepolis })}</p>
-        <Dropdown
-          aria-label={T.product}
+        <FilterMenu
+          label={T.product}
           value={row.product_name}
-          selectedOptions={[row.product_name]}
-          onOptionSelect={(_, o) => setParams({ producto: o.optionValue ?? null })}
-        >
-          {d.basket.map((b) => <Option key={b.product_name} value={b.product_name}>{b.product_name}</Option>)}
-        </Dropdown>
+          options={d.basket.map((b) => [b.product_name, b.product_name])}
+          onChange={(value) => setParams({ producto: value })}
+        />
         {d.product_by_cinema.length > 0 && (
           <>
             <ProductPriceByCinema rows={d.product_by_cinema} basket={row} />
@@ -240,11 +220,12 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
               ])}
               numCols={[2, 3, 4]}
             />
-            <Field label={T.chain}>
-              <RadioGroup layout="horizontal" value={chain} onChange={(_, v) => setParams({ cadena: v.value === COMPARED[0] ? null : v.value })}>
-                {COMPARED.map((c) => <Radio key={c} value={c} label={CHAIN_LABEL[c]} />)}
-              </RadioGroup>
-            </Field>
+            <FilterMenu
+              label={T.chain}
+              value={chain}
+              options={COMPARED.map((c) => [c, CHAIN_LABEL[c]])}
+              onChange={(value) => setParams({ cadena: value === COMPARED[0] ? null : value })}
+            />
             <div className={s.detail}>
               <div className={s.scroll}>{detailTable(PRODUCT_COLUMNS, d.delivery_products)}</div>
               {d.delivery_stores.length > 0 && <div className={s.scroll}>{detailTable(STORE_COLUMNS, d.delivery_stores)}</div>}
@@ -262,11 +243,9 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
     const empty = view === 'sala' ? !inRoom : !data.delivery_summary.length;
     return (
       <>
-        <Capa num={1} title={T.layer1} desc={T.layer1_desc} />
         {!data.findings.length && info(T.no_findings)}
-        {data.findings.map((f) => <Hallazgo key={f.title} f={f} />)}
+        {data.findings.map((f) => <Hallazgo key={f.topic} f={f} />)}
 
-        <Capa num={2} title={T.layer2} desc={T.layer2_desc} />
         <Seccion slug="dulceria">
           <Pregunta texto={T.question} conclusion={data.conclusion} nota={T.question_note} />
           {empty ? info(T.empty) : (
@@ -287,7 +266,7 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
 
   return (
     <>
-      <PageHeader title={T.title} meta={meta}>
+      <PageHeader title={T.title}>
         <PlazaSelector />
       </PageHeader>
       {body()}
