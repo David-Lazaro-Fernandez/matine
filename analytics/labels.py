@@ -1025,6 +1025,19 @@ COLUMN_LABEL.update({
     "avg_calls": "Llamadas (media)", "avg_duration_s": "Duración media (s)", "avg_shows": "Funciones (media)",
 })
 
+# --- Proveedores (analytics/providers.py, api/pages/proveedores.py) ---
+PROVIDER_TEXT = {
+    "nav": "Proveedores",
+    "title": "Proveedores",
+    "question": "¿Cuántos cines, salas y funciones tiene cada distribuidor en cada cadena?",
+    "no_data": "Sin funciones en el periodo.",
+    "columns": {"provider": "Distribuidor", "kind": "Tipo", "chain": "Cadena", "cinemas": "Cines", "share_cinemas": "% de cines",
+                "screens": "Salas", "shows": "Funciones", "share_shows": "% de funciones",
+                "large_shows": "Premium o gran formato"},
+}
+PROVIDER_KIND_LABEL = {"distribuidor": "Distribuidor", "programa_propio": "Programa propio", "evento": "Evento",
+                       "sin_clasificar": "Sin clasificar"}
+
 # Rótulos fijos de los componentes de capa (`capa`, `leerla` en ui/common.py y dashboard/components/common.tsx).
 LAYER_TEXT = {"read_it": "Cómo leerla", "evidence": "Ver la evidencia"}
 # Pantalla Cines de la Cartelera (dashboard/components/cartelera/cines.tsx, analytics/cinema_sales.py).
@@ -1078,6 +1091,7 @@ PAGE_LABEL = {
     "recomendador": RECOMMEND_TEXT["nav"],
     "dulceria": "Dulcería",
     "independientes": INDEP_TEXT["nav"],
+    "proveedores": PROVIDER_TEXT["nav"],
     "datos": DATA_TEXT["title"],
     "usuarios": AUTH_TEXT["users_title"],
     "operaciones": OPS_TEXT["title"],

@@ -360,3 +360,8 @@ sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
   (`.github/workflows/tests.yml`) cuando las pruebas pasan en `main`, y es lo que el servidor despliega
   (`make deploy`, cada 15 min): no la muevas a mano. Si un commit rompe las pruebas, `stable` se queda atrás hasta que se
   arregle; por eso una prueba que falla en CI bloquea el despliegue de todo lo posterior.
+- **La carpeta principal del repo siempre está en `main`, limpia.** Ahí solo se integran ramas. Cada función se trabaja
+  en su propio worktree y en su propia rama: `git worktree add -b mi-funcion ../absolut-cinema-mi-funcion main`, o
+  desde la rama de la que dependa. Dos agentes nunca escriben en la misma carpeta. Así varios agentes trabajan en
+  paralelo y cada rama entra a `main` con su merge, sin pisar el trabajo de otro. El worktree se borra al integrar su
+  rama (`git worktree remove`).
