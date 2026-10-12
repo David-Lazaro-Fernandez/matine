@@ -1,5 +1,4 @@
-// TODO: confirmar la bandeja real antes de publicar.
-export const CONTACT_EMAIL = 'hola@matine.mx';
+export const CONTACT_EMAIL = 'contacto@matine.lat';
 export const MAILTO = `mailto:${CONTACT_EMAIL}`;
 export const DEMO_URL = '/request-demo/';
 

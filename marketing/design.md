@@ -182,8 +182,7 @@ con este documento. Si el sitio crece a varias rutas, esa es la señal para reco
   falsas de IA señalan a un diseño escrito (`project.md` § "Paso 2") y lo dicen. "IA" a secas, sin decir
   qué hace ni qué no hace (redacta, no calcula), es la versión genérica que no queremos.
 - **Formulario con backend.** El formulario de `/request-demo/` (`components/demo-form.tsx`) no envía a un servidor:
-  abre el correo del visitante con la solicitud escrita, a `CONTACT_EMAIL` (`lib/site.ts`). El correo es un marcador
-  hasta que exista la bandeja real.
+  abre el correo del visitante con la solicitud escrita, a `CONTACT_EMAIL` (`lib/site.ts`), `contacto@matine.lat`.
 
 ## 7. `/a-donde-ir/`: demo pública del recomendador
 
