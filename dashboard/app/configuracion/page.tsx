@@ -12,6 +12,7 @@ import {
   MessageBarBody,
   Radio,
   RadioGroup,
+  Text,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -19,7 +20,7 @@ import { PageHeader, Pregunta, Seccion, errorText } from '@/components/common';
 import { useSession } from '@/lib/session';
 import { useSetTheme, type ThemeChoice } from '@/app/providers';
 import { api, type Profile } from '@/lib/api';
-import { AUTH_TEXT, THEME_LABEL } from '@/lib/labels.generated';
+import { AUTH_TEXT, ROLE_HELP, ROLE_LABEL, THEME_LABEL } from '@/lib/labels.generated';
 
 // Lado mayor de la imagen guardada. 256 px se ven nítidos al doble de densidad en el riel y en el avatar.
 const IMAGE_SIDE = 256;
@@ -127,6 +128,9 @@ function ProfileSection({ user, save }: { user: Profile; save: (change: Partial<
         </Field>
         <Field label={AUTH_TEXT.name} required>
           <Input value={name} onChange={(_, data) => setName(data.value)} />
+        </Field>
+        <Field label={AUTH_TEXT.role} hint={ROLE_HELP[user.role]}>
+          <Text>{ROLE_LABEL[user.role]}</Text>
         </Field>
         <div>
           <Button type="submit" appearance="primary" disabled={busy || !changed || !name.trim()}>{AUTH_TEXT.save}</Button>

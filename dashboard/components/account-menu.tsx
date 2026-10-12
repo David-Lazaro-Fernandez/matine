@@ -6,6 +6,7 @@
 import * as React from 'react';
 import {
   Avatar,
+  Badge,
   Button,
   Menu,
   MenuDivider,
@@ -28,7 +29,7 @@ import {
   Translate20Regular,
 } from '@fluentui/react-icons';
 import type { Profile } from '@/lib/api';
-import { AUTH_TEXT, SHELL_TEXT } from '@/lib/labels.generated';
+import { AUTH_TEXT, ROLE_LABEL, SHELL_TEXT } from '@/lib/labels.generated';
 
 const useStyles = makeStyles({
   identity: {
@@ -40,6 +41,7 @@ const useStyles = makeStyles({
   },
   name: { fontWeight: tokens.fontWeightSemibold },
   email: { color: tokens.colorNeutralForeground3, overflowWrap: 'anywhere' },
+  role: { alignSelf: 'flex-start', marginTop: tokens.spacingVerticalXS },
 });
 
 export function AccountMenu({ user, onLogout, onSettings, onUpgrade, onSales }: {
@@ -60,6 +62,7 @@ export function AccountMenu({ user, onLogout, onSettings, onUpgrade, onSales }: 
         <div className={s.identity}>
           <Text className={s.name}>{user.name}</Text>
           <Text size={200} className={s.email}>{user.email}</Text>
+          <Badge appearance="tint" color="informative" className={s.role}>{ROLE_LABEL[user.role]}</Badge>
         </div>
         <MenuList>
           <MenuItem icon={<Person20Regular />} onClick={onSettings}>{SHELL_TEXT.account}</MenuItem>

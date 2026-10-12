@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from starlette.staticfiles import StaticFiles  # noqa: E402
 
 import analytics  # noqa: E402
-from analytics.labels import MODULE_LABEL, NAV_LABEL, UPGRADE_TEXT  # noqa: E402
+from analytics.labels import MODULE_LABEL, NAV_LABEL, ROLE_LABEL, UPGRADE_TEXT  # noqa: E402
 from api import internal, pages  # noqa: E402
 from auth import db as auth_db  # noqa: E402
 from auth import flows, orgs  # noqa: E402
@@ -327,9 +327,11 @@ def test_the_phone_navigation_shows_the_modules_of_the_role(browser, server, ema
     # El riel y el panel de escritorio no se ven en celular.
     sync_api.expect(page.get_by_role("button", name=MODULE_LABEL["datos"], exact=True)).to_be_hidden()
     sync_api.expect(page.get_by_role("link", name=NAV_LABEL["mapa"], exact=True)).to_be_hidden()
-    # El correo de la cuenta está en el menú del avatar de la barra superior.
+    # El correo y el rol de la cuenta están en el menú del avatar de la barra superior.
     page.get_by_role("banner").get_by_role("button").last.click()
     sync_api.expect(page.get_by_text(email)).to_be_visible()
+    role = "staff" if email == ADMIN_EMAIL else "viewer"
+    sync_api.expect(page.get_by_text(ROLE_LABEL[role], exact=True)).to_be_visible()
     page.context.close()
 
 
