@@ -135,10 +135,12 @@ const useStyles = makeStyles({
   hallazgoLabel: {
     gridColumn: '1 / -1',
     margin: 0,
-    fontSize: tokens.fontSizeBase300,
+    fontSize: tokens.fontSizeBase400,
+    lineHeight: tokens.lineHeightBase400,
     fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground2,
+    color: tokens.colorNeutralForeground1,
   },
+  hallazgoAccion: { gridColumn: '1 / -1', margin: 0, color: tokens.colorNeutralForeground2 },
   cifra: {
     display: 'block',
     fontSize: tokens.fontSizeHero800,
@@ -389,6 +391,7 @@ export type Finding = {
   topic: string;
   theme: keyof typeof FINDING_THEME_LABEL;
   label: string;
+  action: string | null;
   metric: FindingMetric;
   compare: FindingMetric | null;
   delta: FindingMetric | null;
@@ -637,15 +640,19 @@ function downloadFinding(f: Finding) {
 
 // Tarjeta de hallazgo: tema, la cifra, su comparación y la diferencia, una gráfica con lo importante resaltado y la
 // muestra que la sostiene, con su PNG y su CSV. `href` es la pantalla con la evidencia; `dataHref`, el explorador de Datos.
-export function Hallazgo({ f, href, dataHref, compact = false }: { f: Finding; href?: string; dataHref?: string; compact?: boolean }) {
+// `showAction` se apaga cuando la sugerencia ya está en el resumen de arriba.
+export function Hallazgo({ f, href, dataHref, compact = false, showAction = true }: {
+  f: Finding; href?: string; dataHref?: string; compact?: boolean; showAction?: boolean;
+}) {
   const s = useStyles();
   const canDownload = useCanDownload();
   const dataColor = useDataColor();
   const metricColor = (chain: string | null) => chain ? dataColor(chainColor(chain) ?? LINE) : undefined;
   return (
     <Entrada>
-      <div className={mergeClasses(s.hallazgo, compact && s.hallazgoCompacto)}>
+      <div id={f.topic} className={mergeClasses(s.hallazgo, compact && s.hallazgoCompacto)}>
         <h3 className={s.hallazgoLabel}>{f.label}</h3>
+        {showAction && f.action && <p className={s.hallazgoAccion}>{f.action}</p>}
         <div>
           <span className={s.cifra} style={{ color: metricColor(f.metric.chain) }}>{findingValue(f.metric.value, f.metric.unit)}</span>
           <span className={s.cifraLabel}>{f.metric.label}</span>
@@ -657,7 +664,7 @@ export function Hallazgo({ f, href, dataHref, compact = false }: { f: Finding; h
           )}
           {f.delta && (
             <div className={s.delta}>
-              <Badge appearance="tint" color="informative">{`${f.delta.label}: ${findingValue(f.delta.value, f.delta.unit)}`}</Badge>
+              <Badge appearance="tint" color="informative">{`${f.delta.label}: ${f.delta.value > 0 ? FINDING_TEXT.up : FINDING_TEXT.down} ${findingValue(f.delta.value, f.delta.unit)}`}</Badge>
             </div>
           )}
         </div>

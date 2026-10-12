@@ -10,6 +10,7 @@ import {
   MessageBar,
   MessageBarBody,
   Slider,
+  Subtitle2,
   Switch,
   Tab,
   TabList,
@@ -225,6 +226,8 @@ const useStyles = makeStyles({
   chartTitle: { fontWeight: tokens.fontWeightSemibold, margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalXS}` },
   nota: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalS}` },
   scroll: { maxHeight: '400px', overflow: 'auto', minWidth: 0 },
+  sugerencias: { margin: `${tokens.spacingVerticalS} 0 0`, paddingLeft: tokens.spacingHorizontalXL, display: 'grid', gap: tokens.spacingVerticalXS,
+    '& a': { color: tokens.colorBrandForegroundLink, textDecoration: 'none' }, '& a:hover': { textDecoration: 'underline' } },
   hallazgosRejilla: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -450,6 +453,8 @@ function ThemeSelector({ findings }: { findings: Finding[] }) {
 
 // Los tres más fuertes, a todo lo ancho; el resto, en dos columnas.
 const LEADING_FINDINGS = 3;
+// Sugerencias del resumen: las de los hallazgos de mayor impacto, que ya vienen en orden.
+const SUGGESTIONS = 3;
 
 function CapaHallazgos({ hallazgos, d0, d1 }: { hallazgos: Loaded<Hallazgos>; d0: string; d1: string }) {
   const s = useStyles();
@@ -457,12 +462,22 @@ function CapaHallazgos({ hallazgos, d0, d1 }: { hallazgos: Loaded<Hallazgos>; d0
   if (hallazgos.error) return <MessageBar intent="error"><MessageBarBody>{apiError(hallazgos.error)}</MessageBarBody></MessageBar>;
   if (!hallazgos.data) return <>{Array.from({ length: 3 }, (_, i) => <SkeletonHallazgo key={i} />)}</>;
   const findings = hallazgos.data.findings.filter((f) => !themes.length || themes.includes(f.theme));
+  const suggested = findings.filter((f) => f.action).slice(0, SUGGESTIONS);
   const card = (f: Finding, compact = false) => (
-    <Hallazgo key={f.topic} f={f} compact={compact} href={FINDING_HREF[f.topic]} dataHref={findingData(f.topic, d0, d1)} />
+    <Hallazgo key={f.topic} f={f} compact={compact} href={FINDING_HREF[f.topic]} dataHref={findingData(f.topic, d0, d1)}
+              showAction={!suggested.includes(f)} />
   );
   return (
     <>
       {!findings.length && <Info text={T.no_findings} />}
+      {suggested.length > 0 && (
+        <Seccion slug="sugerencias">
+          <Subtitle2 as="h2">{T.suggestions}</Subtitle2>
+          <ol className={s.sugerencias}>
+            {suggested.map((f) => <li key={f.topic}><a href={`#${f.topic}`}>{f.action}</a></li>)}
+          </ol>
+        </Seccion>
+      )}
       {findings.slice(0, LEADING_FINDINGS).map((f) => card(f))}
       <div className={s.hallazgosRejilla}>{findings.slice(LEADING_FINDINGS).map((f) => card(f, true))}</div>
     </>
