@@ -191,18 +191,18 @@ def _has_emoji(text):
     return any(lo <= ord(ch) <= hi for ch in text for lo, hi in EMOJI_RANGES)
 
 
-def test_slack_findings_payload_is_mrkdwn_without_emojis(monkeypatch):
+def test_slack_findings_payload_is_short_mrkdwn_without_emojis():
     chart = {"kind": "bars", "unit": "pct", "rows": [
         {"label": "Últimos 7 días", "values": {"cinemex": 6.7, "cinepolis": 12.0}, "highlight": True}]}
     items = [{"label": "Vendemos <6.7 %> & más", "action": "Valora revisar", "context": "Muestra: 3 días",
-              "chart": chart}]
-    payload = slack.findings_payload(items, "lun 12 – mié 14 oct 2026", "CDMX", native=False)
+              "chart": chart} for _ in range(5)]
+    payload = slack.findings_payload(items, "lun 12 – mié 14 oct 2026", "CDMX")
     text = json.dumps(payload, ensure_ascii=False)
     assert not _has_emoji(text)
     assert payload["blocks"][0]["type"] == "header"
     assert "Vendemos &lt;6.7 %&gt; &amp; más" in text
-    assert "```" in text and "█" in text and "Cinemex" in text
-    assert "<" not in text.replace("&lt;", "")  # nada sin escapar que Slack leería como enlace
+    assert text.count("Valora revisar") == slack.FINDINGS
+    assert "```" not in text and "data_visualization" not in text
 
 
 def analysis_conn_for_digest():
@@ -218,38 +218,3 @@ def test_slack_digest_posts_once_per_week(app_conn, org_id, monkeypatch):
     run._run_org(app_conn, analysis_conn_for_digest(), org_id, orgs.integrations(app_conn, org_id), monday)
     run._run_org(app_conn, analysis_conn_for_digest(), org_id, orgs.integrations(app_conn, org_id), monday)
     assert len(sent) == 1 and sent[0]["blocks"][0]["type"] == "header"
-
-
-def _bars(rows):
-    return {"kind": "bars", "unit": "pct", "rows": rows}
-
-
-def test_native_bar_chart_uses_categories_and_one_series_per_chain():
-    chart = _bars([{"label": "Últimos 7 días", "values": {"cinemex": 6.7, "cinepolis": 12.0}, "highlight": True},
-                   {"label": "7 días anteriores", "values": {"cinemex": 7.0, "cinepolis": 11.0}, "highlight": False}])
-    block = slack._native_block(chart)
-    assert block["type"] == "data_visualization" and block["chart"]["type"] == "bar"
-    assert block["chart"]["axis_config"]["categories"] == ["Últimos 7 días", "7 días anteriores"]
-    assert [s["name"] for s in block["chart"]["series"]] == ["Cinemex", "Cinépolis"]
-    assert block["chart"]["series"][1]["data"][0] == {"label": "Últimos 7 días", "value": 12.0}
-
-
-def test_native_limits_fall_back_to_text():
-    long_label = "BTS WORLD TOUR … SÃO PAULO: LIVE VIEWING con nombre larguísimo"
-    assert slack._native_ok(_bars([{"label": long_label, "values": {"cinemex": 1.0, "cinepolis": 2.0},
-                                    "highlight": False}]))
-    assert len(slack._short(long_label, 20)) == 20
-    incomplete = _bars([{"label": "A", "values": {"cinemex": 1.0, "cinepolis": 2.0}, "highlight": False},
-                        {"label": "B", "values": {"cinemex": 3.0}, "highlight": False}])
-    assert not slack._native_ok(incomplete)
-    dumbbell = {**_bars([{"label": "A", "values": {"cinemex": 1.0, "cinepolis": 2.0}, "highlight": False}]),
-                "kind": "dumbbell"}
-    assert not slack._native_ok(dumbbell)
-
-
-def test_only_two_native_charts_per_message():
-    row = [{"label": "A", "values": {"cinemex": 1.0, "cinepolis": 2.0}, "highlight": False}]
-    items = [{"label": f"H{i}", "action": None, "context": None, "chart": _bars(row)} for i in range(3)]
-    blocks = slack.findings_payload(items, "p", "CDMX")["blocks"]
-    assert sum(b["type"] == "data_visualization" for b in blocks) == 2
-    assert "```" in json.dumps(blocks)
