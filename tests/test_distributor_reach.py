@@ -92,3 +92,9 @@ def test_unreconciled_skips_agreed_and_decided_titles(monkeypatch):
     monkeypatch.setitem(distributors._TITLES, "decided", "Universal")
     names = {"agreed": {"Disney"}, "decided": {"Universal", "Amazon MGM Studios"}, "open": {"Disney", "Diamond Films"}}
     assert distributors.unreconciled(names) == [("open", ["Diamond Films", "Disney"])]
+
+
+def test_gaps_put_shared_first_and_own_programs_last(conn, monkeypatch):
+    monkeypatch.setitem(distributors._TITLES, "verity", "Universal")
+    gaps = distributor_gaps(conn, "2026-10-20", "2026-10-21", from_now=False)
+    assert [g["distributor"] for g in gaps] == ["Paramount", "Universal", "Riot Games", "+QueCine"]

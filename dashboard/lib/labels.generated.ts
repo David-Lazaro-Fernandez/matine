@@ -1441,7 +1441,7 @@ export const DISTRIBUTOR_TEXT = {
   "no_data": "Sin funciones en el periodo.",
   "gap_axis": "% de las funciones del periodo",
   "gap_tooltip": "{distributor} · {chain}: {share} % de su programación · {shows} funciones",
-  "leer_gaps": "Cada fila es una distribuidora; los puntos son el porcentaje de la programación que le dedica cada cadena y a la derecha, la diferencia (rojo: Cinemex le da más). Un solo punto es una distribuidora que la otra cadena no programa. Las películas que cada cadena atribuye a una distribuidora distinta no entran.",
+  "leer_gaps": "Cada fila es una distribuidora; los puntos son el porcentaje de la programación que le dedica cada cadena y a la derecha, la diferencia (rojo: Cinemex le da más). Un solo punto es una distribuidora que la otra cadena no programa. Primero van las que programan ambas cadenas; al final, los programas propios. Las películas que cada cadena atribuye a una distribuidora distinta no entran.",
   "columns": {
     "distributor": "Distribuidora",
     "kind": "Tipo",

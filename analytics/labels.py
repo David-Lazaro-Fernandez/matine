@@ -1036,7 +1036,8 @@ DISTRIBUTOR_TEXT = {
     "gap_tooltip": "{distributor} · {chain}: {share} % de su programación · {shows} funciones",
     "leer_gaps": "Cada fila es una distribuidora; los puntos son el porcentaje de la programación que le dedica cada cadena "
                  "y a la derecha, la diferencia (rojo: Cinemex le da más). Un solo punto es una distribuidora que la otra "
-                 "cadena no programa. Las películas que cada cadena atribuye a una distribuidora distinta no entran.",
+                 "cadena no programa. Primero van las que programan ambas cadenas; al final, los programas propios. Las "
+                 "películas que cada cadena atribuye a una distribuidora distinta no entran.",
     "columns": {"distributor": "Distribuidora", "kind": "Tipo", "chain": "Cadena", "cinemas": "Cines", "share_cinemas": "% de cines",
                 "screens": "Salas", "shows": "Funciones", "share_shows": "% de funciones",
                 "large_shows": "Premium o gran formato"},

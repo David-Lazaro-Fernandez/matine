@@ -49,8 +49,9 @@ def distributor_reach(conn, d0=None, d1=None, from_now=True, hours=None, plaza=N
 def distributor_gaps(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None):
     """Por distribuidora: `distributor`, `kind`, `share_cinemex` y `share_cinepolis` (% de las funciones de cada
     cadena; 0 si una cadena no la programa), `shows_cinemex` y `shows_cinepolis`, y `gap_pp` (nosotros menos ellos). Deja fuera las funciones
-    `sin_conciliar`: su brecha sería de etiqueta, no de programación. Ordenado de la brecha más grande, con cualquier
-    signo, a la más chica, luego por nombre. Ejemplo: Warner con 18 % en Cinemex y 22 % en Cinépolis → `gap_pp` −4.0."""
+    `sin_conciliar`: su brecha sería de etiqueta, no de programación. Primero las que programan ambas cadenas, luego las
+    de una sola y al final los programas propios; en cada grupo, de la brecha más grande, con cualquier signo, a la
+    más chica, luego por nombre. Ejemplo: Warner con 18 % en Cinemex y 22 % en Cinépolis → `gap_pp` −4.0."""
     by_name = {}
     for r in distributor_reach(conn, d0, d1, from_now=from_now, hours=hours, plaza=plaza):
         if r["kind"] == distributors.KIND_UNRECONCILED:
@@ -62,4 +63,5 @@ def distributor_gaps(conn, d0=None, d1=None, from_now=True, hours=None, plaza=No
         row[f"shows_{r['chain']}"] = r["shows"]
     for row in by_name.values():
         row["gap_pp"] = round(row[f"share_{US}"] - row[f"share_{THEM}"], 1)
-    return sorted(by_name.values(), key=lambda r: (-abs(r["gap_pp"]), r["distributor"]))
+    return sorted(by_name.values(), key=lambda r: (r["kind"] == "programa_propio", not (r[f"shows_{US}"] and r[f"shows_{THEM}"]),
+                                                   -abs(r["gap_pp"]), r["distributor"]))
