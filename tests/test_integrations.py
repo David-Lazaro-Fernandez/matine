@@ -10,7 +10,7 @@ from analytics import alerts
 from auth import connect as connect_auth
 from auth import mail, orgs
 from integrations import digest, run, slack
-from scraper import store
+from scraper import config, store
 
 MX = ZoneInfo("America/Mexico_City")
 HOOK = "https://hooks.slack.com/services/T000/B000/xyz"
@@ -159,7 +159,9 @@ def test_digest_html_escapes_findings_and_keeps_text_part(monkeypatch):
     subject, text, html = digest.compose(None, datetime(2026, 10, 12, 10, 0, tzinfo=MX), "cdmx")
     assert "<b>cobra</b>" not in html and "&lt;b&gt;cobra&lt;/b&gt;" in html and "Valora &amp; revisa" in html
     assert text.splitlines() == ["- Cinépolis <b>cobra</b> 52 % más", "  Valora & revisa",
-                                 "- Título sin sugerencia", "  Muestra: 3 días"]
+                                 "  Ver más: http://localhost:8501/?plaza=cdmx&d0=2026-10-12&d1=2026-10-14",
+                                 "- Título sin sugerencia", "  Muestra: 3 días",
+                                 "  Ver más: http://localhost:8501/?plaza=cdmx&d0=2026-10-12&d1=2026-10-14"]
     assert html.startswith("<!doctype html>") and 'role="presentation"' in html
 
 
@@ -195,7 +197,7 @@ def test_slack_findings_payload_is_short_mrkdwn_without_emojis():
     chart = {"kind": "bars", "unit": "pct", "rows": [
         {"label": "Últimos 7 días", "values": {"cinemex": 6.7, "cinepolis": 12.0}, "highlight": True}]}
     items = [{"label": "Vendemos <6.7 %> & más", "action": "Valora revisar", "context": "Muestra: 3 días",
-              "chart": chart} for _ in range(5)]
+              "chart": chart, "url": "https://dashboard.test/x"} for _ in range(5)]
     payload = slack.findings_payload(items, "lun 12 – mié 14 oct 2026", "CDMX")
     text = json.dumps(payload, ensure_ascii=False)
     assert not _has_emoji(text)
@@ -218,3 +220,23 @@ def test_slack_digest_posts_once_per_week(app_conn, org_id, monkeypatch):
     run._run_org(app_conn, analysis_conn_for_digest(), org_id, orgs.integrations(app_conn, org_id), monday)
     run._run_org(app_conn, analysis_conn_for_digest(), org_id, orgs.integrations(app_conn, org_id), monday)
     assert len(sent) == 1 and sent[0]["blocks"][0]["type"] == "header"
+
+
+def test_view_url_points_to_theme_page_with_the_summary_scope(monkeypatch):
+    monkeypatch.setattr(config, "BASE_URL", "https://dashboard.test")
+    url = digest.view_url("preventa", "cdmx", "2026-10-12", "2026-10-14")
+    assert url == "https://dashboard.test/preventa?plaza=cdmx&d0=2026-10-12&d1=2026-10-14"
+    assert digest.view_url(None, "cdmx", "2026-10-12", "2026-10-14").startswith("https://dashboard.test/?")
+
+
+def test_ver_mas_link_in_email_text_and_slack(monkeypatch):
+    monkeypatch.setattr(config, "BASE_URL", "https://dashboard.test")
+    items = [{"label": "Hallazgo", "action": None, "context": None, "chart": None, "theme": "cines"}]
+    monkeypatch.setattr(digest, "findings", lambda conn, **kw: items)
+    _, text, html = digest.compose(None, datetime(2026, 10, 12, 10, 0, tzinfo=MX), "cdmx")
+    link = "https://dashboard.test/cines?plaza=cdmx&amp;d0=2026-10-12&amp;d1=2026-10-14"
+    assert "Ver más: https://dashboard.test/cines?plaza=cdmx&d0=" in text
+    assert f'href="{link}"' in html
+    payload = slack.findings_payload(digest.week(None, datetime(2026, 10, 12, 10, 0, tzinfo=MX), "cdmx")[1],
+                                     "p", "CDMX")
+    assert "<https://dashboard.test/cines?plaza=cdmx&amp;d0=" in json.dumps(payload)

@@ -39,6 +39,7 @@ def findings_payload(items, period, plaza_label):
         blocks.append(_section(f"*{_esc(finding['label'])}*"))
         if finding["action"]:
             blocks.append(_section(_esc(finding["action"])))
+        blocks.append(_section(f"<{_esc(finding['url'])}|Ver más>"))
     return {"text": title, "blocks": blocks}
 
 

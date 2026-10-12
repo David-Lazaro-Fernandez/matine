@@ -6,12 +6,17 @@ Gmail y Outlook no los ejecutan. Por eso cada gráfica es una tabla con barras d
 """
 from html import escape
 from string import Template
+from urllib.parse import urlencode
 
 from analytics import cinema_week, findings
 from analytics.labels import CHAIN_COLOR, CHAIN_LABEL, GRAY, GRAY_LIGHT, INK, LINE, PAPER, range_short
+from scraper import config
 
 TOP = 5
 SEND_FROM_HOUR = 9
+# Ruta del dashboard que muestra cada tema de hallazgo (`theme`, ver `FINDING_THEME_LABEL`). Sin tema, la pantalla de Hallazgos.
+THEME_PATH = {"programacion": "programacion", "preventa": "preventa", "precios": "precios", "cines": "cines",
+              "dulceria": "dulceria", "independientes": "independientes"}
 EMPTY = "Esta semana no hay hallazgos que crucen su umbral."
 # Cinemex primero, como en todas las escalas del dashboard.
 CHAIN_ORDER = ("cinemex", "cinepolis")
@@ -40,6 +45,7 @@ _ITEM = Template("""<tr><td style="padding:18px 0;border-top:1px solid $line;">
 <p style="margin:0 0 6px;font:600 15px/1.45 $font;color:$ink;">$label</p>
 $chart$context$action</td></tr>""")
 
+_LINK = Template('<p style="margin:10px 0 0;font:600 14px/1.5 $font;"><a href="$url" style="color:$ink;">Ver más</a></p>')
 _ACTION = Template('<p style="margin:10px 0 0;font:14px/1.5 $font;color:$gray;">$action</p>')
 _CONTEXT = Template('<p style="margin:8px 0 0;font:13px/1.5 $font;color:$gray;">$context</p>')
 
@@ -53,12 +59,20 @@ def week(conn, now, plaza):
     """(periodo, hallazgos): de hoy al miércoles de la semana de cine, todo el día, en el orden de fuerza del dashboard.
 
     Es el mismo alcance que la pantalla Hallazgos por defecto. Si cambia uno de los dos, el correo, Slack y la pantalla
-    dejan de coincidir.
+    dejan de coincidir. Cada hallazgo trae `url`, el enlace "Ver más" con ese mismo alcance.
     """
     today = now.date().isoformat()
     _, week_end = cinema_week(today)
     items = findings(conn, d0=today, d1=week_end, plaza=plaza, top=None)[:TOP]
+    for item in items:
+        item["url"] = view_url(item.get("theme"), plaza, today, week_end)
     return range_short(today, week_end), items
+
+
+def view_url(theme, plaza, d0, d1):
+    """Enlace al dashboard con el alcance del resumen. `config.BASE_URL` sale de AC_BASE_URL."""
+    path = THEME_PATH.get(theme, "")
+    return f"{config.BASE_URL}/{path}?{urlencode({'plaza': plaza, 'd0': d0, 'd1': d1})}"
 
 
 def compose(conn, now, plaza):
@@ -93,6 +107,7 @@ def _text(items):
             lines.append(f"  {finding['context']}")
         if finding["action"]:
             lines.append(f"  {finding['action']}")
+        lines.append(f"  Ver más: {finding['url']}")
     return "\n".join(lines) or EMPTY
 
 
@@ -113,9 +128,10 @@ def _html(subject, period, items):
 def _item(finding):
     context = _CONTEXT.substitute(font=FONT, gray=GRAY, context=escape(finding["context"])) if finding["context"] else ""
     action = _ACTION.substitute(font=FONT, gray=GRAY, action=escape(finding["action"])) if finding["action"] else ""
+    link = _LINK.substitute(font=FONT, ink=INK, url=escape(finding["url"]))
     chart = _chart_html(finding["chart"]) if finding["chart"] else ""
     return _ITEM.substitute(line=LINE, font=FONT, ink=INK, label=escape(finding["label"]), chart=chart,
-                            context=context, action=action)
+                            context=context, action=action + link)
 
 
 def _series(chart):
