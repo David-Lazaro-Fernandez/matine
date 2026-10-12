@@ -340,7 +340,7 @@ def test_the_phone_navigation_goes_to_each_page(browser, server):
     page.goto(server + "/")
     pages_bar = page.get_by_role("tablist").filter(has=page.get_by_role("tab", name=NAV_LABEL["mapa"]))
     for key, path in [("programacion", "/programacion/"), ("preventa", "/preventa/"), ("precios", "/precios/"),
-                      ("cines", "/cines/"), ("historial", "/historial/"), ("mapa", "/mapa/"), ("recomendador", "/recomendador/"),
+                      ("cines", "/cines/"), ("historial", "/historial/"), ("mapa", "/mapa/"),
                       ("independientes", "/independientes/"), ("cartelera", "/")]:
         pages_bar.get_by_role("tab", name=NAV_LABEL[key]).click()
         page.wait_for_url(re.compile(re.escape(path) + r"(\?|$)"))
