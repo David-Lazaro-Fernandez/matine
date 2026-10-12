@@ -20,6 +20,17 @@ EMPTY = "Esta semana no hay hallazgos que crucen su umbral."
 # Cinemex primero, como en el correo y en el dashboard.
 CHAIN_ORDER = ("cinemex", "cinepolis")
 ROW_LABEL_MAX = 60
+# Límites del bloque `data_visualization` (docs.slack.dev, verificado 2026-10-12).
+NATIVE_CHARTS_PER_MESSAGE = 2
+NATIVE_MAX_CATEGORIES = 20
+NATIVE_MAX_SERIES = 12
+NATIVE_LABEL_MAX = 20
+NATIVE_TITLE_MAX = 50
+# Formas de `chart` que el bloque nativo dibuja. Las de dos cadenas unidas (dumbbell) y las divergentes siguen en texto.
+NATIVE_KINDS = ("bars", "meter", "stack")
+UNIT_TITLE = {"pct": "Porcentaje por cadena", "money": "Precio por cadena", "count": "Cantidad por cadena",
+              "pp": "Diferencia en puntos", "pct_diff": "Diferencia en porcentaje", "pace": "Ritmo por cadena"}
+UNIT_AXIS = {"pct": "%", "money": "MXN", "pp": "pp", "pct_diff": "%"}
 
 
 def message(changes, chain_label, plaza_label):
@@ -33,18 +44,27 @@ def message(changes, chain_label, plaza_label):
     return "\n".join([head, summary, *lines, *tail])
 
 
-def findings_payload(items, period, plaza_label):
-    """Payload del resumen: un encabezado, y por hallazgo su conclusión, su gráfica, su contexto y su sugerencia."""
+def findings_payload(items, period, plaza_label, native=True):
+    """Payload del resumen: un encabezado, y por hallazgo su conclusión, su gráfica, su contexto y su sugerencia.
+
+    Con `native`, las gráficas que cumplen el bloque `data_visualization` salen nativas, hasta dos por mensaje. Las demás,
+    y todas si `native` es falso, salen como barras de texto.
+    """
     title = f"Hallazgos · {period} · {plaza_label}"
     blocks = [{"type": "header", "text": {"type": "plain_text", "text": title[:150], "emoji": False}}]
     if not items:
         blocks.append(_section(EMPTY))
+    native_left = NATIVE_CHARTS_PER_MESSAGE if native else 0
     for index, finding in enumerate(items):
         if index:
             blocks.append({"type": "divider"})
         blocks.append(_section(f"*{_esc(finding['label'])}*"))
         if finding["chart"]:
-            blocks.append(_section(_chart_block(finding["chart"])))
+            if native_left and _native_ok(finding["chart"]):
+                blocks.append(_native_block(finding["chart"]))
+                native_left -= 1
+            else:
+                blocks.append(_section(_chart_block(finding["chart"])))
         if finding["context"]:
             blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": _esc(finding["context"])}]})
         if finding["action"]:
@@ -58,6 +78,41 @@ def post(url, payload):
                                      headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
         response.read()
+
+
+def _native_ok(chart):
+    """Cumple los límites del bloque nativo: forma soportada, todas las cadenas en cada categoría, nombres sin
+    repetir y todo dentro de 20 caracteres. Si no cumple, la gráfica sale como texto."""
+    series = _series(chart)
+    categories = [_short(row["label"], NATIVE_LABEL_MAX) for row in chart["rows"]]
+    complete = all(all(c in row["values"] for c in series) for row in chart["rows"])
+    return (chart["kind"] in NATIVE_KINDS and 0 < len(chart["rows"]) <= NATIVE_MAX_CATEGORIES
+            and 0 < len(series) <= NATIVE_MAX_SERIES and complete and len(set(categories)) == len(categories))
+
+
+def _native_block(chart):
+    """Bloque `data_visualization` de barras: una categoría por fila y una serie por cadena."""
+    series = _series(chart)
+    categories = [_short(row["label"], NATIVE_LABEL_MAX) for row in chart["rows"]]
+    axis = {"categories": categories}
+    if chart["unit"] in UNIT_AXIS:
+        axis["y_label"] = UNIT_AXIS[chart["unit"]]
+    return {
+        "type": "data_visualization",
+        "title": UNIT_TITLE.get(chart["unit"], "Comparación por cadena")[:NATIVE_TITLE_MAX],
+        "chart": {
+            "type": "bar",
+            "series": [{"name": CHAIN_LABEL[chain], "data": [
+                {"label": category, "value": row["values"][chain]}
+                for category, row in zip(categories, chart["rows"])]} for chain in series],
+            "axis_config": axis,
+        },
+    }
+
+
+def _short(text, limit):
+    """Recorta a `limit` caracteres con puntos suspensivos al final."""
+    return text if len(text) <= limit else text[:limit - 1] + "…"
 
 
 def _chart_block(chart):

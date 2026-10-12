@@ -9,6 +9,7 @@ Así no llega de golpe todo el historial de cambios.
 import sys
 from contextlib import closing
 from datetime import datetime
+from urllib.error import HTTPError
 from zoneinfo import ZoneInfo
 
 import analytics
@@ -72,7 +73,14 @@ def _slack(conn, aconn, org_id, settings):
 
 def _slack_digest(conn, aconn, org_id, webhook, now):
     period, items = digest.week(aconn, now, PLAZA)
-    slack.post(webhook, slack.findings_payload(items, period, PLAZA_LABEL[PLAZA]))
+    try:
+        slack.post(webhook, slack.findings_payload(items, period, PLAZA_LABEL[PLAZA]))
+    except HTTPError as error:
+        # Slack responde 400 cuando rechaza un bloque. Se reenvía todo en texto para no perder el resumen.
+        if error.code != 400:
+            raise
+        print(f"org {org_id} resumen slack: bloques nativos rechazados ({error}); se envía en texto", file=sys.stderr)
+        slack.post(webhook, slack.findings_payload(items, period, PLAZA_LABEL[PLAZA], native=False))
     orgs.record_state(conn, org_id, "slack_digest_week", now.date().isoformat())
     print(f"org {org_id} resumen enviado a Slack")
 
