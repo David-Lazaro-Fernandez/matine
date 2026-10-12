@@ -202,6 +202,14 @@ def test_independientes_reads_only_the_cineteca(client, viewer, capture_db, tmp_
     assert client.get("/api/independientes", params={"d1": "2026-10-01"}).status_code == 422
 
 
+def test_proveedores_reads_the_recorded_capture(client, viewer, recorded):
+    _login(client, "viewer@example.test")
+    body = client.get("/api/proveedores", params={"d0": "2026-09-26", "d1": "2026-09-26"}).json()
+    assert body["providers"] and {r["chain"] for r in body["providers"]} <= {"cinemex", "cinepolis"}
+    assert all(r["provider"] and r["kind"] for r in body["providers"])
+    assert client.get("/api/proveedores", params={"d0": "2026-09-27", "d1": "2026-09-26"}).status_code == 422
+
+
 def test_recomendador_reads_the_recorded_capture(client, viewer, capture_db, tmp_path, monkeypatch):
     _recorded(capture_db, tmp_path, monkeypatch, "cinemex", "cinepolis")
     _login(client, "viewer@example.test")
