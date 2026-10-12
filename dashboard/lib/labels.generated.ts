@@ -1466,7 +1466,7 @@ export const DISTRIBUTOR_KIND_LABEL = {
 
 export const LAYER_TEXT = {
   "read_it": "Cómo leerla",
-  "evidence": "Ver la evidencia"
+  "evidence": "Ver más"
 } as const;
 
 export const CINES_TEXT = {

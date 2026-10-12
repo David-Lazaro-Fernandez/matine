@@ -1047,7 +1047,7 @@ DISTRIBUTOR_KIND_LABEL = {"distribuidor": "Distribuidora", "programa_propio": "P
                        "sin_clasificar": "Sin clasificar", "sin_conciliar": "Sin conciliar"}
 
 # Rótulos fijos de los componentes de capa (`capa`, `leerla` en ui/common.py y dashboard/components/common.tsx).
-LAYER_TEXT = {"read_it": "Cómo leerla", "evidence": "Ver la evidencia"}
+LAYER_TEXT = {"read_it": "Cómo leerla", "evidence": "Ver más"}
 # Pantalla Cines de la Cartelera (dashboard/components/cartelera/cines.tsx, analytics/cinema_sales.py).
 CINES_TEXT = {
     "q_ranking": "Venta por cine",

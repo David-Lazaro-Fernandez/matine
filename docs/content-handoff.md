@@ -82,7 +82,7 @@ celular; estos desbordes son de escritorio y no los atrapa.
 - **"Tu Nombre"** parece un texto de plantilla. Agregar año o "(anime)" cuando un título choca con la interfaz; si no hay
   forma limpia, dejarlo y anotarlo.
 - **Acciones.** Hoy cada tarjeta tiene "Descargar PNG", "Descargar CSV", "Ver datos" y "Ver la evidencia": 44 enlaces
-  en la página. Dejar "Ver la evidencia" visible y lo demás en un menú ⋯.
+  en la página. Dejar "Ver más" (antes "Ver la evidencia") visible y lo demás en un menú ⋯.
 - **Formato.** Los dos donuts repiten el KPI. Basta con el número y la línea de subtituladas.
 
 ### 2. Programación semanal
