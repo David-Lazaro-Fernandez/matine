@@ -28,10 +28,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from starlette.staticfiles import StaticFiles  # noqa: E402
 
 import analytics  # noqa: E402
-from analytics.labels import MODULE_LABEL, NAV_LABEL  # noqa: E402
+from analytics.labels import MODULE_LABEL, NAV_LABEL, UPGRADE_TEXT  # noqa: E402
 from api import internal, pages  # noqa: E402
 from auth import db as auth_db  # noqa: E402
-from auth import flows  # noqa: E402
+from auth import flows, orgs  # noqa: E402
 from scraper import config, run, store  # noqa: E402
 from scripts import capture_fixtures as fixtures  # noqa: E402
 
@@ -45,6 +45,8 @@ BROWSER_NOW = datetime(2026, 9, 26, 18, 0, tzinfo=timezone.utc)
 ADMIN_EMAIL = "maria.fernanda.de.los.angeles.gutierrez-villasenor.inteligencia@direccion-comercial-y-programacion.cinemex.example.test"
 ADMIN_NAME = "María Fernanda de los Ángeles Gutiérrez Villaseñor de la Concepción"
 VIEWER_EMAIL = "viewer@example.test"
+# Una cuenta de una organización que solo contrató la Cartelera.
+CARTELERA_EMAIL = "cartelera@example.test"
 # Una palabra sin espacios no se puede partir en renglones: es lo que más rompe un diseño angosto.
 LONG_WORD = "Supercalifragilisticoexpialidoso"
 STRETCHED_KEYS = {"title", "title_norm", "cinema_name", "sample_cinema", "cinema"}
@@ -79,9 +81,9 @@ def _recorded_db(path):
             assert run.commit(conn, chain, snapshot, taken_at, fixtures.replay(chain), 0, save_raw=False)
 
 
-def _account(email, name, role):
+def _account(email, name, role, org_id=None):
     with auth_db.connect() as conn:
-        _, link = flows.invite(conn, None, email, name, role, send_mail=False)
+        _, link = flows.invite(conn, None, email, name, role, send_mail=False, org_id=org_id)
         flows.redeem_token(conn, link.split("token=")[1], PASSWORD)
 
 
@@ -106,8 +108,12 @@ def server(tmp_path_factory):
         mp.setattr(config, "DB_PATH", tmp / "snapshots.db")
         mp.setattr(analytics, "today", lambda: TODAY)
         _recorded_db(config.DB_PATH)
-        _account(ADMIN_EMAIL, ADMIN_NAME, "admin")
+        # Staff ve las dos páginas de administración, también Operaciones.
+        _account(ADMIN_EMAIL, ADMIN_NAME, "staff")
         _account(VIEWER_EMAIL, "Viewer", "viewer")
+        with auth_db.connect() as conn:
+            org = orgs.create(conn, "Solo cartelera", ["cartelera"])
+        _account(CARTELERA_EMAIL, "Cartelera", "viewer", org["id"])
         pages._cache.clear()
 
         static = StaticFiles(directory=OUT, html=True)
@@ -343,6 +349,20 @@ def test_the_phone_navigation_goes_to_each_page(browser, server):
                          ("cartelera", "/")]:
         _module_bar(page).get_by_role("tab", name=MODULE_LABEL[module]).click()
         page.wait_for_url(re.compile(re.escape(path) + r"(\?|$)"))
+    page.context.close()
+
+
+def test_a_module_not_contracted_shows_a_lock_and_the_upgrade_dialog(browser, server):
+    page = _open(browser, server, PHONES["360"], CARTELERA_EMAIL)
+    page.goto(server + "/")
+    _module_bar(page).get_by_role("tab", name=MODULE_LABEL["dulceria"]).click()
+    dialog = page.get_by_role("dialog")
+    sync_api.expect(dialog).to_contain_text(MODULE_LABEL["dulceria"])
+    dialog.get_by_role("button", name=UPGRADE_TEXT["cta"]).click()
+    sync_api.expect(dialog.get_by_text(UPGRADE_TEXT["sent"])).to_be_visible()
+    assert "/dulceria" not in page.url
+    page.goto(server + "/datos/")
+    sync_api.expect(page.get_by_role("button", name=UPGRADE_TEXT["cta"])).to_be_visible()
     page.context.close()
 
 

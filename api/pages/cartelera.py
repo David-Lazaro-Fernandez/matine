@@ -22,7 +22,7 @@ solo cuenta funciones que no han empezado (`from_now=True` de `analytics/`).
 from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing_extensions import TypedDict
 
 import analytics
@@ -32,9 +32,10 @@ from jobs import keys as job_keys
 from jobs import registry as job_registry
 from scraper import plazas
 
+from .. import session
 from . import read
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(session.require_module("cartelera"))])
 
 # El dumbbell de películas muestra las de mayor diferencia y todas al pedirlo.
 SHOWN_MOVIES, TOTAL_MOVIES = 8, 15

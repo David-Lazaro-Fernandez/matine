@@ -49,12 +49,16 @@ export function Topbar<K extends string>({
   onPick,
   onLogout,
   onSettings,
+  onUpgrade,
+  onSales,
 }: {
   user: Profile;
   entries: Entry<K>[];
   onPick: (key: K) => void;
   onLogout: () => void;
   onSettings: () => void;
+  onUpgrade: () => void;
+  onSales: () => void;
 }) {
   const s = useStyles();
   return (
@@ -64,9 +68,9 @@ export function Topbar<K extends string>({
         <CommandPalette entries={entries} onPick={onPick} />
       </div>
       <div className={s.end}>
-        <PrintButton />
+        {user.can_download && <PrintButton />}
         <HelpDrawer />
-        <AccountMenu user={user} onLogout={onLogout} onSettings={onSettings} />
+        <AccountMenu user={user} onLogout={onLogout} onSettings={onSettings} onUpgrade={onUpgrade} onSales={onSales} />
       </div>
     </header>
   );

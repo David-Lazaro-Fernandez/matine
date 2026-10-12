@@ -35,7 +35,7 @@ class DuplicateEmail(AuthError):
 
 
 class LastAdmin(AuthError):
-    """La acción dejaría el sistema sin administradores activos."""
+    """La acción dejaría a la organización sin administradores activos."""
 
 
 class SelfChange(AuthError):

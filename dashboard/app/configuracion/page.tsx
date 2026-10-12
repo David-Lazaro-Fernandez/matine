@@ -16,7 +16,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { PageHeader, Pregunta, Seccion, errorText } from '@/components/common';
-import { useSession } from '@/components/shell';
+import { useSession } from '@/lib/session';
 import { useSetTheme, type ThemeChoice } from '@/app/providers';
 import { api, type Profile } from '@/lib/api';
 import { AUTH_TEXT, THEME_LABEL } from '@/lib/labels.generated';
@@ -264,7 +264,7 @@ export default function Page() {
         <ThemeSection user={user} save={save} />
         <EmailSection user={user} onSaved={setUser} />
         <PasswordSection />
-        {user.role === 'admin' && <LogoSection user={user} onSaved={setUser} />}
+        {user.can_manage && <LogoSection user={user} onSaved={setUser} />}
       </div>
     </>
   );

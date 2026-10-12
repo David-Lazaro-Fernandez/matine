@@ -22,6 +22,7 @@ import {
 } from '@/components/common';
 import { FilterChecks, FilterMenu, FilterPopover, HideFields, SortFields } from '@/components/filters';
 import { downloadCsv } from '@/lib/download';
+import { useCanDownload } from '@/lib/session';
 import { ApiError, api } from '@/lib/api';
 import { PILOT_TIMEZONE, fill, fixed } from '@/lib/format';
 import {
@@ -118,6 +119,7 @@ function cell(col: string, v: string | number | null, money: boolean): string {
 
 export default function Page() {
   const s = useStyles();
+  const canDownload = useCanDownload();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -305,7 +307,7 @@ export default function Page() {
               <FilterMenu label={DATA_TEXT.page_size} value={pageSize}
                           options={PAGE_SIZES.map((n) => [n, fill(DATA_TEXT.page_size_value, { n })])}
                           onChange={(value) => setParams({ por_pagina: value === DEFAULT_PAGE_SIZE ? null : value })} />
-              <Button icon={<ArrowDownload20Regular />} onClick={download}>{DATA_TEXT.download}</Button>
+              {canDownload && <Button icon={<ArrowDownload20Regular />} onClick={download}>{DATA_TEXT.download}</Button>}
             </div>
           </>
         )}

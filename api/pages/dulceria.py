@@ -7,17 +7,18 @@ producto de la canasta de la gráfica por complejo; sin él, el primero con prec
 """
 from typing import Any, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from typing_extensions import TypedDict
 
 import analytics
 from analytics.labels import COMPARED, PLATFORM_LABEL
 from scraper import plazas
 
+from .. import session
 from . import read
 from .cartelera import FIRST_SNAPSHOT
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(session.require_module("dulceria"))])
 
 
 class Dulceria(TypedDict):

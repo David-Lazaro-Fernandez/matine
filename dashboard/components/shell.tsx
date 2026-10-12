@@ -1,7 +1,8 @@
 'use client';
 
-// Navegación y sesión, como app.py de Streamlit. Las páginas visibles salen del rol de `GET /api/yo`.
-// Sin sesión solo existen entrar, olvidé y restablecer. Una ruta que no corresponde al rol manda a la cartelera.
+// Navegación y sesión, como app.py de Streamlit. Lo visible sale de `GET /api/yo`: los módulos de la organización y el rol.
+// Un módulo no contratado se ve con candado y abre el diálogo de mejora; su página muestra el mismo aviso.
+// Sin sesión solo existen entrar, olvidé y restablecer. Una página de administración que no corresponde al rol manda a la cartelera.
 // Escritorio: riel de módulos con iconos y panel con las páginas del módulo. Celular: módulos abajo, páginas arriba.
 import * as React from 'react';
 import {
@@ -29,6 +30,7 @@ import {
   Food24Filled,
   Food24Regular,
   HeartPulse20Regular,
+  LockClosed12Filled,
   History20Regular,
   Lightbulb20Regular,
   Location20Regular,
@@ -49,19 +51,21 @@ import { SkeletonCapas, SkeletonLines } from '@/components/common';
 import { useSetTheme } from '@/app/providers';
 import { type Entry } from '@/components/command-palette';
 import { BAR_HEIGHT, Topbar, TopbarSkeleton } from '@/components/topbar';
-import { LOGIN_PATH, api, isPublicPath, type Profile } from '@/lib/api';
-import { AUTH_TEXT, MODULE_LABEL, NAV_LABEL } from '@/lib/labels.generated';
+import { UpgradeDialog, LockedPage } from '@/components/upgrade';
+import { LOGIN_PATH, api, isPublicPath, type Module, type Profile } from '@/lib/api';
+import { AUTH_TEXT, MODULE_LABEL, NAV_LABEL, UPGRADE_TEXT } from '@/lib/labels.generated';
+import { SessionContext } from '@/lib/session';
 
 type PageKey = keyof typeof NAV_LABEL;
 type ModuleKey = keyof typeof MODULE_LABEL;
 type Icon = React.ComponentType<{ className?: string }>;
 
-// Cada módulo es un plan: Cartelera trae las páginas de películas, Dulcería las de precios de dulcería.
-const MODULES: { key: ModuleKey; icon: Icon; iconSelected: Icon; pages: PageKey[]; admin?: boolean }[] = [
+// Cada módulo se contrata aparte: Cartelera trae las páginas de películas, Dulcería las de precios de dulcería.
+const MODULES: { key: ModuleKey; icon: Icon; iconSelected: Icon; pages: PageKey[] }[] = [
   { key: 'cartelera', icon: MoviesAndTv24Regular, iconSelected: MoviesAndTv24Filled, pages: ['cartelera', 'programacion', 'preventa', 'precios', 'cines', 'historial', 'mapa', 'recomendador', 'independientes'] },
   { key: 'dulceria', icon: Food24Regular, iconSelected: Food24Filled, pages: ['dulceria', 'domicilio'] },
   { key: 'datos', icon: Database24Regular, iconSelected: Database24Filled, pages: ['datos'] },
-  { key: 'admin', icon: Settings24Regular, iconSelected: Settings24Filled, pages: ['usuarios', 'operaciones'], admin: true },
+  { key: 'admin', icon: Settings24Regular, iconSelected: Settings24Filled, pages: ['usuarios', 'operaciones'] },
 ];
 const PAGE_ICON: Partial<Record<PageKey, Icon>> = {
   cartelera: Lightbulb20Regular,
@@ -81,7 +85,15 @@ const PAGE_ICON: Partial<Record<PageKey, Icon>> = {
   configuracion: Settings20Regular,
 };
 const HREF: Partial<Record<PageKey, string>> = { cartelera: '/', domicilio: '/dulceria/domicilio/' };
-const ADMIN_PAGES = MODULES.filter((m) => m.admin).flatMap((m) => m.pages);
+// Usuarios es de quien gestiona cuentas; Operaciones, solo del equipo de la plataforma.
+function canSee(user: Profile, key: PageKey): boolean {
+  if (key === 'usuarios') return user.can_manage;
+  if (key === 'operaciones') return user.role === 'staff';
+  return true;
+}
+function isLocked(user: Profile, key: ModuleKey): boolean {
+  return key !== 'admin' && !user.modules.includes(key as Module);
+}
 // Las páginas de Cartelera y Dulcería comparten zona, periodo y franja: el menú los lleva de una a otra.
 const FILTER_PAGES = MODULES.filter((m) => m.key === 'cartelera' || m.key === 'dulceria').flatMap((m) => m.pages);
 const FILTER_KEYS = ['plaza', 'periodo', 'd0', 'd1', 'h0', 'h1', 'franja'];
@@ -121,6 +133,17 @@ const useStyles = makeStyles({
     '@media print': { display: 'none' },
   },
   railSelected: { color: tokens.colorBrandForeground1, backgroundColor: tokens.colorBrandBackground2 },
+  railLocked: { color: tokens.colorNeutralForegroundDisabled },
+  // El candado va sobre la esquina del icono del módulo.
+  lockable: { position: 'relative', display: 'inline-flex' },
+  lock: {
+    position: 'absolute',
+    right: '-4px',
+    bottom: '-4px',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRadius: tokens.borderRadiusCircular,
+  },
   panel: {
     position: 'sticky',
     top: BAR_HEIGHT,
@@ -178,14 +201,10 @@ const useStyles = makeStyles({
   },
 });
 
-const SessionContext = React.createContext<{ user: Profile | null; setUser: (user: Profile | null) => void }>({
-  user: null,
-  setUser: () => {},
-});
-
-// La cuenta de la sesión, o null. Las pantallas de acceso la cambian con `setUser` al entrar o salir.
-export function useSession() {
-  return React.useContext(SessionContext);
+function ModuleGlyph({ Icon, locked }: { Icon: Icon; locked: boolean }) {
+  const s = useStyles();
+  if (!locked) return <Icon />;
+  return <span className={s.lockable}><Icon /><LockClosed12Filled className={s.lock} /></span>;
 }
 
 function href(key: PageKey): string {
@@ -227,6 +246,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname().replace(/\/$/, '') || '/';
   // undefined mientras `GET /api/yo` no responde.
   const [user, setUser] = React.useState<Profile | null | undefined>(undefined);
+  // El módulo del diálogo de mejora; null es "Comunicarse con Ventas" y undefined, cerrado.
+  const [upgrade, setUpgrade] = React.useState<Module | null | undefined>(undefined);
   const setTheme = useSetTheme();
 
   React.useEffect(() => {
@@ -236,16 +257,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
     if (user) setTheme(user.theme);
   }, [user, setTheme]);
 
-  const modules = MODULES.filter((m) => !m.admin || user?.role === 'admin');
+  const modules = user
+    ? MODULES.map((m) => ({ ...m, pages: m.pages.filter((key) => canSee(user, key)) })).filter((m) => m.pages.length)
+    : [];
   const search = useSearchParams();
   const current = pageAt(path);
   // Configuración no pertenece a ningún módulo: no lleva panel.
-  const active = MODULES.find((m) => m.pages.includes(current));
+  const active = modules.find((m) => m.pages.includes(current));
   const isPublic = isPublicPath(path);
   const redirect =
     user === null && !isPublic ? LOGIN_PATH
       : user && SIGNED_OUT_ONLY.includes(path) ? '/'
-        : user && ADMIN_PAGES.includes(current) && user.role !== 'admin' ? '/'
+        : user && !canSee(user, current) ? '/'
           : null;
 
   React.useEffect(() => {
@@ -273,29 +296,36 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return filters.size ? `${href(key)}?${filters}` : href(key);
   };
   const go = (key: PageKey) => router.push(link(key));
+  const open = (m: (typeof modules)[number]) => (isLocked(user, m.key) ? setUpgrade(m.key as Module) : go(m.pages[0]));
   const settings = () => go('configuracion');
-  // La búsqueda lista las páginas de los módulos que ve la cuenta y Configuración, que no está en ningún módulo.
+  const firstLocked = (modules.find((m) => isLocked(user, m.key))?.key ?? null) as Module | null;
+  const lockedHere = active && isLocked(user, active.key) ? (active.key as Module) : null;
+  // La búsqueda lista las páginas de los módulos contratados y Configuración, que no está en ningún módulo.
   const entries: Entry<PageKey>[] = [
-    ...modules.flatMap((m) => m.pages.map((key) => ({ key, label: NAV_LABEL[key], group: MODULE_LABEL[m.key] }))),
+    ...modules.filter((m) => !isLocked(user, m.key))
+      .flatMap((m) => m.pages.map((key) => ({ key, label: NAV_LABEL[key], group: MODULE_LABEL[m.key] }))),
     { key: 'configuracion', label: NAV_LABEL.configuracion, group: AUTH_TEXT.settings_title },
   ];
   return (
     <SessionContext.Provider value={session}>
-      <Topbar user={user} entries={entries} onPick={go} onLogout={logout} onSettings={settings} />
+      <Topbar user={user} entries={entries} onPick={go} onLogout={logout} onSettings={settings}
+        onUpgrade={() => setUpgrade(firstLocked)} onSales={() => setUpgrade(null)} />
+      <UpgradeDialog module={upgrade} onClose={() => setUpgrade(undefined)} />
       <div className={s.frame}>
         <nav className={s.rail}>
           {modules.map((m) => {
             const selected = m.key === active?.key;
-            const ModuleIcon = selected ? m.iconSelected : m.icon;
+            const locked = isLocked(user, m.key);
+            const label = locked ? `${MODULE_LABEL[m.key]} · ${UPGRADE_TEXT.locked}` : MODULE_LABEL[m.key];
             return (
-              <Tooltip key={m.key} content={MODULE_LABEL[m.key]} relationship="label" positioning="after">
+              <Tooltip key={m.key} content={label} relationship="label" positioning="after">
                 <Button
                   appearance="subtle"
                   size="large"
-                  icon={<ModuleIcon />}
+                  icon={<ModuleGlyph Icon={selected ? m.iconSelected : m.icon} locked={locked} />}
                   aria-current={selected ? 'page' : undefined}
-                  className={mergeClasses(selected && s.railSelected)}
-                  onClick={() => go(m.pages[0])}
+                  className={mergeClasses(locked && s.railLocked, selected && s.railSelected)}
+                  onClick={() => open(m)}
                 />
               </Tooltip>
             );
@@ -329,14 +359,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
               {active.pages.map((key) => <Tab key={key} value={key}>{NAV_LABEL[key]}</Tab>)}
             </TabList>
           )}
-          {children}
+          {lockedHere ? <LockedPage module={lockedHere} /> : children}
         </main>
         </div>
       </div>
-      <TabList className={s.tabs} selectedValue={active?.key ?? null} onTabSelect={(_, data) => go(MODULES.find((m) => m.key === data.value)!.pages[0])}>
+      <TabList className={s.tabs} selectedValue={active?.key ?? null} onTabSelect={(_, data) => open(modules.find((m) => m.key === data.value)!)}>
         {modules.map((m) => {
           const ModuleIcon = m.key === active?.key ? m.iconSelected : m.icon;
-          return <Tab key={m.key} value={m.key} icon={<ModuleIcon />} className={s.tab}>{MODULE_LABEL[m.key]}</Tab>;
+          return <Tab key={m.key} value={m.key} icon={<ModuleGlyph Icon={ModuleIcon} locked={isLocked(user, m.key)} />} className={s.tab}>{MODULE_LABEL[m.key]}</Tab>;
         })}
       </TabList>
     </SessionContext.Provider>

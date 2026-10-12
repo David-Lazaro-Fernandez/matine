@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { Button, Field, Input, MessageBar, MessageBarBody } from '@fluentui/react-components';
 import { AccessCard, AppLink } from '@/components/common';
-import { useSession } from '@/components/shell';
+import { useSession } from '@/lib/session';
 import { ApiError, api, type Me, type Profile } from '@/lib/api';
 import { AUTH_TEXT } from '@/lib/labels.generated';
 

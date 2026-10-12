@@ -29,7 +29,7 @@ import {
   SkeletonSeccion,
   SkeletonTable,
 } from '@/components/common';
-import { useSession } from '@/components/shell';
+import { useSession } from '@/lib/session';
 import { ApiError, api } from '@/lib/api';
 import { fill, localTime } from '@/lib/format';
 import { AUTH_TEXT, COLUMN_LABEL, ROLE_HELP, ROLE_LABEL } from '@/lib/labels.generated';
@@ -49,7 +49,9 @@ type AdminResult = { link: string | null; mail_error: string | null };
 type Action = 'deactivate' | 'activate' | 'set_role' | 'resend';
 type Outcome = { error?: string; success?: string; result?: AdminResult };
 
-const ROLES = Object.keys(ROLE_LABEL) as Role[];
+// Los roles que asigna un admin. `staff` solo se da por la línea de comandos (`make user-role`).
+const ROLES = (Object.keys(ROLE_LABEL) as Role[]).filter((role) => role !== 'staff');
+const DEFAULT_ROLE: Role = 'viewer';
 const COLUMNS = ['name', 'email', 'role', 'active', 'last_login_at', 'pending_invite', 'created_at'] as const;
 const CHECK = '✓';
 
@@ -66,6 +68,8 @@ const useStyles = makeStyles({
   roleRow: { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: tokens.spacingHorizontalS },
   // Fluent fija 250 px de ancho mínimo. En dos columnas de tableta no caben.
   dropdown: { minWidth: 0 },
+  // Un nombre con su correo no cabe en una columna de tableta: se corta con "…".
+  dropdownButton: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   code: { fontFamily: tokens.fontFamilyMonospace, wordBreak: 'break-all', userSelect: 'all' },
 });
 
@@ -122,7 +126,7 @@ function Result({ outcome }: { outcome: Outcome | null }) {
 
 function NewAccount({ onDone }: { onDone: () => void }) {
   const s = useStyles();
-  const [role, setRole] = React.useState<Role>(ROLES[0]);
+  const [role, setRole] = React.useState<Role>(DEFAULT_ROLE);
   const [busy, setBusy] = React.useState(false);
   const [outcome, setOutcome] = React.useState<Outcome | null>(null);
 
@@ -138,7 +142,7 @@ function NewAccount({ onDone }: { onDone: () => void }) {
       const result = await api<AdminResult>('/usuarios', { name, email, role });
       setOutcome({ success: fill(AUTH_TEXT.invite_sent, { email }), result });
       form.reset();
-      setRole(ROLES[0]);
+      setRole(DEFAULT_ROLE);
       onDone();
     } catch (err) {
       setOutcome({ error: errorText(err) });
@@ -215,6 +219,7 @@ function ManageAccount({ others, onDone }: { others: Account[]; onDone: () => vo
         <Field label={AUTH_TEXT.pick_account}>
           <Dropdown
             className={s.dropdown}
+            button={{ className: s.dropdownButton }}
             value={label(target)}
             selectedOptions={[String(target.id)]}
             onOptionSelect={(_, data) => {

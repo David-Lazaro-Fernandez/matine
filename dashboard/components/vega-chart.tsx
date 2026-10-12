@@ -8,6 +8,7 @@ import { ArrowDownload16Regular } from '@fluentui/react-icons';
 import type { VisualizationSpec } from 'vega-embed';
 import { SkeletonBlock } from '@/components/common';
 import { downloadCsv, downloadUrl } from '@/lib/download';
+import { useCanDownload } from '@/lib/session';
 import { COLUMN_LABEL, DOWNLOAD_TEXT } from '@/lib/labels.generated';
 import { vegaConfig } from '@/lib/vega-theme';
 
@@ -54,6 +55,7 @@ export function VegaChart({ spec, height, name = DOWNLOAD_TEXT.chart }: { spec: 
     };
   }, [spec]);
 
+  const canDownload = useCanDownload();
   const png = async () => embedded.current && downloadUrl(`${name}.png`, await embedded.current.view.toImageURL('png', 2));
   const rows = specRows(spec);
   const downloadRows = () => {
@@ -72,7 +74,7 @@ export function VegaChart({ spec, height, name = DOWNLOAD_TEXT.chart }: { spec: 
         {/* El ancho completo deja que un spec con `width: 'container'` llene la tarjeta; uno de ancho fijo no cambia. */}
         <div ref={ref} style={{ width: '100%', minHeight: ready ? height : 0 }} />
       </div>
-      {ready && (
+      {ready && canDownload && (
         <div className={s.actions}>
           <Button appearance="subtle" size="small" icon={<ArrowDownload16Regular />} onClick={png}>{DOWNLOAD_TEXT.png}</Button>
           {rows.length > 0 && (

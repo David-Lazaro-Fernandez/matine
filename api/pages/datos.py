@@ -8,16 +8,18 @@ conjunto. Es el patrón de referencia para los demás módulos de `api/pages/`.
 from datetime import date
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing_extensions import TypedDict
 
 import analytics
+import auth
 from analytics import datasets
-from analytics.labels import CHAIN_LABEL, DAY_TYPE_LABEL, FORMAT_BUCKETS, PLATFORM_LABEL
+from analytics.labels import AUTH_TEXT, CHAIN_LABEL, DAY_TYPE_LABEL, FORMAT_BUCKETS, PLATFORM_LABEL
 
+from .. import session
 from . import read
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(session.require_module("datos"))])
 
 
 class Dataset(TypedDict):
@@ -46,7 +48,8 @@ class Datos(TypedDict):
 
 
 @router.get("/datos")
-def datos(dataset: Literal[tuple(datasets.DATASETS)] = "cinemas",
+def datos(user: Annotated[dict, Depends(session.current_user)],
+          dataset: Literal[tuple(datasets.DATASETS)] = "cinemas",
           d0: date | None = None, d1: date | None = None,
           chain: Literal[tuple(CHAIN_LABEL)] | None = None,
           cinema_ids: Annotated[list[str] | None, Query(max_length=500)] = None,
@@ -60,7 +63,10 @@ def datos(dataset: Literal[tuple(datasets.DATASETS)] = "cinemas",
           limit: Annotated[int, Query(ge=1, le=datasets.MAX_ROWS)] = 50,
           offset: Annotated[int, Query(ge=0)] = 0) -> Datos:
     """La página de `limit` renglones del conjunto `dataset` que empieza en `offset`, ordenada por `sort`. La tabla pide
-    uno de `PAGE_SIZES`; el CSV pide `max_rows`. Sin `d0` y `d1`, la semana de cine en curso."""
+    uno de `PAGE_SIZES`; el CSV pide `max_rows` y exige un rol que descarga (403 si no). Sin `d0` y `d1`, la semana de
+    cine en curso."""
+    if limit > max(datasets.PAGE_SIZES) and not auth.can_download(user):
+        raise HTTPException(403, AUTH_TEXT["download_locked"])
     filters = datasets.DATASETS[dataset]["filters"]
     given = {"chain": chain, "cinema_ids": tuple(cinema_ids or ()) or None, "platform": platform,
              "format_bucket": format_bucket, "day_type": day_type, "category": category, "search": search or None,

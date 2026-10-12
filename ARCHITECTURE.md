@@ -32,7 +32,7 @@ flowchart LR
 
     subgraph datos["data/ (fuera de git)"]
         DB[("snapshots.db (SQLite WAL)<br/>snapshot · snapshot_unit · cinema · current_showtime · event (incl. expired)<br/>auditorium · occupancy_sample · presale_sample · price_sample<br/>concession_price · delivery_price")]
-        APPDB[("app.db (SQLite WAL)<br/>account · session · token · audit")]
+        APPDB[("app.db (SQLite WAL)<br/>organization · account · session · token · audit")]
         RAW["raw/{chain}/{fecha}/*.json.gz"]
         LOGS["logs/ run.log · sample.log · health.log"]
     end
@@ -146,10 +146,10 @@ cuando pasan las pruebas y el trabajo `deploy` la trae. A mano, con `!` en la se
 | `jobs.run` (`make job KEY=…`) | ejecuta un trabajo del registro: candado por llave, tope, reintentos; genera las unidades con `jobs.units` | lo lanza cada timer | `logs/jobs.jsonl` (duración, resultado, pico de memoria), `data/locks/` | systemd / launchd / a mano |
 | `scraper.health` (`make health`) | salud de la captura: capturas programadas, fallos, muestreos; las mismas funciones alimentan en vivo la página Operaciones | diario | `logs/health.log` | trabajo `health` |
 | `backup.sh` | copias en línea de `snapshots.db` y `app.db` y sync del crudo | diario 05:07 | bucket (`db/`, `app/`, `raw/`) | trabajo `backup` |
-| `dashboard/` + `api/internal.py` (`make dashboard` y `pnpm dev` en local) | dashboard en Next.js (estático) sobre la API interna (FastAPI), con login por usuario: Cartelera, Mapa, ¿A dónde ir? (recomendador), Dulcería, Independientes (Cineteca Nacional), Datos (explorador de tablas de SQLite) y, para admin, Usuarios y Operaciones (estado de captura, bases, servidor y logs; lee `scraper.health`) | siempre | `app.db` vía `auth/` (cuentas y su perfil, sesiones, enlaces, auditoría, logo); `snapshots.db`, solo lectura | `dashboard.service` (API) y Caddy (`dashboard/out/`) |
+| `dashboard/` + `api/internal.py` (`make dashboard` y `pnpm dev` en local) | dashboard en Next.js (estático) sobre la API interna (FastAPI), con login por usuario: Cartelera, Mapa, ¿A dónde ir? (recomendador), Dulcería, Independientes (Cineteca Nacional), Datos (explorador de tablas de SQLite) y Usuarios (admin) y Operaciones (solo staff: estado de captura, bases, servidor y logs; lee `scraper.health`); cada página exige el módulo contratado por la organización | siempre | `app.db` vía `auth/` (organizaciones con sus módulos y logo, cuentas y su perfil, sesiones, enlaces, auditoría); `snapshots.db`, solo lectura | `dashboard.service` (API) y Caddy (`dashboard/out/`) |
 | `api.precalc` | respuestas por defecto de la Cartelera (cada plaza y nacional, semana en curso, día completo); `api.pages.read` las sirve hasta 2 h | al final de `snapshot` y de `seats` (cada hora) | `data/precalc.db` | pasos de los trabajos `snapshot` y `seats` |
 | `api/main.py` (`make api` en local) | API pública de "¿A dónde ir?" (FastAPI): búsqueda con `analytics.recommend_search`, CORS para `AC_API_ORIGINS`, límite por IP, `AC_API_THREADS` búsquedas a la vez | siempre | nada; `snapshots.db`, solo lectura | `api.service`, detrás de Caddy |
-| `auth.cli` (`make user-create`, `user-list`, `user-reset`, `user-deactivate`, `user-activate`) | administración de cuentas desde la terminal; así nace el primer admin | a mano | `app.db`; correo por SES o `data/logs/mail.log` | manual |
+| `auth.cli` (`make user-create`, `user-list`, `user-reset`, `user-deactivate`, `user-activate`, `user-role`, `org-create`, `org-modules`, `org-list`) | administración de cuentas y organizaciones desde la terminal; así nacen el primer admin y el staff | a mano | `app.db`; correo por SES o `data/logs/mail.log` | manual |
 | `auth.cli prune` (`make auth-prune`) | borra sesiones y enlaces vencidos hace más de 90 días | domingos 04:07 | `app.db`: `session`, `token` | trabajo `auth-prune` |
 | GitHub Actions `tests.yml` | pruebas y `next build` en cada push y PR; en `main`, si pasan, mueve `stable` a un commit encima con `dashboard/out/` | cada push | rama `stable` del repo | GitHub |
 | `deploy/update.sh` (`make deploy`) | si `origin/stable` se movió: lo trae, reinstala si cambió `requirements-*`, reinicia el dashboard y la API, comprueba salud | cada 15 min | código en `/opt/absolut-cinema`, `logs/deploy.log` | trabajo `deploy` |

@@ -503,8 +503,14 @@ def range_short(d0, d1):
 
 
 # --- Cuentas y acceso (auth/, ui/auth.py, views/login|olvide|restablecer|usuarios) ---
-ROLE_LABEL = {"admin": "Administrador", "viewer": "Consulta"}
-ROLE_HELP = {"admin": "Gestiona cuentas y ve todo.", "viewer": "Ve la cartelera, la dulcería y los datos."}
+# El orden es el de los permisos, de más a menos. `staff` es el equipo de la plataforma y no se asigna desde el dashboard.
+ROLE_LABEL = {"staff": "Equipo de la plataforma", "admin": "Administrador", "analyst": "Analista", "viewer": "Consulta"}
+ROLE_HELP = {
+    "staff": "Ve todos los módulos, todas las cuentas y Operaciones.",
+    "admin": "Gestiona las cuentas y el logo de la organización, y descarga.",
+    "analyst": "Ve, filtra, descarga CSV y PNG e imprime.",
+    "viewer": "Ve y filtra, sin descargar ni imprimir.",
+}
 AUTH_TEXT = {
     "app_name": "Absolut Cinema",
     "login_title": "Entrar",
@@ -539,7 +545,7 @@ AUTH_TEXT = {
     "TokenInvalid": "Este enlace ya no sirve: caducó o ya se usó. Pide uno nuevo desde “¿Olvidaste tu contraseña?”.",
     "WeakPassword": "La contraseña no cumple la regla mínima.",
     "DuplicateEmail": "Ya existe una cuenta con ese correo.",
-    "LastAdmin": "No puedes dejar el sistema sin administradores.",
+    "LastAdmin": "No puedes dejar la organización sin administradores.",
     "SelfChange": "No puedes cambiar tu propia cuenta desde aquí.",
     "WrongPassword": "La contraseña actual no es correcta.",
     "InvalidImage": "La imagen debe ser PNG, JPEG o WebP.",
@@ -561,6 +567,9 @@ AUTH_TEXT = {
     "mail_failed": "La cuenta quedó creada pero el correo no salió: {error}. Usa “Reenviar enlace” más tarde.",
     "session_expired": "Tu sesión terminó. Vuelve a entrar.",
     "admin_only": "Solo los administradores pueden ver esta página.",
+    "staff_only": "Solo el equipo de la plataforma puede ver esta página.",
+    "module_locked": "Tu organización no tiene este módulo.",
+    "download_locked": "Tu rol no permite descargar.",
     "deactivate_confirm": "{name} ya no podrá entrar hasta que reactives su cuenta.",
     "cancel": "Cancelar",
     # Página de configuración.
@@ -598,6 +607,14 @@ MAIL_RESET = {
     "html": ("<p>Hola {name}:</p><p>Pediste restablecer tu contraseña. Elige una nueva en este enlace (vale {minutes} "
              "minutos y solo una vez):</p><p><a href=\"{link}\">{link}</a></p>"
              "<p>Si no fuiste tú, ignora este correo: tu contraseña no cambia.</p>"),
+}
+
+# Aviso a Ventas (auth.flows.record_interest): por un módulo, o sin módulo desde "Comunicarse con Ventas".
+MAIL_INTEREST = {
+    "module": {"subject": "{org} pidió {module}",
+               "text": "{name} ({email}), de {org}, quiere conocer el módulo {module} de Absolut Cinema.\n"},
+    "sales": {"subject": "{org} quiere hablar con Ventas",
+              "text": "{name} ({email}), de {org}, pidió que Ventas le escriba.\n"},
 }
 
 # --- Explorador de datos (analytics/datasets.py, views/datos.py) ---
@@ -1073,6 +1090,22 @@ MODULE_LABEL = {
     "dulceria": "Dulcería",
     "datos": DATA_TEXT["title"],
     "admin": "Administración",
+}
+
+# Diálogo de un módulo que la organización no contrató (dashboard/components/shell.tsx).
+UPGRADE_TEXT = {
+    "title": "{module} no está en tu plan",
+    "sales_title": "Comunicarse con Ventas",
+    "sales_body": "Ventas te escribe para ver qué módulos necesita tu organización.",
+    "body": {
+        "cartelera": "Compara la programación, la preventa, los precios y los cines de Cinemex y Cinépolis, con el mapa y la Cineteca.",
+        "dulceria": "Compara los precios de dulcería en sala y a domicilio de Cinemex y Cinépolis.",
+        "datos": "Explora y descarga las tablas completas de la captura. Viene en el plan Completo.",
+    },
+    "cta": "Quiero conocerlo",
+    "sent": "Listo. Ventas te escribirá pronto.",
+    "close": "Cerrar",
+    "locked": "No incluido en tu plan",
 }
 
 # Nombre de cada página dentro del panel de su módulo.

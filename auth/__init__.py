@@ -6,7 +6,7 @@ librería estándar (boto3 solo con `AC_MAIL_BACKEND=ses`). No importa Streamlit
 vive en `ui/auth.py`. Las reglas puras (hash de contraseña, tokens, bloqueo) están en `auth.security` y se prueban
 sin base de datos; los flujos que usan vistas y línea de comandos, en `auth.flows`.
 """
-from .db import connect, rows
+from .db import MODULES, connect, rows
 from .errors import (
                      AccountInactive,
                      AccountLocked,
@@ -34,6 +34,7 @@ from .flows import (
                      logout,
                      peek_token,
                      profile,
+                     record_interest,
                      redeem_token,
                      request_reset,
                      resend,
@@ -41,13 +42,15 @@ from .flows import (
                      set_role,
                      update_profile,
 )
+from .orgs import CLIENT_ROLES, ROLES, can_download, can_manage
 from .sessions import current_session, prune
 from .users import list_users
 
 __all__ = [
     "AccountInactive", "AccountLocked", "AuthError", "DuplicateEmail", "InvalidCredentials", "InvalidImage", "LastAdmin",
-    "MailFailed", "SelfChange", "TokenInvalid", "WeakPassword", "WrongPassword", "IMAGE_MAX_CHARS", "THEMES",
+    "MailFailed", "SelfChange", "TokenInvalid", "WeakPassword", "WrongPassword", "CLIENT_ROLES", "IMAGE_MAX_CHARS",
+    "MODULES", "ROLES", "THEMES", "can_download", "can_manage",
     "activate", "change_email", "change_password", "connect", "current_session", "deactivate", "invite", "link_for",
     "list_users", "login", "logout", "peek_token", "profile", "prune", "redeem_token", "request_reset", "resend",
-    "rows", "set_logo", "set_role", "update_profile",
+    "record_interest", "rows", "set_logo", "set_role", "update_profile",
 ]

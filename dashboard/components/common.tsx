@@ -39,6 +39,7 @@ import type { VisualizationSpec } from 'vega-embed';
 import { useDataColor } from '@/app/providers';
 import { ApiError, api } from '@/lib/api';
 import { downloadCsv, downloadSpecPng } from '@/lib/download';
+import { useCanDownload } from '@/lib/session';
 import { fill, fixed, n, signed } from '@/lib/format';
 import {
   AUTH_TEXT, CHAIN_COLOR, CHAIN_LABEL, DOWNLOAD_TEXT, FINDING_TEXT, FINDING_THEME_LABEL, FINDING_UNIT, LAYER_TEXT, LINE, RED, RED_SOFT, WARN,
@@ -638,6 +639,7 @@ function downloadFinding(f: Finding) {
 // muestra que la sostiene, con su PNG y su CSV. `href` es la pantalla con la evidencia; `dataHref`, el explorador de Datos.
 export function Hallazgo({ f, href, dataHref, compact = false }: { f: Finding; href?: string; dataHref?: string; compact?: boolean }) {
   const s = useStyles();
+  const canDownload = useCanDownload();
   const dataColor = useDataColor();
   const metricColor = (chain: string | null) => chain ? dataColor(chainColor(chain) ?? LINE) : undefined;
   return (
@@ -665,12 +667,14 @@ export function Hallazgo({ f, href, dataHref, compact = false }: { f: Finding; h
         <div className={s.hallazgoPie}>
           <span>{f.context}</span>
           <span className={s.hallazgoAcciones}>
-            {f.chart && f.chart.rows.length > 0 && (
+            {canDownload && f.chart && f.chart.rows.length > 0 && (
               <Button appearance="subtle" size="small" icon={<ArrowDownload16Regular />} onClick={() => downloadSpecPng(findingSpec(f), f.topic)}>
                 {DOWNLOAD_TEXT.png}
               </Button>
             )}
-            <Button appearance="subtle" size="small" icon={<ArrowDownload16Regular />} onClick={() => downloadFinding(f)}>{DOWNLOAD_TEXT.csv}</Button>
+            {canDownload && (
+              <Button appearance="subtle" size="small" icon={<ArrowDownload16Regular />} onClick={() => downloadFinding(f)}>{DOWNLOAD_TEXT.csv}</Button>
+            )}
             {dataHref && <AppLink href={dataHref}>{DOWNLOAD_TEXT.data}</AppLink>}
             {href && <AppLink href={href}>{LAYER_TEXT.evidence}</AppLink>}
           </span>

@@ -1269,7 +1269,7 @@ reconstruir cualquier historia con las reglas de `scraper/diff.py`. En producci�
 (las cuentas eran de prueba).
 
 **Qué quedó.** Dos bases SQLite con un escritor cada una: `data/snapshots.db` (la captura) y `data/app.db` (`auth/`:
-cuentas con su perfil, sesiones, enlaces, auditoría y `setting`, con el logo de la empresa que fija un admin; se crea con su esquema al conectar, `auth/db.py`; fechas como texto ISO UTC con
+cuentas con su perfil, organizaciones con sus módulos y su logo (desde 2026-10-12), sesiones, enlaces y auditoría; se crea con su esquema al conectar, `auth/db.py`; fechas como texto ISO UTC con
 microsegundos para que las comparaciones de SQL sean cronológicas; corre en el venv por `hashlib.scrypt`). El explorador
 Datos lee `snapshots.db` con los mismos seis conjuntos (`analytics/datasets.py`: `DISTINCT ON` → `ROW_NUMBER()`,
 búsqueda con `norm_title` sin acentos, funciones cerradas desde los eventos `removed`/`expired`). El respaldo diario
@@ -1389,9 +1389,9 @@ modelo y la clave que elija el cliente. Decisiones tomadas con David:
 - **Paquete `narrative/`** con un adaptador por proveedor detrás de una misma función, usando el SDK oficial de cada
   uno; Anthropic primero (`claude-opus-5`, salida estructurada), luego OpenAI, Google si un cliente lo pide. `scraper/`
   y `analytics/` jamás lo importan. Costo estimado con tres generaciones diarias: < 5 USD al mes.
-- **Sin concepto de organización todavía.** `app.account` no tiene tenant, así que la configuración del proveedor es
-  **una por instancia**, la fija el admin desde el tablero. Si algún día hay más de un cliente por despliegue, entra
-  organización antes que clave por usuario.
+- **Configuración por organización.** Desde 2026-10-12 cada cuenta pertenece a una `organization` (ver
+  "Organizaciones, módulos y roles"). La configuración del proveedor va por organización, nunca por usuario; la fija el
+  admin de esa organización desde el tablero.
 
 **Custodia y auditoría de la clave** (tres capas, todas necesarias; KMS solo resuelve la primera):
 
@@ -1507,6 +1507,35 @@ SQL: es parte del valor que se entrega al cliente, sin regalarle la base complet
   falta probar en navegador:** el ciclo de la cookie (entrar, refrescar, cerrar sesión), que `AppTest` no simula.
 - **Pendiente con el dominio:** identidad SES + DKIM, `AC_BASE_URL=https://…`, quitar `basic_auth` de Caddy, salir del
   sandbox de SES. Mientras, `console`/`NOMAIL=1` y el enlace se entrega a mano.
+
+## Organizaciones, módulos y roles (2026-10-12)
+
+Decisión de David (2026-10-12): el dashboard se vende por módulos y a más de un cliente por despliegue. La API decide lo
+que cada cuenta ve y hace; el dashboard solo lo refleja.
+
+- **Organización** (`organization` en `data/app.db`: `id`, `name`, `modules` JSON, `logo`, `created_at`) y
+  `account.org_id`. Al conectar, `auth/db.py` crea la organización 1, "Cinemex", con todos los módulos, le pasa las
+  cuentas sin organización y mueve ahí el logo que antes vivía en `setting`.
+- **Módulos, no niveles** (`auth.db.MODULES`): `cartelera` (Hallazgos, Programación, Preventa, Precios, Cines,
+  Historial, Mapa, ¿A dónde ir?, Independientes), `dulceria` (En sala, A domicilio) y `datos` (el explorador). Un plan es
+  solo el nombre comercial de una lista; "Completo" son todos y Datos solo viene en Completo. Precios por contrato, sin
+  pago en línea. Un módulo nuevo (por ejemplo `distribuidores`) es una clave en `MODULES` y su router con
+  `require_module`.
+- **Roles** (`auth/orgs.py`): `staff`, el equipo de la plataforma, ve todos los módulos, todas las cuentas y Operaciones,
+  y solo se asigna con `make user-role`; `admin` gestiona las cuentas y el logo de su organización; `analyst` ve, filtra,
+  descarga CSV y PNG e imprime; `viewer` ve y filtra. SQLite no cambia un `CHECK` con `ALTER TABLE`, así que
+  `connect` reconstruye `account` una vez con el `CHECK` nuevo (verificado 2026-10-12 sobre una copia de la base del
+  piloto: cuentas, sesiones, enlaces y auditoría intactos, `foreign_key_check` vacío).
+- **Dónde se aplica** (`api/session.py`): cada router de `api/pages/` declara su módulo
+  (`require_module`, 403 con `AUTH_TEXT["module_locked"]`); Operaciones exige `require_staff`. Un admin solo lista y
+  cambia cuentas de su organización y nunca ve las de `staff` (404). La descarga completa de Datos (más de una página de
+  la tabla) exige un rol que descarga. `LastAdmin` cuenta por organización.
+- **Dashboard.** Un módulo no contratado se ve con candado; abre un diálogo que manda `POST /api/interes`, y su página
+  muestra el mismo aviso. "Mejorar" y "Comunicarse con Ventas" del menú de la cuenta abren ese diálogo. El aviso queda en
+  `audit` (`upgrade_interest`) y, con `AC_SALES_EMAIL`, llega por correo a Ventas. Sin `can_download` no se pintan los
+  botones de descarga ni el de imprimir.
+- **Pendiente:** un plan de prueba con fecha de fin, la clave `distribuidores` cuando su módulo exista, y que staff vea a
+  qué organización pertenece cada cuenta en Usuarios.
 
 ## Consideraciones
 

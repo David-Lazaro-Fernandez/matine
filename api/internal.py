@@ -16,11 +16,12 @@ from pydantic import BaseModel, StringConstraints
 from typing_extensions import TypedDict
 
 import auth
-from analytics.labels import ROLE_LABEL
 
 from . import pages, session
 
-Role = Literal[tuple(ROLE_LABEL)]
+# Lo que un admin asigna. `staff` solo se da por la línea de comandos (`auth.cli role`).
+Role = Literal[auth.CLIENT_ROLES]
+Module = Literal[auth.MODULES]
 Theme = Literal[auth.THEMES]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 Image = Annotated[str, StringConstraints(max_length=auth.IMAGE_MAX_CHARS)]
@@ -41,7 +42,11 @@ class Me(TypedDict):
 class Profile(Me):
     avatar: str | None
     theme: Theme
+    org: str
     logo: str | None
+    modules: list[Module]
+    can_manage: bool
+    can_download: bool
 
 
 class Account(TypedDict):
@@ -110,6 +115,10 @@ class LogoChange(BaseModel):
     logo: Image | None = None
 
 
+class Interest(BaseModel):
+    module: Module | None = None
+
+
 class AccountAction(BaseModel):
     action: Literal["deactivate", "activate", "set_role", "resend"]
     role: Role | None = None
@@ -160,7 +169,8 @@ def redeem_token(body: Reset, response: Response):
 
 @api.get("/yo")
 def me(user: User) -> Profile:
-    """Usuario de la sesión con su rol, avatar y tema, y el logo de la organización, para armar la navegación."""
+    """Usuario de la sesión con su rol, avatar y tema, y su organización: nombre, logo y módulos que ve, para armar la
+    navegación. `can_manage` y `can_download` dicen qué botones mostrar; la API los vuelve a revisar."""
     return session.profile(user["id"])
 
 
@@ -184,20 +194,26 @@ def change_password(body: PasswordChange, user: User, request: Request, response
 
 @api.post("/logo")
 def set_logo(body: LogoChange, admin: Admin) -> Profile:
-    """Fija el logo que ven todas las cuentas. Sin `logo`, lo quita."""
+    """Fija el logo que ven todas las cuentas de la organización. Sin `logo`, lo quita."""
     return session.set_logo(admin["id"], body.logo)
 
 
+@api.post("/interes", status_code=204)
+def interest(body: Interest, user: User):
+    """Avisa a Ventas que la cuenta quiere un módulo que su organización no tiene, o solo hablar con Ventas."""
+    session.record_interest(user["id"], body.module)
+
+
 @api.get("/usuarios")
-def list_users(_: Admin) -> list[Account]:
-    """Todas las cuentas: activas primero, por nombre."""
-    return session.list_users()
+def list_users(admin: Admin) -> list[Account]:
+    """Las cuentas de la organización (todas para staff): activas primero, por nombre."""
+    return session.list_users(admin)
 
 
 @api.post("/usuarios")
 def invite(body: NewAccount, admin: Admin) -> AdminResult:
-    """Crea la cuenta y manda la invitación."""
-    return session.invite(admin["id"], body.email, body.name, body.role)
+    """Crea la cuenta en la organización del admin y manda la invitación."""
+    return session.invite(admin, body.email, body.name, body.role)
 
 
 @api.post("/usuarios/{user_id}")
@@ -205,7 +221,7 @@ def manage(user_id: int, body: AccountAction, admin: Admin) -> AdminResult:
     """Desactiva, reactiva, cambia el rol o reenvía el enlace de otra cuenta. `set_role` exige `role`."""
     if body.action == "set_role" and body.role is None:
         raise HTTPException(422)
-    return session.manage(admin["id"], user_id, body.action, role=body.role)
+    return session.manage(admin, user_id, body.action, role=body.role)
 
 
 app.include_router(api)

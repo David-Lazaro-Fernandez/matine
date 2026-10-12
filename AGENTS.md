@@ -23,7 +23,7 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
 | Captura | `scraper/` | **solo stdlib**, `/usr/bin/python3` | `data/snapshots.db`, `data/raw/`, `data/logs/` |
 | Negocio | `analytics/` | **solo stdlib** | nada (abre la base en `mode=ro`) |
 | Presentación | `dashboard/` (Next.js estático) + `api/internal.py` y `api/pages/` | `dashboard/`: Node/pnpm solo para el build; API: `.venv` (fastapi, uvicorn) | nada |
-| Acceso | `auth/` | `.venv` (`hashlib.scrypt`; boto3 solo para SES) | `data/app.db` (cuentas, perfil, sesiones, enlaces, auditoría, logo), **nada más** |
+| Acceso | `auth/` | `.venv` (`hashlib.scrypt`; boto3 solo para SES) | `data/app.db` (organizaciones, cuentas, perfil, sesiones, enlaces, auditoría, logo), **nada más** |
 | Programación | `jobs/` | **solo stdlib**, `/usr/bin/python3` | `data/logs/jobs.jsonl`, `data/locks/`; genera `deploy/systemd/` |
 | API pública | `api/` | `.venv` (fastapi, uvicorn) | nada (lee `snapshots.db` con `analytics.connect()`, `mode=ro`) |
 | Sitio público | `marketing/` | Node/Next.js, **proyecto independiente** (su propio `package.json`) | nada (sitio estático, `output: 'export'`) |
@@ -241,7 +241,7 @@ el timer lo note. Si añades un flujo de captura, añade su cobertura ahí y su 
   Páginas: Cartelera (cinco pantallas, una pregunta cada una, en `components/cartelera/cartelera-page.tsx`: Hallazgos en
   `/`, Programación semanal, Preventa, Precios y butacas, Cines (en `app/cines/`, sin periodo), Historial de funciones; zona, periodo y franja en la barra), Mapa, ¿A dónde ir?
   (recomendador), Dulcería, Independientes, Datos (explorador de `snapshots.db`, `analytics/datasets.py`) y, solo para
-  admin, Usuarios y Operaciones. Un módulo que responde una pregunta propia del cliente y no depende del periodo va en
+  admin, Usuarios y, solo para staff, Operaciones. Un módulo que responde una pregunta propia del cliente y no depende del periodo va en
   su página; lo demás, en la cartelera. **Excepción:** Independientes sí depende del periodo y aun así va aparte, para
   que la Cineteca nunca se mezcle con los shares Cinemex↔Cinépolis.
 - **Los filtros viven en la URL** (`components/filters.tsx`: `plaza`, `d0`, `d1`, `h0`, `h1`) y viajan como parámetros
@@ -249,10 +249,11 @@ el timer lo note. Si añades un flujo de captura, añade su cobertura ahí y su 
   (`components/shell.tsx`, `FILTER_KEYS`).
 - **Operaciones es la excepción documentada** a "ningún nombre interno llega al usuario": su público es quien opera la
   plataforma, así que muestra nombres de tablas, logs y módulos tal cual, y usa los colores de estado `OK` y `WARN` de
-  `labels.py`. Su lógica vive en `scraper/health.py`; su endpoint (`api/pages/operaciones.py`) exige admin. Nada de esa
+  `labels.py`. Su lógica vive en `scraper/health.py`; su endpoint (`api/pages/operaciones.py`) exige staff. Nada de esa
   página escribe ni ejecuta acciones.
 - **Acceso.** Sin sesión solo existen `/entrar`, `/olvide` y `/restablecer` (`lib/api.ts`, `PUBLIC_PATHS`); un 401 de la
-  API manda a entrar. Lo que solo puede ver un admin lo decide la API (`session.require_admin`), no el menú.
+  API manda a entrar. Lo que ve cada cuenta lo decide la API, no el menú: el módulo contratado por su organización
+  (`session.require_module` en cada router), el rol (`require_admin`, `require_staff`) y si descarga (`can_download`).
 - Una pregunta por pantalla, sin rótulos de capa (`DESIGN.md`, "Pantallas de la Cartelera"). Una sección de evidencia va
   siempre en el mismo orden: pregunta, conclusión, leyenda, gráfico, controles, "Cómo leerla". Reutiliza los componentes
   de `components/common.tsx` (`Seccion`, `Pregunta`, `Leerla`, `Apendice`, `Leyenda`, `Table`, los esqueletos y

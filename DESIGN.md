@@ -113,8 +113,9 @@ Como la consola de una aplicación de Microsoft (`components/shell.tsx`):
 - **Barra superior** (`components/topbar.tsx`), 56 px, fija arriba, fondo blanco y borde inferior. Tres zonas en una
   rejilla: a la izquierda el logo de la organización (vacío si no hay), al centro el botón de búsqueda de secciones y a
   la derecha el `Avatar` de la cuenta, que abre un `Menu` (`components/account-menu.tsx`): nombre y correo arriba y,
-  debajo, las opciones de la cuenta en grupos separados por divisores. "Cuenta" y "Aspecto" abren Configuración y
-  "Cerrar sesión" sale; las demás se muestran deshabilitadas hasta tener destino.
+  debajo, las opciones de la cuenta en grupos separados por divisores. "Cuenta" y "Aspecto" abren Configuración,
+  "Mejorar" y "Comunicarse con Ventas" abren el diálogo de mejora y "Cerrar sesión" sale; las demás se muestran
+  deshabilitadas hasta tener destino. El botón de imprimir solo aparece si la cuenta descarga (`can_download`).
 - **Búsqueda de secciones** (`components/command-palette.tsx`): el centro de la barra parece un campo con su atajo ⌘K
   (Ctrl K fuera de Mac). El atajo abre un diálogo con un campo y la lista de páginas que la cuenta ve, con su módulo a la
   derecha. Las flechas mueven la selección y Enter abre la página. Las palabras se buscan sin acentos.
@@ -124,11 +125,18 @@ Como la consola de una aplicación de Microsoft (`components/shell.tsx`):
   (`@fluentui/react-icons`, relleno cuando está activo, con fondo `colorBrandBackground2`) y un `Tooltip` con su nombre.
 - **Panel del módulo**, 220 px, fondo `colorNeutralBackground3`: el nombre del módulo y sus páginas (`NavItem` con
   icono). Los nombres salen de `MODULE_LABEL` y `NAV_LABEL`.
-- **Módulos.** Cada uno corresponde a un plan que se contrata aparte; por ahora toda cuenta ve todos:
-  - **Cartelera** (películas y funciones): Resumen (`/`), Mapa, ¿A dónde ir?, Independientes.
+- **Módulos.** Cada uno se contrata aparte; la organización de la cuenta dice cuáles tiene (`modules` de `GET /api/yo`):
+  - **Cartelera** (películas y funciones): Hallazgos (`/`), Programación, Preventa, Precios, Cines, Historial, Mapa,
+    ¿A dónde ir?, Independientes.
   - **Dulcería**: En sala (`/dulceria/`), A domicilio (`/dulceria/domicilio/`).
-  - **Datos**: el explorador.
-  - **Administración** (solo admin): Usuarios, Operaciones.
+  - **Datos**: el explorador. Solo en el plan Completo.
+  - **Administración**: Usuarios (admin y staff) y Operaciones (solo staff).
+- **Módulo no contratado** (`components/upgrade.tsx`): no se esconde. En el riel y en la barra de celular lleva su icono
+  con un candado (`LockClosed12Filled`) en la esquina y el texto en `colorNeutralForegroundDisabled`; al elegirlo se abre
+  un `Dialog` con lo que trae el módulo y "Quiero conocerlo", que avisa a Ventas. Si se entra por la dirección, la página
+  muestra el mismo aviso en lugar de su contenido. Los textos salen de `UPGRADE_TEXT`.
+- **Descargas.** Sin `can_download` (rol `viewer`) no se pintan "Descargar PNG", "Descargar CSV", la descarga de Datos
+  ni el botón de imprimir. La API vuelve a revisar el rol.
 - **Contenido** a la derecha: una superficie blanca con elevación de Fluent depth 16 (`tokens.shadow16`) sobre el
   fondo `colorNeutralBackground3`, y adentro el ancho de lectura de 1120 px. En celular va sin sombra.
 - **Celular (≤ 768 px):** riel y panel se ocultan. Los módulos van en una `TabList` fija abajo, al alcance del pulgar, y

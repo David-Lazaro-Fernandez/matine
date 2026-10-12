@@ -1,7 +1,8 @@
 'use client';
 
-// Menú del avatar en la barra superior: la identidad de la cuenta y sus opciones. "Cuenta" y "Aspecto" abren Configuración y
-// "Cerrar sesión" sale; el resto se muestra deshabilitado hasta que tenga destino.
+// Menú del avatar en la barra superior: la identidad de la cuenta y sus opciones. "Cuenta" y "Aspecto" abren Configuración,
+// "Mejorar" y "Comunicarse con Ventas" abren el diálogo de mejora y "Cerrar sesión" sale. El resto se muestra
+// deshabilitado hasta que tenga destino.
 import * as React from 'react';
 import {
   Avatar,
@@ -41,7 +42,13 @@ const useStyles = makeStyles({
   email: { color: tokens.colorNeutralForeground3, overflowWrap: 'anywhere' },
 });
 
-export function AccountMenu({ user, onLogout, onSettings }: { user: Profile; onLogout: () => void; onSettings: () => void }) {
+export function AccountMenu({ user, onLogout, onSettings, onUpgrade, onSales }: {
+  user: Profile;
+  onLogout: () => void;
+  onSettings: () => void;
+  onUpgrade: () => void;
+  onSales: () => void;
+}) {
   const s = useStyles();
   const initials = user.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2);
   return (
@@ -61,8 +68,8 @@ export function AccountMenu({ user, onLogout, onSettings }: { user: Profile; onL
           <MenuItem icon={<Color20Regular />} onClick={onSettings}>{SHELL_TEXT.appearance}</MenuItem>
           <MenuItem icon={<Keyboard20Regular />} disabled>{SHELL_TEXT.shortcuts}</MenuItem>
           <MenuDivider />
-          <MenuItem icon={<Mail20Regular />} disabled>{SHELL_TEXT.sales}</MenuItem>
-          <MenuItem icon={<Sparkle20Regular />} disabled>{SHELL_TEXT.upgrade}</MenuItem>
+          <MenuItem icon={<Mail20Regular />} onClick={onSales}>{SHELL_TEXT.sales}</MenuItem>
+          <MenuItem icon={<Sparkle20Regular />} onClick={onUpgrade}>{SHELL_TEXT.upgrade}</MenuItem>
           <MenuItem icon={<Mail20Regular />} disabled>{SHELL_TEXT.invite}</MenuItem>
           <MenuDivider />
           <MenuItem icon={<SignOut20Regular />} onClick={onLogout}>{AUTH_TEXT.logout}</MenuItem>

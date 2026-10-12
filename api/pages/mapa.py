@@ -7,16 +7,17 @@ ya vienen en `cinemas`. Dónde cae cada punto y su radio los calcula el frontend
 """
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from typing_extensions import TypedDict
 
 import analytics
 from analytics.cinema_locations import MAP_CHAINS
 from scraper import plazas
 
+from .. import session
 from . import read
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(session.require_module("cartelera"))])
 
 
 class CinemaOption(TypedDict):

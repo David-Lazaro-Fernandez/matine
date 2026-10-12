@@ -1,8 +1,9 @@
 """Endpoints de las páginas del dashboard: un módulo por página, cada uno con un `router` de FastAPI.
 
 `api/internal.py` registra solo el `router` de cada módulo de este paquete, bajo `/api` y detrás de la sesión. Una
-página nueva es un archivo nuevo aquí; no se edita `api/internal.py`. Una página solo de admin agrega
-`dependencies=[Depends(session.require_admin)]` a su router.
+página nueva es un archivo nuevo aquí; no se edita `api/internal.py`. Cada router declara el módulo que lo contiene
+(`dependencies=[Depends(session.require_module("cartelera"))]`): sin él, la organización recibe 403. Una página del
+equipo de la plataforma usa `session.require_staff`.
 
 `read` busca la respuesta en memoria (`TTL` segundos), luego en las precalculadas de `data/precalc.db` (`api/precalc.py`,
 de hasta `PRECALC_MAX_AGE`) y si no está la calcula con `analytics.connect()` en solo lectura.

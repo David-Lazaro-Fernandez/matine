@@ -1,4 +1,4 @@
-"""Página Operaciones (solo admin): el estado de la plataforma para quien la opera (`scraper/health.py`).
+"""Página Operaciones (solo staff): el estado de la plataforma para quien la opera (`scraper/health.py`).
 
 `GET /api/operaciones` devuelve todo lo que pinta la página. Lo que sale de `snapshots.db` (`report`, `coverage`,
 `runs`, `units`) pasa por `read`, con la misma caché que el resto. Sin base, esas llaves van en None y la página aún
@@ -16,7 +16,7 @@ from scraper import config, health
 from .. import session
 from . import read
 
-router = APIRouter(dependencies=[Depends(session.require_admin)])
+router = APIRouter(dependencies=[Depends(session.require_staff)])
 
 HOURS = 24
 
