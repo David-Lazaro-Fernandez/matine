@@ -7,7 +7,7 @@ VENV ?= .venv/bin
 
 .PHONY: help job units units-check labels tick snapshot seats occupancy post-start health prices concessions delivery capacity capacity-cinemex presale \
         calibrate-cinemex dashboard api backup launchd-load launchd-unload \
-        user-create user-list user-reset user-deactivate user-activate auth-prune deploy restart check lint test test-live fixtures hooks \
+        user-create user-list user-reset user-deactivate user-activate user-role org-create org-modules org-list auth-prune deploy restart check lint test test-live test-ui fixtures hooks \
         marketing-dev marketing-build export-places
 
 help:               ## lista los targets
@@ -78,8 +78,8 @@ marketing-build: ## exporta la landing page pública como sitio estático a mark
 export-places:      ## índice de lugares de CDMX, Guadalajara y Monterrey (OpenStreetMap) para /a-donde-ir/; se versiona
 	$(PY) scripts/export_places.py
 
-user-create:        ## cuenta nueva con enlace de invitación: EMAIL= NAME= [ROLE=admin|viewer] [NOMAIL=1]
-	$(VENV)/python -m auth.cli create --email "$(EMAIL)" --name "$(NAME)" --role $(or $(ROLE),viewer) $(if $(NOMAIL),--no-mail,)
+user-create:        ## cuenta nueva con enlace de invitación: EMAIL= NAME= [ROLE=admin|analyst|viewer|staff] [ORG=1] [NOMAIL=1]
+	$(VENV)/python -m auth.cli create --email "$(EMAIL)" --name "$(NAME)" --role "$(or $(ROLE),viewer)" --org "$(or $(ORG),1)" $(if $(NOMAIL),--no-mail,)
 
 user-list:          ## todas las cuentas del dashboard
 	$(VENV)/python -m auth.cli list
@@ -92,6 +92,18 @@ user-deactivate:    ## desactiva una cuenta y cierra sus sesiones: EMAIL=
 
 user-activate:      ## reactiva una cuenta: EMAIL=
 	$(VENV)/python -m auth.cli activate --email "$(EMAIL)"
+
+user-role:          ## cambia el rol de una cuenta; la única forma de dar staff: EMAIL= ROLE=staff|admin|analyst|viewer
+	$(VENV)/python -m auth.cli role --email "$(EMAIL)" --role "$(ROLE)"
+
+org-create:         ## organización nueva: NAME= MODULES=cartelera,dulceria,datos|completo
+	$(VENV)/python -m auth.cli org-create --name "$(NAME)" --modules "$(MODULES)"
+
+org-modules:        ## cambia los módulos de una organización: ORG= MODULES=cartelera,dulceria,datos|completo
+	$(VENV)/python -m auth.cli org-modules --org "$(ORG)" --modules "$(MODULES)"
+
+org-list:           ## todas las organizaciones con sus módulos
+	$(VENV)/python -m auth.cli org-list
 
 auth-prune:         ## borra sesiones y enlaces vencidos hace más de 90 días (trabajo `auth-prune`)
 	$(PY) -m jobs.run auth-prune
@@ -125,6 +137,11 @@ test:               ## pruebas (las de pantalla se omiten si no hay data/snapsho
 
 test-live:          ## la captura contra las APIs reales, alcance chico de cada cadena (red; Cinépolis necesita WARP fuera de la Mac)
 	AC_LIVE=1 $(VENV)/python -m pytest -q tests/test_live_capture.py
+
+test-ui:            ## el dashboard en celular con Chromium (build de dashboard/, captura grabada); deja capturas de pantalla
+	cd dashboard && pnpm run build
+	$(VENV)/python -m playwright install chromium
+	AC_UI=1 $(VENV)/python -m pytest -q tests/test_mobile.py
 
 fixtures:           ## graba de nuevo las respuestas reales de ambas APIs y el esperado; EXPECTED=1 solo regenera el esperado
 	$(PY) scripts/capture_fixtures.py $(if $(EXPECTED),--expected,)

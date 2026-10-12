@@ -35,11 +35,19 @@ class DuplicateEmail(AuthError):
 
 
 class LastAdmin(AuthError):
-    """La acción dejaría el sistema sin administradores activos."""
+    """La acción dejaría a la organización sin administradores activos."""
 
 
 class SelfChange(AuthError):
     """Un administrador no puede desactivarse ni cambiarse el rol a sí mismo."""
+
+
+class WrongPassword(AuthError):
+    """La contraseña actual no coincide al cambiar el correo o la contraseña desde el perfil."""
+
+
+class InvalidImage(AuthError):
+    """La imagen no es PNG, JPEG ni WebP en `data:` base64, o pasa de `auth.flows.IMAGE_MAX_CHARS`."""
 
 
 class MailFailed(AuthError):

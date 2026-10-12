@@ -4,8 +4,8 @@
 import * as React from 'react';
 import { Button, Field, Input, MessageBar, MessageBarBody } from '@fluentui/react-components';
 import { AccessCard, AppLink } from '@/components/common';
-import { useSession } from '@/components/shell';
-import { ApiError, api, type Me } from '@/lib/api';
+import { useSession } from '@/lib/session';
+import { ApiError, api, type Me, type Profile } from '@/lib/api';
 import { AUTH_TEXT } from '@/lib/labels.generated';
 
 export default function Page() {
@@ -18,7 +18,8 @@ export default function Page() {
     const form = new FormData(e.currentTarget);
     setBusy(true);
     try {
-      setUser(await api<Me>('/login', { email: form.get('email'), password: form.get('password') }));
+      await api<Me>('/login', { email: form.get('email'), password: form.get('password') });
+      setUser(await api<Profile>('/yo'));
     } catch (err) {
       setError((err instanceof ApiError && err.detail) || AUTH_TEXT.db_unavailable);
       setBusy(false);

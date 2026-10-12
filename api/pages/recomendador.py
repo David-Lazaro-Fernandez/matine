@@ -9,7 +9,7 @@ import functools
 from datetime import date, timedelta
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing_extensions import TypedDict
 
 import analytics
@@ -17,9 +17,10 @@ from analytics import recommender
 from analytics.labels import FORMAT_BUCKETS
 from scraper import geocode
 
+from .. import session
 from . import read
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(session.require_module("cartelera"))])
 
 # Las cadenas publican hasta el miércoles de la semana siguiente.
 DAYS_AHEAD = 13

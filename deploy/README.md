@@ -97,10 +97,11 @@ Son dos piezas desacopladas:
    (`ExecStartPre`), y el que no coincide (o no tiene archivo) se reinicia solo, con una línea en `deploy.log`. Así un
    `git pull` a mano en el servidor entra en menos de 15 min. Si todo coincide, sale en silencio. Si `origin/stable` se
    movió, `git reset --hard` a ese commit
-   como el usuario `absolut`, reinstala el venv si cambió algún `requirements-*.txt`, `deploy/units.sh` si cambió una
+   como el usuario `absolut`, reinstala el venv si cambió algún `requirements-*.txt`, borra `data/precalc.db` si cambió `analytics/` o `api/` (la
+   caché tiene la forma del código anterior; la API calcula en vivo hasta la siguiente captura), `deploy/units.sh` si cambió una
    unidad en `deploy/`, reinicia el dashboard y espera a que `/api/salud` responda. Escribe una línea en
    `data/logs/deploy.log` solo cuando despliega o falla, y sale con 1 si el dashboard no levanta (queda visible en
-   `systemctl list-timers`). No toca `data/`: los cambios de esquema de ambas bases son aditivos y se aplican solos al
+   `systemctl list-timers`). Fuera de esa caché no toca `data/`: los cambios de esquema de ambas bases son aditivos y se aplican solos al
    conectar (`store.py`, `auth/db.py`).
    `pip install` no desinstala lo que se quita de `requirements-*.txt`. Para liberar ese espacio, recrea el venv a mano:
    `sudo -u absolut python3 -m venv --clear .venv && sudo -u absolut .venv/bin/pip install -q -r requirements.txt` y
@@ -133,8 +134,10 @@ journalctl -u absolut-cinema-api -f                 # errores de la API
 
 ## Acceso por usuario y correo (SES)
 
-El dashboard pide correo y contraseña (`auth/`, `api/session.py`) con dos roles: `admin` (gestiona cuentas en la página
-Usuarios y ve todo) y `viewer` (Cartelera, Dulcería y el explorador Datos). Las cuentas viven en su propia base SQLite,
+El dashboard pide correo y contraseña (`auth/`, `api/session.py`). Cada cuenta pertenece a una organización, que tiene
+los módulos que contrató (`cartelera`, `dulceria`, `datos`), y tiene uno de cuatro roles: `staff` (el equipo de la
+plataforma: todo, también Operaciones), `admin` (gestiona las cuentas de su organización), `analyst` (ve y descarga) y
+`viewer` (ve). Las cuentas viven en su propia base SQLite,
 `data/app.db` (`AC_APP_DB` para moverla), que escribe solo `auth/`; se crea con su esquema al primer uso y entra en el
 respaldo diario.
 
@@ -147,6 +150,16 @@ sudo -u absolut make -C /opt/absolut-cinema user-create EMAIL=quien@cinemex.com 
 `user-create` imprime el enlace de invitación además de enviarlo (vale 72 h, un solo uso); con `NOMAIL=1` solo lo
 imprime, para entregarlo por otro canal. Después, el admin crea el resto de las cuentas desde la página Usuarios. Más
 comandos: `make user-list`, `make user-reset EMAIL=…` (enlace nuevo), `make user-deactivate EMAIL=…`, `make user-activate EMAIL=…`.
+
+**Organizaciones.** `make org-create NAME="Cliente" MODULES=cartelera,dulceria` (o `MODULES=completo`) imprime el id;
+`make user-create … ORG=ID` crea su primer admin; `make org-modules ORG=ID MODULES=…` cambia lo contratado y
+`make org-list` las lista. Las cuentas anteriores al 2026-10-12 quedan en la organización 1, "Cinemex", con todos los
+módulos.
+
+**Staff, una vez tras desplegar organizaciones (2026-10-12).** Los admins que ya existían quedan como `admin` del
+cliente y pierden Operaciones. Quien opera la plataforma se vuelve staff con
+`sudo -u absolut make -C /opt/absolut-cinema user-role EMAIL=quien@opera.com ROLE=staff`. Para que Ventas reciba los
+avisos de "Quiero conocerlo", fija `AC_SALES_EMAIL` en `/etc/absolut-cinema.env` y reinicia el dashboard.
 
 **Correo.** `AC_MAIL_BACKEND=console` (default) no envía nada: escribe el correo completo en `data/logs/mail.log`.
 `ses` envía por Amazon SES con las credenciales del rol de la instancia (`ses:SendEmail` en la política, ver

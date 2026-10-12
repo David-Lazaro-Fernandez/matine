@@ -65,6 +65,8 @@ CREATE INDEX IF NOT EXISTS idx_event_detected ON event (chain, detected_at);
 CREATE INDEX IF NOT EXISTS idx_event_show ON event (chain, show_id);
 -- Reconstrucción de la cartelera de un cine y un día en un momento dado (analytics/history.py).
 CREATE INDEX IF NOT EXISTS idx_event_board ON event (chain, cinema_id, date, id);
+-- Funciones cerradas por fecha, para el explorador de Datos (analytics/datasets.py). Parcial: solo cierres, no todo `event`.
+CREATE INDEX IF NOT EXISTS idx_event_closed ON event (date) WHERE kind IN ('removed', 'expired');
 CREATE INDEX IF NOT EXISTS idx_current_cinema ON current_showtime (chain, cinema_id, date);
 -- Dimensión de cines vista en las capturas: la llave geográfica de cada API (`city_id`: Cinépolis ciudad, Cinemex área),
 -- el estado de Cinemex, el estado de INEGI de ambas cadenas (`state_code`), la zona horaria (solo Cinépolis la publica) y
@@ -92,6 +94,8 @@ CREATE TABLE IF NOT EXISTS occupancy_sample (
 );
 CREATE INDEX IF NOT EXISTS idx_occ_show ON occupancy_sample (chain, show_id);
 CREATE INDEX IF NOT EXISTS idx_occ_time ON occupancy_sample (chain, datetime_local);
+-- Venta por cine en una ventana de días (analytics/cinema_sales.py). Parcial: solo lecturas después del inicio.
+CREATE INDEX IF NOT EXISTS idx_occ_post ON occupancy_sample (sampled_at) WHERE minutes_to_start < 0;
 -- Muestreo de precios: una función por cine, cubeta de formato y tipo de día.
 CREATE TABLE IF NOT EXISTS price_sample (
   id INTEGER PRIMARY KEY,

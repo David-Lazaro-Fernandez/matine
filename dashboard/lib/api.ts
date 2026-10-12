@@ -1,8 +1,21 @@
 // Llamadas a la API interna (`api/internal.py`), servida en el mismo dominio bajo `/api`.
 // La cookie de sesión es HttpOnly: el navegador la manda solo y aquí nunca se lee.
 // ponytail: tipos escritos a mano. Pasan a `api.generated.ts` (openapi-typescript) cuando el paquete esté instalado.
+import type { ROLE_LABEL } from '@/lib/labels.generated';
 
-export type Me = { id: number; email: string; name: string; role: string };
+export type Role = keyof typeof ROLE_LABEL;
+export type Me = { id: number; email: string; name: string; role: Role };
+// `GET /api/yo`: la cuenta con su avatar y su tema, y su organización. Las imágenes son URLs `data:`.
+export type Module = 'cartelera' | 'dulceria' | 'datos';
+export type Profile = Me & {
+  avatar: string | null;
+  theme: 'system' | 'light' | 'dark';
+  org: string;
+  logo: string | null;
+  modules: Module[];
+  can_manage: boolean;
+  can_download: boolean;
+};
 export type TokenInfo = { purpose: 'invite' | 'reset'; email: string };
 
 // Las páginas que existen sin sesión. Las demás mandan a entrar si la API responde 401.

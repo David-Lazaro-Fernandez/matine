@@ -14,7 +14,7 @@ import analytics  # noqa: E402
 from analytics.labels import AUTH_TEXT  # noqa: E402
 from api import internal, pages, session  # noqa: E402
 from api.pages import recomendador  # noqa: E402
-from auth import db, flows  # noqa: E402
+from auth import db, flows, orgs  # noqa: E402
 from scraper import config  # noqa: E402
 from scraper.plazas import PLAZAS  # noqa: E402
 
@@ -32,8 +32,8 @@ def conn(tmp_path, monkeypatch):
     c.close()
 
 
-def _account(conn, email, role):
-    user, link = flows.invite(conn, None, email, role.title(), role, send_mail=False)
+def _account(conn, email, role, org_id=None):
+    user, link = flows.invite(conn, None, email, role.title(), role, send_mail=False, org_id=org_id)
     flows.redeem_token(conn, link.split("token=")[1], PASSWORD)
     return user
 
@@ -46,6 +46,11 @@ def admin(conn):
 @pytest.fixture
 def viewer(conn):
     return _account(conn, "viewer@example.test", "viewer")
+
+
+@pytest.fixture
+def staff(conn):
+    return _account(conn, "staff@example.test", "staff")
 
 
 @pytest.fixture
@@ -180,7 +185,11 @@ def recorded(capture_db, tmp_path, monkeypatch):
 def test_datos_reads_the_recorded_capture(client, viewer, recorded):
     _login(client, "viewer@example.test")
     body = client.get("/api/datos").json()
-    assert body["dataset"] == "cinemas" and body["rows"] and not body["truncated"]
+    assert body["dataset"] == "cinemas" and body["rows"] and body["total"] >= len(body["rows"])
+    first = client.get("/api/datos", params={"dataset": "week_showtimes", "limit": 25, "sort": "starts_at", "desc": True}).json()
+    second = client.get("/api/datos", params={"dataset": "week_showtimes", "limit": 25, "offset": 25, "sort": "starts_at", "desc": True}).json()
+    assert len(first["rows"]) == 25 and first["rows"][-1]["starts_at"] >= second["rows"][0]["starts_at"]
+    assert client.get("/api/datos", params={"limit": 5001}).status_code == 422
     assert {d["key"] for d in body["datasets"]} >= {"cinemas", "week_showtimes"}
     body = client.get("/api/datos", params={"dataset": "week_showtimes", "chain": "cinemex"}).json()
     assert (body["d0"], body["d1"]) == analytics.cinema_week("2026-09-26")
@@ -200,6 +209,17 @@ def test_independientes_reads_only_the_cineteca(client, viewer, capture_db, tmp_
     other = client.get("/api/independientes", params={"plaza": "gdl"}).json()
     assert not other["supported"] and other["venues"] == []
     assert client.get("/api/independientes", params={"d1": "2026-10-01"}).status_code == 422
+
+
+def test_proveedores_is_staff_only_and_reads_the_recorded_capture(client, viewer, admin, staff, recorded):
+    for email in ("viewer@example.test", "admin@example.test"):
+        _login(client, email)
+        assert client.get("/api/proveedores").status_code == 403
+    _login(client, "staff@example.test")
+    body = client.get("/api/proveedores", params={"d0": "2026-09-26", "d1": "2026-09-26"}).json()
+    assert body["providers"] and {r["chain"] for r in body["providers"]} <= {"cinemex", "cinepolis"}
+    assert all(r["provider"] and r["kind"] for r in body["providers"])
+    assert client.get("/api/proveedores", params={"d0": "2026-09-27", "d1": "2026-09-26"}).status_code == 422
 
 
 def test_recomendador_reads_the_recorded_capture(client, viewer, capture_db, tmp_path, monkeypatch):
@@ -264,10 +284,11 @@ def test_dulceria_reads_the_recorded_capture(client, viewer, recorded):
     assert client.get("/api/dulceria", params={"product": "Caviar"}).status_code == 422
 
 
-def test_operaciones_is_admin_only(client, viewer, admin, recorded):
-    _login(client, "viewer@example.test")
-    assert client.get("/api/operaciones").status_code == 403
-    _login(client, "admin@example.test")
+def test_operaciones_is_staff_only(client, viewer, admin, staff, recorded):
+    for email in ("viewer@example.test", "admin@example.test"):
+        _login(client, email)
+        assert client.get("/api/operaciones").status_code == 403
+    _login(client, "staff@example.test")
     body = client.get("/api/operaciones", params={"log": "health", "lines": 20}).json()
     assert set(body["report"]["chains"]) >= {"cinemex", "cinepolis"} and body["report"]["hours"] == 24
     # Corridas y unidades cuentan días desde la hora real: la captura grabada envejece.
@@ -276,9 +297,9 @@ def test_operaciones_is_admin_only(client, viewer, admin, recorded):
     assert client.get("/api/operaciones", params={"lines": 0}).status_code == 422
 
 
-def test_operaciones_without_database_still_shows_the_server(client, admin, tmp_path, monkeypatch):
+def test_operaciones_without_database_still_shows_the_server(client, staff, tmp_path, monkeypatch):
     monkeypatch.setattr(config, "DB_PATH", tmp_path / "no-existe.db")
-    _login(client, "admin@example.test")
+    _login(client, "staff@example.test")
     body = client.get("/api/operaciones").json()
     assert body["report"] is None and body["runs"] is None and body["jobs"] and body["log"]["lines"] == []
 
@@ -316,5 +337,152 @@ def test_cartelera_reads_the_recorded_capture(client, viewer, recorded):
             assert client.get(path, params=params).status_code == 422
     assert client.get("/api/cartelera/seccion/nada").status_code == 422
     assert client.get("/api/cartelera/apendice/historia").status_code == 422
+    assert client.get("/api/cartelera/apendice/ocupacion").status_code == 422
+    cines = client.get("/api/cartelera/cines").json()
+    assert set(cines) == {"days", "min_shows", "max_km", "chains", "cinemas", "competitors", "rivals"}
+    assert client.get("/api/cartelera/cines", params={"plaza": "nada"}).status_code == 422
     assert client.get("/api/cartelera/cambios", params={"kinds": ["availability"]}).status_code == 422
     assert client.get("/api/cartelera/historia", params={"chain": "cineteca"}).status_code == 422
+
+
+PNG = "data:image/png;base64,iVBORw0KGgo="
+
+
+def test_profile_changes_name_theme_and_avatar(client, viewer):
+    _login(client, "viewer@example.test")
+    me = client.get("/api/yo").json()
+    assert (me["theme"], me["avatar"], me["logo"]) == ("system", None, None)
+    res = client.post("/api/perfil", json={"name": "Otra", "theme": "dark", "avatar": PNG})
+    assert res.status_code == 200 and (res.json()["name"], res.json()["theme"], res.json()["avatar"]) == ("Otra", "dark", PNG)
+    for avatar in ("data:image/svg+xml;base64,PHN2Zz4=", "data:image/png;base64,no es base64"):
+        res = client.post("/api/perfil", json={"name": "Otra", "theme": "dark", "avatar": avatar})
+        assert res.status_code == 422 and res.json()["detail"] == AUTH_TEXT["InvalidImage"]
+    assert client.post("/api/perfil", json={"name": "Otra", "theme": "rosa"}).status_code == 422
+    assert client.post("/api/perfil", json={"name": "Otra", "theme": "light"}).json()["avatar"] is None
+
+
+def test_email_change_needs_the_current_password(client, viewer, admin):
+    _login(client, "viewer@example.test")
+    res = client.post("/api/perfil/correo", json={"email": "nuevo@example.test", "password": "mala"})
+    assert res.status_code == 403 and res.json()["detail"] == AUTH_TEXT["WrongPassword"]
+    res = client.post("/api/perfil/correo", json={"email": "ADMIN@example.test", "password": PASSWORD})
+    assert res.status_code == 409
+    res = client.post("/api/perfil/correo", json={"email": "Nuevo@example.test", "password": PASSWORD})
+    assert res.status_code == 200 and res.json()["email"] == "nuevo@example.test"
+    assert _login(TestClient(internal.app), "nuevo@example.test").status_code == 200
+
+
+def test_password_change_keeps_this_session_and_closes_the_others(client, viewer):
+    other = TestClient(internal.app)
+    _login(other, "viewer@example.test")
+    _login(client, "viewer@example.test")
+    body = {"current": PASSWORD, "new": "otra-contraseña-larga-456"}
+    assert client.post("/api/perfil/contrasena", json={**body, "current": "mala"}).status_code == 403
+    res = client.post("/api/perfil/contrasena", json={**body, "new": "corta"})
+    assert res.status_code == 422 and res.json()["detail"] == AUTH_TEXT["password_short"]
+    assert client.post("/api/perfil/contrasena", json=body).status_code == 204
+    assert client.get("/api/yo").status_code == 200
+    assert other.get("/api/yo").status_code == 401
+
+
+def test_only_an_admin_sets_the_logo_and_everyone_sees_it(client, viewer, admin):
+    _login(client, "viewer@example.test")
+    assert client.post("/api/logo", json={"logo": PNG}).status_code == 403
+    admin_client = TestClient(internal.app)
+    _login(admin_client, "admin@example.test")
+    assert admin_client.post("/api/logo", json={"logo": PNG}).json()["logo"] == PNG
+    assert client.get("/api/yo").json()["logo"] == PNG
+    assert admin_client.post("/api/logo", json={}).json()["logo"] is None
+
+
+def test_an_old_app_db_gets_the_new_columns(tmp_path):
+    path = tmp_path / "vieja.db"
+    with sqlite3.connect(path) as old:
+        old.execute("CREATE TABLE account (id INTEGER PRIMARY KEY, email TEXT, name TEXT, role TEXT)")
+    c = db.connect(path)
+    assert {"avatar", "theme"} <= {col["name"] for col in c.execute("PRAGMA table_info(account)")}
+    c.close()
+
+
+@pytest.fixture
+def other_org(conn):
+    """Una organización que solo contrató la Cartelera, con su admin y su consulta."""
+    org = orgs.create(conn, "Otra", ["cartelera"])
+    return {"id": org["id"], "admin": _account(conn, "admin@otra.test", "admin", org["id"]),
+            "viewer": _account(conn, "viewer@otra.test", "viewer", org["id"])}
+
+
+def test_profile_says_what_each_role_can_do(client, admin, viewer, staff, other_org):
+    expected = {"admin@example.test": (["cartelera", "dulceria", "datos"], True, True),
+                "viewer@example.test": (["cartelera", "dulceria", "datos"], False, False),
+                "staff@example.test": (["cartelera", "dulceria", "datos"], True, True),
+                "viewer@otra.test": (["cartelera"], False, False)}
+    for email, (modules, can_manage, can_download) in expected.items():
+        _login(client, email)
+        me = client.get("/api/yo").json()
+        assert (me["modules"], me["can_manage"], me["can_download"]) == (modules, can_manage, can_download)
+    assert me["org"] == "Otra"
+
+
+def test_a_module_the_org_lacks_is_403(client, conn, other_org, recorded):
+    _login(client, "viewer@otra.test")
+    for path in ("/api/dulceria", "/api/datos"):
+        res = client.get(path)
+        assert res.status_code == 403 and res.json()["detail"] == AUTH_TEXT["module_locked"]
+    assert client.get("/api/plazas").status_code == 200
+    assert client.get("/api/mapa").status_code == 200
+    orgs.set_modules(conn, other_org["id"], [])
+    assert client.get("/api/mapa").status_code == 403
+
+
+def test_staff_sees_every_module_and_every_account(client, conn, staff, admin, other_org, recorded):
+    orgs.set_modules(conn, other_org["id"], [])
+    _login(client, "staff@example.test")
+    assert client.get("/api/dulceria").status_code == 200
+    assert {u["email"] for u in client.get("/api/usuarios").json()} >= {"admin@otra.test", "staff@example.test"}
+
+
+def test_an_admin_only_sees_and_manages_its_org(client, conn, admin, staff, other_org):
+    _login(client, "admin@otra.test")
+    assert {u["email"] for u in client.get("/api/usuarios").json()} == {"admin@otra.test", "viewer@otra.test"}
+    for target in (admin, staff):
+        assert client.post(f"/api/usuarios/{target['id']}", json={"action": "deactivate"}).status_code == 404
+    assert client.post(f"/api/usuarios/{other_org['viewer']['id']}",
+                       json={"action": "set_role", "role": "analyst"}).status_code == 200
+    assert client.post(f"/api/usuarios/{other_org['viewer']['id']}",
+                       json={"action": "set_role", "role": "staff"}).status_code == 422
+    assert client.post("/api/usuarios", json={"email": "x@example.test", "name": "X", "role": "staff"}).status_code == 422
+    client.post("/api/usuarios", json={"email": "nueva@otra.test", "name": "Nueva"})
+    new = db.one(conn, "SELECT role, org_id FROM account WHERE email = 'nueva@otra.test'")
+    assert new == {"role": "viewer", "org_id": other_org["id"]}
+    _login(client, "admin@example.test")
+    assert "admin@otra.test" not in {u["email"] for u in client.get("/api/usuarios").json()}
+
+
+def test_the_logo_belongs_to_the_org(client, admin, other_org):
+    _login(client, "admin@otra.test")
+    assert client.post("/api/logo", json={"logo": PNG}).json()["logo"] == PNG
+    _login(client, "admin@example.test")
+    assert client.get("/api/yo").json()["logo"] is None
+
+
+def test_a_viewer_cannot_download_datos(client, viewer, admin, recorded):
+    _login(client, "viewer@example.test")
+    assert client.get("/api/datos", params={"limit": 100}).status_code == 200
+    res = client.get("/api/datos", params={"limit": 5000})
+    assert res.status_code == 403 and res.json()["detail"] == AUTH_TEXT["download_locked"]
+    _login(client, "admin@example.test")
+    assert client.get("/api/datos", params={"limit": 5000}).status_code == 200
+
+
+def test_interest_is_audited_and_mailed_to_sales(client, conn, other_org, monkeypatch):
+    monkeypatch.setattr(config, "SALES_EMAIL", "ventas@example.test")
+    _login(client, "viewer@otra.test")
+    assert client.post("/api/interes", json={"module": "dulceria"}).status_code == 204
+    assert client.post("/api/interes", json={"module": "nada"}).status_code == 422
+    assert client.post("/api/interes", json={}).status_code == 204
+    rows = db.rows(conn, "SELECT actor_id, detail FROM audit WHERE action = 'upgrade_interest' ORDER BY id")
+    assert rows == [{"actor_id": other_org["viewer"]["id"], "detail": '{"module": "dulceria"}'},
+                    {"actor_id": other_org["viewer"]["id"], "detail": '{"module": null}'}]
+    mailed = config.MAIL_LOG_PATH.read_text()
+    assert "para: ventas@example.test | asunto: Otra pidió Dulcería" in mailed and "quiere hablar con Ventas" in mailed

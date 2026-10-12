@@ -6,6 +6,7 @@ futuro API (FastAPI) llamen exactamente lo mismo. Los textos para usuarios viven
 """
 from . import datasets, labels
 from .cinema_locations import cinema_highlights, cinema_map, cinema_sites
+from .cinema_sales import chain_occupancy, cinema_occupancy, competitor_sites, main_rivals
 from .concessions import (
     BASKET,
     concession_basket,
@@ -28,6 +29,7 @@ from .history import board_as_of, cinemas, dates_known, functions_on, showtime_t
 from .independents import independent_overlap, independent_slots, independent_summary, independent_titles
 from .plaza import plaza_coverage, plazas
 from .presale import presale_by_chain, presale_compare, presale_curve, presale_ranking
+from .providers import provider_reach
 from .queries import (
     capture_status,
     cinema_week,
@@ -85,7 +87,8 @@ __all__ = [
     "showtimes_by_slot", "snapshot_health", "today", "week_publication",
     "plaza_coverage", "plazas",
     "datasets", "presale_by_chain", "presale_compare", "presale_curve", "presale_ranking",
-    "cinema_highlights", "cinema_map", "cinema_sites", "recommend", "recommend_options", "recommend_search",
+    "cinema_highlights", "cinema_map", "cinema_sites", "chain_occupancy", "cinema_occupancy", "competitor_sites", "main_rivals", "recommend", "recommend_options", "recommend_search",
     "recommend_summary", "recommend_titles",
     "independent_conclusions", "independent_overlap", "independent_slots", "independent_summary", "independent_titles",
+    "provider_reach",
 ]

@@ -23,7 +23,7 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
 | Captura | `scraper/` | **solo stdlib**, `/usr/bin/python3` | `data/snapshots.db`, `data/raw/`, `data/logs/` |
 | Negocio | `analytics/` | **solo stdlib** | nada (abre la base en `mode=ro`) |
 | Presentación | `dashboard/` (Next.js estático) + `api/internal.py` y `api/pages/` | `dashboard/`: Node/pnpm solo para el build; API: `.venv` (fastapi, uvicorn) | nada |
-| Acceso | `auth/` | `.venv` (`hashlib.scrypt`; boto3 solo para SES) | `data/app.db` (cuentas, sesiones, enlaces, auditoría), **nada más** |
+| Acceso | `auth/` | `.venv` (`hashlib.scrypt`; boto3 solo para SES) | `data/app.db` (organizaciones, cuentas, perfil, sesiones, enlaces, auditoría, logo), **nada más** |
 | Programación | `jobs/` | **solo stdlib**, `/usr/bin/python3` | `data/logs/jobs.jsonl`, `data/locks/`; genera `deploy/systemd/` |
 | API pública | `api/` | `.venv` (fastapi, uvicorn) | nada (lee `snapshots.db` con `analytics.connect()`, `mode=ro`) |
 | Sitio público | `marketing/` | Node/Next.js, **proyecto independiente** (su propio `package.json`) | nada (sitio estático, `output: 'export'`) |
@@ -64,7 +64,7 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
   es una caché que se puede borrar: sin ella, la API calcula en vivo. No agregues otro escritor a ninguna sin ubicarlo
   aquí.
 - **El dashboard nunca escribe datos.** `analytics.connect()` abre `snapshots.db` en `mode=ro`, a propósito. Lo único
-  que escribe desde el dashboard es `auth/`, y solo en `app.db` (cuentas, sesiones, enlaces de acceso, auditoría); las
+  que escribe desde el dashboard es `auth/`, y solo en `app.db` (cuentas y su perfil, sesiones, enlaces de acceso, auditoría, logo); las
   endpoints no lo llaman directo, pasan por `api/session.py`, el único módulo que conoce la cookie de sesión.
   `scraper/` y `analytics/` jamás importan `auth/`, y `auth/` no importa FastAPI.
 - Las reglas de "qué cuenta como cambio" y "cómo se cierra una función" viven en `scraper/diff.py` (`changed_fields`,
@@ -99,9 +99,9 @@ Estos mandan sobre cualquier preferencia técnica.
 
 1. **Datos reales siempre.** Lo que no existe no se muestra con cifras. Sin placeholders, sin datos
    de ejemplo, sin "aproximadamente". Si un panel depende de historia o de una integración que no
-   está, se declara como pendiente en la Capa 3 y se dice qué desbloquea.
-2. **Umbral antes de afirmación.** Un hallazgo de Capa 1 solo se redacta si cruza su umbral
-   (`analytics/findings.py`). Si ninguna diferencia lo cruza, la capa lo dice y no inventa.
+   está, se declara como pendiente en su sección y se dice qué desbloquea.
+2. **Umbral antes de afirmación.** Un hallazgo solo se muestra si cruza su umbral
+   (`analytics/findings.py`). Si ninguna diferencia lo cruza, la pantalla lo dice y no inventa.
 3. **Shares, no absolutos.** Toda medida comparable entre cadenas es % de la programación de cada
    cadena. Cinemex y Cinépolis tienen distinto número de cines y salas; un absoluto engaña.
    Denominador actual: funciones. Cuando haya aforo completo pasará a butacas ofertadas.
@@ -170,19 +170,34 @@ devuelve lista de dicts con claves en `snake_case` en inglés, y ordena de forma
 Exporta en `analytics/__init__.py` y añádela a `__all__`. Antes de inventar una función nueva,
 mira si extender una existente con un parámetro con nombre cubre el caso.
 
+**Toda consulta nueva se revisa con `EXPLAIN QUERY PLAN` contra la base real.** `snapshots.db` pesa más de 2 GB y
+`event` pasa del millón y medio de renglones. Un `SCAN` sobre una tabla grande que el filtro debería acotar es un índice
+que falta: va en `scraper/store.py` (`CREATE INDEX IF NOT EXISTS`, aditivo; `analytics/` abre en solo lectura), con un
+comentario de qué consulta lo usa. Si el filtro siempre lleva la misma condición, el índice puede ser parcial
+(`idx_event_closed ... WHERE kind IN ('removed', 'expired')`). Mide la consulta dos veces, en frío y en caliente; en frío
+pesa la lectura del disco. Lo que no cambia entre peticiones no se recalcula en cada una: un total que no depende de la
+página va en su propia llave de `read()` (`api/pages/datos.py`). Lo descubrió el explorador de Datos (2026-10-11): cada
+página leía `event` completa y volvía a contar todo, 1.2 s en caliente y hasta 4.5 s en frío; con el índice parcial y el
+total aparte, 0.3 s.
+
 ## 4. Textos, colores y etiquetas
 
 - **Ningún nombre interno llega al usuario.** `chain`, `kind`, claves de franja y de cubeta se
   traducen en `analytics/labels.py`. Si un texto aparece en pantalla, sale de `labels.py` (etiquetas)
   o de `findings.py` (frases), nunca escrito en `dashboard/` ni en `api/`. `dashboard/` los lee de
   `lib/labels.generated.ts` (`make labels`).
+- **Sin texto repetido ni de relleno.** No agregues una etiqueta, nota, descripción o pie que repita lo que la pantalla ya
+  muestra (el valor de un filtro, el título, un total que ya está en otro lado) o que solo describa la pantalla
+  ("Las tablas del archivo histórico, para…"). Cada texto da un dato o una advertencia que no está en otra parte; ante la
+  duda, no se escribe. La atribución que pide una licencia (© OpenStreetMap en los mapas) sí se queda.
 - **Ningún hex se escribe en la presentación (`dashboard/`).** En `dashboard/` la interfaz
   usa `tokens.*` de Fluent. Los colores viven en `analytics/labels.py` (`RED`, `INK`,
   `GRAY`, `LINE`, `CHAIN_COLOR`, `RED_RAMP`, `DIVERGING`…). Para un color nuevo: agrégalo a
   `labels.py` y documéntalo en `DESIGN.md` **antes** de usarlo.
 - **Rojo = Cinemex, solo en los datos. Cinépolis = tinta (`#191A1E`).** En `dashboard/` la interfaz (botones,
   navegación, foco, enlaces) usa los tokens de Fluent con su marca azul (decisión 2026-10-10, `DESIGN.md`); el rojo no se
-  usa para acciones, alertas ni valores negativos. Cinemex siempre primero en las escalas; las series no se ciclan.
+  usa para acciones, alertas ni valores negativos. La excepción es el tema oscuro: su marca es la rampa roja clara
+  `DARK_BRAND` (decisión 2026-10-11). Cinemex siempre primero en las escalas; las series no se ciclan.
 - Formato para directivos: horas en 12 h, fechas en español, números tabulares. Usa los helpers
   (`date_es`, `range_es`, `time_12`, `n`, `pp`), no `f"{x:.1f}"` a mano.
 
@@ -223,22 +238,25 @@ el timer lo note. Si añades un flujo de captura, añade su cobertura ahí y su 
 - Una página por módulo en `dashboard/app/` y un endpoint por página en `api/pages/<pagina>.py`, con un `router` de
   FastAPI, `TypedDict` de respuesta, `Literal` para las llaves y `read(key, compute)` (`api/pages/__init__.py`: abre
   `snapshots.db` en solo lectura, cierra la conexión y guarda el resultado 60 s). `api/internal.py` solo los registra.
-  Páginas: Cartelera (`app/page.tsx`, tres capas con zona, periodo y franja en la barra de filtros), Mapa, ¿A dónde ir?
+  Páginas: Cartelera (cinco pantallas, una pregunta cada una, en `components/cartelera/cartelera-page.tsx`: Hallazgos en
+  `/`, Programación semanal, Preventa, Precios y butacas, Cines (en `app/cines/`, sin periodo), Historial de funciones; zona, periodo y franja en la barra), Mapa, ¿A dónde ir?
   (recomendador), Dulcería, Independientes, Datos (explorador de `snapshots.db`, `analytics/datasets.py`) y, solo para
-  admin, Usuarios y Operaciones. Un módulo que responde una pregunta propia del cliente y no depende del periodo va en
+  admin, Usuarios y, solo para staff, Operaciones. Un módulo que responde una pregunta propia del cliente y no depende del periodo va en
   su página; lo demás, en la cartelera. **Excepción:** Independientes sí depende del periodo y aun así va aparte, para
   que la Cineteca nunca se mezcle con los shares Cinemex↔Cinépolis.
 - **Los filtros viven en la URL** (`components/filters.tsx`: `plaza`, `d0`, `d1`, `h0`, `h1`) y viajan como parámetros
-  de cada endpoint. Nacional es la ausencia de `plaza`.
+  de cada endpoint. Nacional es la ausencia de `plaza`. El menú los lleva entre las pantallas de Cartelera y Dulcería
+  (`components/shell.tsx`, `FILTER_KEYS`).
 - **Operaciones es la excepción documentada** a "ningún nombre interno llega al usuario": su público es quien opera la
   plataforma, así que muestra nombres de tablas, logs y módulos tal cual, y usa los colores de estado `OK` y `WARN` de
-  `labels.py`. Su lógica vive en `scraper/health.py`; su endpoint (`api/pages/operaciones.py`) exige admin. Nada de esa
+  `labels.py`. Su lógica vive en `scraper/health.py`; su endpoint (`api/pages/operaciones.py`) exige staff. Nada de esa
   página escribe ni ejecuta acciones.
 - **Acceso.** Sin sesión solo existen `/entrar`, `/olvide` y `/restablecer` (`lib/api.ts`, `PUBLIC_PATHS`); un 401 de la
-  API manda a entrar. Lo que solo puede ver un admin lo decide la API (`session.require_admin`), no el menú.
-- Estructura fija de tres capas (hallazgos → evidencia → apéndice), descrita en `DESIGN.md`. Una sección de evidencia va
+  API manda a entrar. Lo que ve cada cuenta lo decide la API, no el menú: el módulo contratado por su organización
+  (`session.require_module` en cada router), el rol (`require_admin`, `require_staff`) y si descarga (`can_download`).
+- Una pregunta por pantalla, sin rótulos de capa (`DESIGN.md`, "Pantallas de la Cartelera"). Una sección de evidencia va
   siempre en el mismo orden: pregunta, conclusión, leyenda, gráfico, controles, "Cómo leerla". Reutiliza los componentes
-  de `components/common.tsx` (`Capa`, `Seccion`, `Pregunta`, `Leerla`, `Apendice`, `Leyenda`, `Table`, los esqueletos y
+  de `components/common.tsx` (`Seccion`, `Pregunta`, `Leerla`, `Apendice`, `Leyenda`, `Table`, los esqueletos y
   `Diferido`), no repliques el marcado.
 - **Una página larga pide sus datos por partes** (`useApi`, `Diferido`; `DESIGN.md`, "Carga"): lo de arriba al entrar y
   cada sección cuando se acerca a la pantalla, con su propio endpoint.
@@ -279,7 +297,10 @@ La verificación principal es correr el flujo de verdad contra la base. Hay adem
 `tests/` (pytest, `requirements-dev.txt`, solo en el venv): lógica pura que no toca red (diff de snapshots,
 parsers, cuentas sobre un `app.db` temporal, conjuntos del explorador) y los endpoints de la API interna con
 `TestClient` (`tests/test_internal_api.py`: acceso y cada página, por rol, sobre la captura grabada). El frontend no tiene
-pruebas todavía; `pnpm run build` en `dashboard/` revisa los tipos y corre en CI.
+pruebas unitarias; `pnpm run build` en `dashboard/` revisa los tipos y corre en CI. El dashboard en celular se prueba en
+Chromium con Playwright (`tests/test_mobile.py`, `make test-ui`): cada página a 320, 360, 390 y 820 px, con títulos,
+nombres de cine y correo alargados, no debe salirse de la pantalla ni encimar texto, y la barra de módulos debe mostrar
+lo de cada rol. Necesita el build, así que solo corre con `AC_UI=1`: en CI va después del build.
 La captura se prueba de punta a punta contra respuestas reales grabadas de ambas APIs (`tests/test_capture_replay.py`,
 `tests/fixtures/capture/`, `scripts/capture_fixtures.py`): Cinemex estado 18 y Cinépolis `hermosillo` pasan por
 `snapshot()`, `normalize` y `store`, y el resultado debe ser idéntico al esperado grabado y cumplir las reglas de
@@ -339,3 +360,8 @@ sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
   (`.github/workflows/tests.yml`) cuando las pruebas pasan en `main`, y es lo que el servidor despliega
   (`make deploy`, cada 15 min): no la muevas a mano. Si un commit rompe las pruebas, `stable` se queda atrás hasta que se
   arregle; por eso una prueba que falla en CI bloquea el despliegue de todo lo posterior.
+- **La carpeta principal del repo siempre está en `main`, limpia.** Ahí solo se integran ramas. Cada función se trabaja
+  en su propio worktree y en su propia rama: `git worktree add -b mi-funcion ../absolut-cinema-mi-funcion main`, o
+  desde la rama de la que dependa. Dos agentes nunca escriben en la misma carpeta. Así varios agentes trabajan en
+  paralelo y cada rama entra a `main` con su merge, sin pisar el trabajo de otro. El worktree se borra al integrar su
+  rama (`git worktree remove`).

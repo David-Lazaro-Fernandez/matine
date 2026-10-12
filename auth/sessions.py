@@ -1,10 +1,10 @@
 """Sesiones (`session`): una fila por cookie emitida. El valor de la cookie nunca se guarda, solo su sha256."""
 from datetime import datetime, timedelta, timezone
 
-from . import security
+from . import orgs, security
 from .db import cursor, one, transaction
 
-_USER = "a.id, a.email, a.name, a.role AS role, a.active"
+_USER = "a.id, a.email, a.name, a.role AS role, a.active, a.org_id, o.modules"
 
 
 def create(conn, user_id, ip=None, user_agent=None, now=None):
@@ -20,14 +20,16 @@ def create(conn, user_id, ip=None, user_agent=None, now=None):
 
 
 def current_session(conn, raw, now=None):
-    """Usuario de una cookie vigente (cuenta activa, sesión no revocada ni caducada) o None. Extiende la vigencia
-    cuando la última visita tiene más de `SESSION_TOUCH_MINUTES`, para no escribir en cada corrida."""
+    """Usuario de una cookie vigente (cuenta activa, sesión no revocada ni caducada) o None. Trae su `org_id` y los
+    `modules` que puede ver (`orgs.modules_of`). Extiende la vigencia cuando la última visita tiene más de
+    `SESSION_TOUCH_MINUTES`, para no escribir en cada corrida."""
     if not raw:
         return None
     now = now or datetime.now(timezone.utc)
     token_hash = security.hash_token(raw)
     row = one(conn, f"""SELECT {_USER}, s.last_seen_at
                         FROM session s JOIN account a ON a.id = s.account_id
+                                       JOIN organization o ON o.id = a.org_id
                         WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND a.active""",
               (token_hash, now))
     if row is None:
@@ -37,7 +39,8 @@ def current_session(conn, raw, now=None):
             with cursor(conn) as cur:
                 cur.execute("UPDATE session SET last_seen_at = ?, expires_at = ? WHERE token_hash = ?",
                             (now, now + timedelta(days=security.SESSION_TTL_DAYS), token_hash))
-    return {k: row[k] for k in ("id", "email", "name", "role", "active")}
+    user = {k: row[k] for k in ("id", "email", "name", "role", "active", "org_id")}
+    return {**user, "modules": orgs.modules_of({**user, "modules": orgs.decode_modules(row["modules"])})}
 
 
 def revoke(conn, raw, now=None):

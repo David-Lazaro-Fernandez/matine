@@ -668,8 +668,8 @@ Petición del cliente tras la primera revisión: entender los precios de dulcer�
   conexión de solo lectura y una **ventana de fechas** `(d0, d1)` y devuelven listas de dicts; sin
   dependencias. `queries.py` (`kpis`, `showtimes_by_slot`, `heatmap_day_slot`, `movies_by_chain`, `movie_gaps`,
   `mix`, `concentration`, `coverage`, `week_publication`, `recent_events`, `events_by_kind`, `snapshot_health`,
-  `capture_status`, `cinema_week`), `findings.py` (Capa 1: hasta tres hallazgos redactados como decisión con sus números de
-  soporte, y las conclusiones que abren cada sección de la Capa 2; cada hallazgo entra solo si cruza su umbral
+  `capture_status`, `cinema_week`), `findings.py` (hasta tres hallazgos como cifras y una gráfica, y las conclusiones que abren
+  cada sección de evidencia; cada hallazgo entra solo si cruza su umbral
   en pp), `headlines.py` (frases ejecutivas por tema, versión previa; la app ya no lo usa pero sigue exportado)
   y `labels.py` (todo texto de cara al usuario: franjas, cubetas de formato, tipos de cambio, colores). Toda la lógica de negocio va
   aquí para que un API (FastAPI) pueda exponer lo mismo después sin reescribir.
@@ -909,12 +909,31 @@ exclusivas deja de contar Infinity Vision como exclusiva de Cinépolis ("el mayo
 material extra de la edición de aniversario, sin confirmar. Primera revisión de candidatos: uno, "El Descenso" frente a
 "El Desaire", rechazado.
 
-### Capa 1 · Lo que importa hoy (`analytics/findings.py`)
+### Venta por cine (`analytics/cinema_sales.py`, 2026-10-11)
 
-Hasta tres tarjetas (titular como decisión, una línea de contexto, chip "Decisión: …", cuatro a seis números
-de soporte). Se evalúan todas las reglas; cada una entra solo si cruza su umbral y lleva una fuerza (`strength` =
-brecha / umbral, con formato a la mitad porque es estructural) y se muestran las tres más fuertes; un empate conserva
-el orden de la tabla (2026-09-25; antes entraban las tres primeras y la capa casi no cambiaba). Una regla que depende
+El plano después del inicio se lee en ambas cadenas con la misma regla (15 a 75 minutos después de empezar, plazas de
+`AC_SEATS_PLAZAS`), así que el % vendido compara cines y cadenas. `cinema_occupancy` ordena los cines con 50 funciones
+medidas o más en los últimos 7 días, contra los 7 anteriores; `chain_occupancy` da el total de cada cadena. La pantalla
+mira al competidor, porque Cinemex ya conoce su propia venta (decisión de David, 2026-10-11). Por lugar (complejo y su
+Platino o VIP juntos, `cinema_locations.site_id`): `competitor_sites` ordena los Cinépolis por boletos vendidos con
+nuestros cines a 3 km o menos, y `main_rivals` da a cada Cinemex su rival número uno, el Cinépolis a 3 km o menos que
+más boletos vende. En 22 de 51 cines ese rival no es el más cercano. Con la captura del 2026-10-11 en CDMX: Cinemex
+6.8 %, Cinépolis 12.3 %, y 7 de 51 cines venden más que su rival. Los hallazgos `ocupacion` (brecha entre cadenas desde
+2 pp) y `rival` (desde 15 pp) salen de ahí. Reemplaza el apéndice
+de ocupación de la Cartelera, que medía solo a Cinépolis y estimaba a Cinemex con el semáforo.
+
+### Hallazgos (`analytics/findings.py`)
+
+Todas las tarjetas que cruzan su umbral, las tres más fuertes a todo lo ancho (2026-10-11; antes solo tres). Desde el 2026-10-11 una tarjeta no se redacta: trae el tema y el sujeto, la cifra con su
+comparación y su diferencia (valores numéricos con unidad), una gráfica con la fila importante resaltada y la muestra
+que la sostiene. El equipo de datos del cliente hace su propia lectura; antes cada tarjeta traía titular, párrafo y
+"Decisión: …". Se evalúan todas las reglas; cada una entra solo si cruza su umbral y se ordenan por fuerza
+(`strength` = brecha / umbral × √`stake`), del más fuerte al más débil; un empate conserva el orden de la tabla.
+`stake` es la parte de la programación de la que habla la tarjeta: el % de funciones del título, la franja o el
+formato, el % de las funciones en preventa del título, las funciones del par de cines del rival, o toda la cadena
+(ocupación, precio, concentración, dulcería). Decisión 2026-10-11: sin `stake`, un reestreno con 4 % de la parrilla que
+vendía cuatro veces lo esperado quedaba primero en CDMX. Precio y formato pesan la mitad porque son estructurales, y la
+dulcería a domicilio pesa 0.3 porque es un canal secundario (`_DELIVERY_WEIGHT`). Una regla que depende
 de un muestreo no entra si su dato está vencido: la dulcería a domicilio pide una lectura de hace 3 días o menos
 (`CONCESSION_MAX_AGE_DAYS`), y si no la hay su conclusión de Capa 2 dice la fecha de la última.
 
@@ -974,8 +993,8 @@ de `scraper/plazas.py` que tienen cines en la base más "Nacional"; CDMX por def
 mueven con la captura nacional. Entra como `plaza=` en `queries._window` (junto con `hours`) y en todas las funciones
 de `analytics/` que agregan `current_showtime`; las tablas de muestreo (planos, precios, dulcería, aforo) se acotan a
 través de la dimensión `cinema` (`analytics/plaza.py::plaza_cinema_where`). `plaza=None` no añade SQL. La calibración
-del semáforo de Cinemex es nacional (el color significa lo mismo en todos los cines). El encabezado dice "Cartelera
-CDMX" o "Cartelera nacional" (`labels.plaza_title`). La página Operaciones muestra el registro de cobertura por ciudad y
+del semáforo de Cinemex es nacional (el color significa lo mismo en todos los cines). El encabezado dice "Cartelera"; la
+zona va en su selector. La página Operaciones muestra el registro de cobertura por ciudad y
 área (`analytics.plaza_coverage`: cines y funciones por cadena y `city_id`, con su plaza), que es la base para decidir
 qué plazas entran al muestreo de planos.
 
@@ -1250,7 +1269,7 @@ reconstruir cualquier historia con las reglas de `scraper/diff.py`. En producci�
 (las cuentas eran de prueba).
 
 **Qué quedó.** Dos bases SQLite con un escritor cada una: `data/snapshots.db` (la captura) y `data/app.db` (`auth/`:
-cuentas, sesiones, enlaces y auditoría; se crea con su esquema al conectar, `auth/db.py`; fechas como texto ISO UTC con
+cuentas con su perfil, organizaciones con sus módulos y su logo (desde 2026-10-12), sesiones, enlaces y auditoría; se crea con su esquema al conectar, `auth/db.py`; fechas como texto ISO UTC con
 microsegundos para que las comparaciones de SQL sean cronológicas; corre en el venv por `hashlib.scrypt`). El explorador
 Datos lee `snapshots.db` con los mismos seis conjuntos (`analytics/datasets.py`: `DISTINCT ON` → `ROW_NUMBER()`,
 búsqueda con `norm_title` sin acentos, funciones cerradas desde los eventos `removed`/`expired`). El respaldo diario
@@ -1370,9 +1389,9 @@ modelo y la clave que elija el cliente. Decisiones tomadas con David:
 - **Paquete `narrative/`** con un adaptador por proveedor detrás de una misma función, usando el SDK oficial de cada
   uno; Anthropic primero (`claude-opus-5`, salida estructurada), luego OpenAI, Google si un cliente lo pide. `scraper/`
   y `analytics/` jamás lo importan. Costo estimado con tres generaciones diarias: < 5 USD al mes.
-- **Sin concepto de organización todavía.** `app.account` no tiene tenant, así que la configuración del proveedor es
-  **una por instancia**, la fija el admin desde el tablero. Si algún día hay más de un cliente por despliegue, entra
-  organización antes que clave por usuario.
+- **Configuración por organización.** Desde 2026-10-12 cada cuenta pertenece a una `organization` (ver
+  "Organizaciones, módulos y roles"). La configuración del proveedor va por organización, nunca por usuario; la fija el
+  admin de esa organización desde el tablero.
 
 **Custodia y auditoría de la clave** (tres capas, todas necesarias; KMS solo resuelve la primera):
 
@@ -1488,6 +1507,35 @@ SQL: es parte del valor que se entrega al cliente, sin regalarle la base complet
   falta probar en navegador:** el ciclo de la cookie (entrar, refrescar, cerrar sesión), que `AppTest` no simula.
 - **Pendiente con el dominio:** identidad SES + DKIM, `AC_BASE_URL=https://…`, quitar `basic_auth` de Caddy, salir del
   sandbox de SES. Mientras, `console`/`NOMAIL=1` y el enlace se entrega a mano.
+
+## Organizaciones, módulos y roles (2026-10-12)
+
+Decisión de David (2026-10-12): el dashboard se vende por módulos y a más de un cliente por despliegue. La API decide lo
+que cada cuenta ve y hace; el dashboard solo lo refleja.
+
+- **Organización** (`organization` en `data/app.db`: `id`, `name`, `modules` JSON, `logo`, `created_at`) y
+  `account.org_id`. Al conectar, `auth/db.py` crea la organización 1, "Cinemex", con todos los módulos, le pasa las
+  cuentas sin organización y mueve ahí el logo que antes vivía en `setting`.
+- **Módulos, no niveles** (`auth.db.MODULES`): `cartelera` (Hallazgos, Programación, Preventa, Precios, Cines,
+  Historial, Mapa, ¿A dónde ir?, Independientes), `dulceria` (En sala, A domicilio) y `datos` (el explorador). Un plan es
+  solo el nombre comercial de una lista; "Completo" son todos y Datos solo viene en Completo. Precios por contrato, sin
+  pago en línea. Un módulo nuevo (por ejemplo `distribuidores`) es una clave en `MODULES` y su router con
+  `require_module`.
+- **Roles** (`auth/orgs.py`): `staff`, el equipo de la plataforma, ve todos los módulos, todas las cuentas y Operaciones,
+  y solo se asigna con `make user-role`; `admin` gestiona las cuentas y el logo de su organización; `analyst` ve, filtra,
+  descarga CSV y PNG e imprime; `viewer` ve y filtra. SQLite no cambia un `CHECK` con `ALTER TABLE`, así que
+  `connect` reconstruye `account` una vez con el `CHECK` nuevo (verificado 2026-10-12 sobre una copia de la base del
+  piloto: cuentas, sesiones, enlaces y auditoría intactos, `foreign_key_check` vacío).
+- **Dónde se aplica** (`api/session.py`): cada router de `api/pages/` declara su módulo
+  (`require_module`, 403 con `AUTH_TEXT["module_locked"]`); Operaciones exige `require_staff`. Un admin solo lista y
+  cambia cuentas de su organización y nunca ve las de `staff` (404). La descarga completa de Datos (más de una página de
+  la tabla) exige un rol que descarga. `LastAdmin` cuenta por organización.
+- **Dashboard.** Un módulo no contratado se ve con candado; abre un diálogo que manda `POST /api/interes`, y su página
+  muestra el mismo aviso. "Mejorar" y "Comunicarse con Ventas" del menú de la cuenta abren ese diálogo. El aviso queda en
+  `audit` (`upgrade_interest`) y, con `AC_SALES_EMAIL`, llega por correo a Ventas. Sin `can_download` no se pintan los
+  botones de descarga ni el de imprimir.
+- **Pendiente:** un plan de prueba con fecha de fin, la clave `distribuidores` cuando su módulo exista, y que staff vea a
+  qué organización pertenece cada cuenta en Usuarios.
 
 ## Consideraciones
 

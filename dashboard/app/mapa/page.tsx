@@ -4,12 +4,8 @@
 // Los datos salen de `GET /api/mapa`. Aquí se abren en círculo los cines del mismo edificio y se calcula el radio.
 import * as React from 'react';
 import {
-  Combobox,
-  Dropdown,
-  Field,
   MessageBar,
   MessageBarBody,
-  Option,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -27,7 +23,7 @@ import {
   SkeletonApendice,
   SkeletonSeccion,
 } from '@/components/common';
-import { PlazaSelector, usePlaza, useSetParams } from '@/components/filters';
+import { FilterChecks, FilterMenu, FilterPopover, PlazaSelector, SearchChecklist, usePlaza, useSetParams } from '@/components/filters';
 import { CinemaMap, type MapPoint } from '@/components/mapa/cinema-map';
 import { api } from '@/lib/api';
 import { date_es, fill, fixed, n, range_es } from '@/lib/format';
@@ -38,8 +34,6 @@ import {
   FORMAT_LABEL,
   MAP_METRIC,
   MAP_TEXT as T,
-  NATIONAL_LABEL,
-  PLAZA_LABEL,
 } from '@/lib/labels.generated';
 
 type Chain = keyof typeof CHAIN_LABEL;
@@ -96,7 +90,6 @@ const MONEY_COLUMNS: readonly string[] = ['ticket_price', 'ticket_max', 'popcorn
 const TEXT_COLUMNS: readonly string[] = ['chain', 'cinema_name', 'ticket_sampled_at', 'ticket_max_format'];
 
 const useStyles = makeStyles({
-  wide: { minWidth: '260px', flexGrow: 1, maxWidth: '520px' },
   nota: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalXXS}` },
   detail: { fontWeight: tokens.fontWeightSemibold, margin: `${tokens.spacingVerticalM} 0 ${tokens.spacingVerticalXS}` },
   hint: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
@@ -196,7 +189,6 @@ export default function Page() {
   const pickedIds = list(params.get('cines')) ?? [];
   const [data, setData] = React.useState<Mapa | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [search, setSearch] = React.useState('');
   const [pickedSite, setPickedSite] = React.useState<string | null>(null);
 
   const qs = new URLSearchParams();
@@ -223,47 +215,35 @@ export default function Page() {
   const filters = (
     <>
       <PlazaSelector />
-      <Field label={T.size_by} hint={T.size_help}>
-        <Dropdown
-          value={MAP_METRIC[metric][0]}
-          selectedOptions={[metric]}
-          onOptionSelect={(_, d) => setParams({ metrica: d.optionValue === DEFAULT_METRIC ? null : d.optionValue ?? null })}
-        >
-          {METRICS.map((m) => <Option key={m} value={m}>{MAP_METRIC[m][0]}</Option>)}
-        </Dropdown>
-      </Field>
-      <Field label={T.chains}>
-        <Dropdown
-          multiselect
-          value={chains.map((c) => CHAIN_LABEL[c]).join(', ')}
-          selectedOptions={chains}
-          onOptionSelect={(_, d) => setParams({ cadenas: d.selectedOptions.length === CHAINS.length ? null : d.selectedOptions.join(',') })}
-        >
-          {CHAINS.map((c) => <Option key={c} value={c}>{CHAIN_LABEL[c]}</Option>)}
-        </Dropdown>
-      </Field>
-      <Field label={T.cinemas} hint={T.cinemas_help} className={s.wide}>
-        <Combobox
-          multiselect
-          value={search}
-          placeholder={validIds.length ? validIds.map((id) => names.get(id)).join(', ') : T.cinemas_placeholder}
-          selectedOptions={validIds}
-          onChange={(e) => setSearch(e.target.value)}
-          onOptionSelect={(_, d) => { setSearch(''); setParams({ cines: d.selectedOptions.join(',') || null }); }}
-        >
-          {[...names]
-            .filter(([, name]) => name.toLowerCase().includes(search.toLowerCase()))
-            .map(([id, name]) => <Option key={id} value={id}>{name}</Option>)}
-        </Combobox>
-      </Field>
+      <FilterMenu
+        label={T.size_by}
+        value={metric}
+        short={`${T.size_by}: ${MAP_METRIC[metric][0]}`}
+        note={T.size_help}
+        options={METRICS.map((m) => [m, MAP_METRIC[m][0]])}
+        onChange={(value) => setParams({ metrica: value === DEFAULT_METRIC ? null : value })}
+      />
+      <FilterChecks
+        label={T.chains}
+        values={chains}
+        options={CHAINS.map((c) => [c, CHAIN_LABEL[c]])}
+        onChange={(values) => setParams({ cadenas: values.length === CHAINS.length ? null : values.join(',') })}
+      />
+      <FilterPopover
+        label={T.cinemas}
+        text={validIds.map((id) => names.get(id)).join(', ')}
+        note={T.cinemas_help}
+        onClear={() => setParams({ cines: null })}
+      >
+        <SearchChecklist label={T.cinemas} values={validIds} options={[...names]}
+                         onChange={(values) => setParams({ cines: values.join(',') || null })} />
+      </FilterPopover>
     </>
   );
 
-  const zoneLabel = plaza ? PLAZA_LABEL[plaza as keyof typeof PLAZA_LABEL] ?? plaza : NATIONAL_LABEL;
   const meta = data && [
-    [`${T.meta_zone}:`, zoneLabel],
     [`${T.meta_period}:`, range_es(data.d0, data.d1)],
-    validIds.length ? fill(T.filtered, { n: n(data.cinemas.length), total: n(data.options.length) }) : T.meta_note,
+    ...(validIds.length ? [fill(T.filtered, { n: n(data.cinemas.length), total: n(data.options.length) })] : []),
   ] as const;
 
   const info = (text: string) => <MessageBar intent="info"><MessageBarBody>{text}</MessageBarBody></MessageBar>;

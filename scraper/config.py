@@ -225,3 +225,5 @@ MAIL_FROM = os.environ.get("AC_MAIL_FROM", "Absolut Cinema <no-responder@localho
 # Base de los enlaces del correo.
 BASE_URL = os.environ.get("AC_BASE_URL", "http://localhost:8501").rstrip("/")
 MAIL_LOG_PATH = LOG_DIR / "mail.log"
+# A quién avisar cuando una cuenta pide un módulo que su organización no contrató. Sin valor, solo queda en `audit`.
+SALES_EMAIL = os.environ.get("AC_SALES_EMAIL") or None

@@ -9,18 +9,15 @@ import {
   AccordionItem,
   AccordionPanel,
   Button,
-  Dropdown,
   Field,
   Input,
   MessageBar,
   MessageBarBody,
-  Option,
-  Radio,
-  RadioGroup,
   Slider,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import { ArrowSort20Regular, CalendarLtr20Regular, Clock20Regular, Filmstrip20Regular, FoodPizza20Regular } from '@fluentui/react-icons';
 import { useSearchParams } from 'next/navigation';
 import {
   Apendice,
@@ -34,7 +31,7 @@ import {
   Table,
   SkeletonSeccion,
 } from '@/components/common';
-import { today, useSetParams } from '@/components/filters';
+import { FilterChecks, FilterMenu, today, useSetParams } from '@/components/filters';
 import { CinemaMap, type MapPoint } from '@/components/mapa/cinema-map';
 import { ApiError, api } from '@/lib/api';
 import { addDays, date_es, fill, fixed, n, time_12 } from '@/lib/format';
@@ -313,23 +310,13 @@ export default function Page() {
         </Field>
       </div>
       <div className={s.row}>
-        <Field label={T.snacks} className={s.grow}>
-          <Dropdown value={SNACK_LABEL[snacks]} selectedOptions={[snacks]}
-                    onOptionSelect={(_, d) => setParams({ dulceria: d.optionValue ?? null })}>
-            {(Object.keys(SNACK_LABEL) as Snacks[]).map((k) => <Option key={k} value={k}>{SNACK_LABEL[k]}</Option>)}
-          </Dropdown>
-        </Field>
-        <Field label={T.when}>
-          <RadioGroup layout="horizontal" value={when}
-                      onChange={(_, d) => setParams({ cuando: d.value, fecha: d.value === 'fecha' ? d0 : null })}>
-            {(Object.keys(WHEN) as When[]).map((k) => <Radio key={k} value={k} label={WHEN[k]} />)}
-          </RadioGroup>
-        </Field>
+        <FilterMenu label={T.snacks} icon={<FoodPizza20Regular />} value={snacks} options={Object.entries(SNACK_LABEL)}
+                    onChange={(value) => setParams({ dulceria: value })} />
+        <FilterMenu label={T.when} icon={<CalendarLtr20Regular />} value={when} options={Object.entries(WHEN)}
+                    onChange={(value) => setParams({ cuando: value, fecha: value === 'fecha' ? d0 : null })} />
         {when === 'fecha' && (
-          <Field label={T.date}>
-            <Input type="date" value={d0} min={data?.min_date ?? day} max={data?.max_date}
-                   onChange={(_, d) => d.value && setParams({ fecha: d.value })} />
-          </Field>
+          <Input type="date" aria-label={T.date} value={d0} min={data?.min_date ?? day} max={data?.max_date}
+                 onChange={(_, d) => d.value && setParams({ fecha: d.value })} />
         )}
       </div>
     </Seccion>
@@ -341,44 +328,22 @@ export default function Page() {
         <AccordionHeader>{T.more}</AccordionHeader>
         <AccordionPanel>
           <div className={s.row}>
-            <Field label={T.hours}>
-              <RadioGroup value={preset} onChange={(_, d) => setParams({ horas: d.value === PRESETS[0] ? null
-                : `${HOUR_PRESETS[d.value as typeof preset][0]}-${HOUR_PRESETS[d.value as typeof preset][1]}` })}>
-                {PRESETS.map((p) => <Radio key={p} value={p} label={p} />)}
-              </RadioGroup>
-            </Field>
+            <FilterMenu label={T.hours} icon={<Clock20Regular />} value={preset} options={PRESETS.map((p) => [p, p])}
+                        onChange={(value) => setParams({ horas: value === PRESETS[0] ? null
+                          : `${HOUR_PRESETS[value as typeof preset][0]}-${HOUR_PRESETS[value as typeof preset][1]}` })} />
             <Field label={`${T.radius}: ${radius}`} className={s.grow}>
               <Slider min={1} max={MAX_RADIUS_KM} value={radius} onChange={(_, d) => setParams({ radio: String(d.value) })} />
             </Field>
-            <Field label={T.sort}>
-              <RadioGroup value={sort} onChange={(_, d) => setParams({ orden: d.value })}>
-                {(Object.keys(RECOMMEND_SORT) as Sort[]).map((k) => <Radio key={k} value={k} label={RECOMMEND_SORT[k]} />)}
-              </RadioGroup>
-            </Field>
+            <FilterMenu label={T.sort} icon={<ArrowSort20Regular />} value={sort} options={Object.entries(RECOMMEND_SORT)}
+                        onChange={(value) => setParams({ orden: value })} />
           </div>
           {location && (
             <div className={s.row}>
-              <Field label={T.title_filter} className={s.grow}>
-                <Dropdown
-                  value={data?.titles.find((t) => t.title_norm === titleNorm)?.title ?? T.any_title}
-                  selectedOptions={[titleNorm ?? '']}
-                  onOptionSelect={(_, d) => setParams({ pelicula: d.optionValue || null })}
-                >
-                  <Option value="">{T.any_title}</Option>
-                  {(data?.titles ?? []).map((t) => <Option key={t.title_norm} value={t.title_norm}>{t.title}</Option>)}
-                </Dropdown>
-              </Field>
-              <Field label={T.formats} className={s.grow}>
-                <Dropdown
-                  multiselect
-                  placeholder={T.any_format}
-                  value={formats.map(formatText).join(', ')}
-                  selectedOptions={formats}
-                  onOptionSelect={(_, d) => setParams({ formatos: d.selectedOptions.join(',') || null })}
-                >
-                  {FORMAT_BUCKETS.map((f) => <Option key={f} value={f}>{FORMAT_LABEL[f]}</Option>)}
-                </Dropdown>
-              </Field>
+              <FilterMenu label={T.title_filter} icon={<Filmstrip20Regular />} value={titleNorm ?? ''}
+                          options={[['', T.any_title], ...(data?.titles ?? []).map((t): [string, string] => [t.title_norm, t.title])]}
+                          onChange={(value) => setParams({ pelicula: value || null })} />
+              <FilterChecks label={T.formats} values={formats} options={FORMAT_BUCKETS.map((f) => [f, FORMAT_LABEL[f]])}
+                            onChange={(values) => setParams({ formatos: values.join(',') || null })} />
             </div>
           )}
         </AccordionPanel>

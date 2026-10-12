@@ -86,6 +86,35 @@ export const WARN = "#B45309" as const;
 
 export const OK = "#2F6F4E" as const;
 
+export const DARK_BRAND = [
+  "#1A0508",
+  "#2E0910",
+  "#470D18",
+  "#5E1020",
+  "#771228",
+  "#901530",
+  "#B0173A",
+  "#C9223F",
+  "#E0364F",
+  "#F06A7C",
+  "#F68A99",
+  "#F9A6B2",
+  "#FBC0C8",
+  "#FDD6DC",
+  "#FEE8EB",
+  "#FFF5F6"
+] as const;
+
+export const DARK_NAV_ITEM = "#141414" as const;
+
+export const DARK_DATA_COLOR = {
+  "#E31837": "#FF5468",
+  "#191A1E": "#EDEDED",
+  "#E4E5E9": "#3D3F45",
+  "#FDEDF0": "#5A2430",
+  "#3A3C42": "#C9CBD0"
+} as const;
+
 export const SLOTS = [
   [
     "antes_10",
@@ -232,18 +261,8 @@ export const CONCESSION_CHART_TEXT = {
 
 export const DULCERIA_TEXT = {
   "title": "Dulcería: <span>Cinemex</span> frente a Cinépolis",
-  "meta_zone": "Zona",
-  "meta_room": "Sala",
-  "meta_room_value": "menú en línea de Cinépolis por complejo",
-  "meta_delivery": "A domicilio",
-  "meta_delivery_value": "Rappi y DiDi Food, ambas cadenas",
-  "meta_note": "Nuestro tablero de sala llega con tus datos",
   "no_db": "Aún no hay datos: la base no existe todavía. Ver la página de cartelera.",
-  "layer1": "Lo que importa hoy",
-  "layer1_desc": "El hallazgo de dulcería, si cruza su umbral; el mismo que aparece en la cartelera.",
   "no_findings": "La brecha de dulcería no cruza el umbral de relevancia.",
-  "layer2": "Evidencia",
-  "layer2_desc": "Precio en sala por complejo (Cinépolis) y comparación a domicilio, plataforma contra plataforma.",
   "question": "¿Cómo compite nuestra dulcería con la de Cinépolis?",
   "question_note": "En sala solo tenemos el menú de Cinépolis; nuestra lista llega con tus datos. La comparación directa es a domicilio, plataforma contra plataforma.",
   "empty": "Aún no hay lecturas de dulcería.",
@@ -296,22 +315,36 @@ export const NATIONAL_LABEL = "Nacional" as const;
 
 export const ZONE_TEXT = {
   "header": "Zona",
-  "select": "Plaza a comparar",
-  "caption": "Las participaciones se calculan solo con los cines de la plaza elegida; en Nacional entran todos los capturados.",
-  "title": "Cartelera {plaza}",
-  "title_national": "Cartelera nacional",
   "page_title": "Cartelera · Cinemex frente a Cinépolis"
+} as const;
+
+export const FILTER_TEXT = {
+  "clear": "Quitar filtro",
+  "search": "Buscar",
+  "no_matches": "Ningún resultado",
+  "hide_fields": "Ocultar campos",
+  "hidden_one": "1 campo oculto",
+  "hidden_many": "{n} campos ocultos",
+  "find_field": "Encontrar un campo",
+  "hide_all": "Ocultar todos",
+  "show_all": "Mostrar todo",
+  "sort": "Clasificar",
+  "sort_by": "Ordenar por",
+  "sorted_by": "Ordenado por {field}",
+  "ascending": "Ascendente",
+  "descending": "Descendente",
+  "clear_sort": "Quitar orden"
 } as const;
 
 export const PERIOD_TEXT = {
   "header": "Periodo",
-  "select": "Semana o día a analizar",
   "today": "Hoy",
   "tomorrow": "Mañana",
   "week": "Resto de la semana de cine (hasta el {d1})",
   "next_week": "Semana de cine siguiente ({d0} a {d1}){state}",
+  "week_short": "Resto de la semana",
+  "next_week_short": "Semana siguiente",
   "custom": "Elegir fechas",
-  "custom_range": "Del … al …",
   "from": "Del",
   "to": "Al"
 } as const;
@@ -582,7 +615,14 @@ export const COLUMN_LABEL = {
   "last_error": "Último error",
   "avg_calls": "Llamadas (media)",
   "avg_duration_s": "Duración media (s)",
-  "avg_shows": "Funciones (media)"
+  "avg_shows": "Funciones (media)",
+  "day": "Día",
+  "slot_label": "Franja",
+  "dimension": "Dimensión",
+  "bucket": "Categoría",
+  "chain_label": "Cadena",
+  "status_label": "Estado",
+  "value": "Valor"
 } as const;
 
 export const DAY_TYPE_LABEL = {
@@ -609,54 +649,19 @@ export const SEATS_CHART_TEXT = {
 } as const;
 
 export const CARTELERA_TEXT = {
-  "title": "{plaza}: <span>Cinemex</span> frente a Cinépolis",
   "no_db": "Aún no hay datos: la base {path} no existe. La cartelera se captura a las {times}; la siguiente captura es a las {next} y tarda de 15 a 30 minutos. Para no esperar: `make snapshot` (o `systemctl start absolut-cinema-snapshot.service` en el servidor), o copia `data/` desde la máquina donde ya corre. Esta página se refresca sola.",
   "no_db_web": "Aún no hay datos: la base de la cartelera no existe todavía. La primera captura tarda de 15 a 30 minutos. Para no esperar: `make snapshot` (o `systemctl start absolut-cinema-snapshot.service` en el servidor).",
   "no_shows": "La base existe pero todavía no tiene funciones capturadas. Revisa `data/logs/run.log`.",
   "no_board": "No hay cartelera publicada de ambas cadenas para {range}.",
   "meta_period": "Periodo:",
-  "meta_hours": "Franja:",
-  "meta_cinemas": "cines",
-  "meta_shows": "funciones publicadas",
-  "meta_capture": "Última captura:",
-  "meta_computed": "Cifras al",
-  "nav": [
-    "Lo que importa hoy",
-    "Evidencia",
-    "Detalle"
-  ],
   "stale_none": "No hay ninguna captura buena de {name}.",
   "stale_error": "La última captura de {name} falló y el dato vigente tiene {age} minutos. Detalle técnico: {error}",
   "stale_old": "El dato de {name} tiene {age} minutos sin actualizarse; el scraper puede estar detenido.",
   "hours_header": "Franja horaria",
   "hours_free": "Rango libre",
-  "hours_slider": "Hora de inicio de la función",
   "hours_from": "Desde",
   "hours_to": "Hasta",
-  "hours_caption": "Solo funciones que empiezan {hours}. Las participaciones se calculan dentro de esa franja.",
-  "read_header": "Cómo leer las cifras",
-  "read_body": "Todo se compara en **porcentaje de la programación de cada cadena** (share), no en totales: las cadenas tienen distinto número de cines y salas en cada zona. Las diferencias entre porcentajes van en **puntos porcentuales (pp)**.",
-  "read_today": " Para hoy solo se cuentan funciones que aún no han empezado, en ambas cadenas.",
-  "glossary_header": "Glosario",
-  "glossary": [
-    "**Función.** Una proyección de una película en una sala a una hora.",
-    "**Aforo.** Butacas vendibles de una sala; se mide una vez por sala en el plano de asientos.",
-    "**Butacas ofertadas.** Suma del aforo de la sala por cada función del periodo: el máximo de boletos que la cadena podría vender en esos días. Un cine con 10 salas de 150 butacas y 5 funciones por sala oferta 7,500 al día.",
-    "**Butacas ocupadas.** Boletos vendidos. En Cinépolis se leen del plano a una hora de la función; en Cinemex se estiman a partir de su semáforo de disponibilidad, calibrado con planos reales.",
-    "**Ocupación.** Butacas ocupadas entre butacas ofertadas.",
-    "**Share.** Parte de la programación de una cadena que se lleva una película, franja o formato.",
-    "**Puntos porcentuales (pp).** Diferencia entre dos porcentajes. De 18 % a 21 % son +3 pp.",
-    "**Semana de cine.** De jueves a miércoles; es lo que ambas cadenas publican completo.",
-    "**Horario prime.** Viernes a domingo de 6:00 P.M. en adelante."
-  ],
-  "capture_caption": "La cartelera se captura a las {times} y los planos de asientos cada hora{refresh}.",
-  "refresh_caption": "; esta página se refresca cada {ttl} segundos",
-  "layer1": "Lo que importa hoy",
-  "layer1_desc": "Hallazgos redactados como decisión, cada uno con sus números de soporte. Si un dato no cambia una decisión esta semana, no vive aquí.",
   "no_findings": "Ninguna diferencia cruza el umbral de relevancia en este periodo. La evidencia completa está en la Capa 2.",
-  "link_dulceria": "Ver el módulo de dulcería: precios en sala y a domicilio",
-  "layer2": "Evidencia por pregunta",
-  "layer2_desc": "Cada sección abre con la conclusión; el gráfico es la prueba, no el mensaje. Las guías de lectura van colapsadas.",
   "empty_period": "Sin funciones en el periodo.",
   "q_resumen": "¿Cómo se reparte la programación de la semana?",
   "resumen_headers": [
@@ -692,8 +697,6 @@ export const CARTELERA_TEXT = {
   "curve_pick": "Curva de venta de",
   "curve_pending": "La curva aparece cuando el título tiene lecturas a distintas distancias de su función.",
   "leer_preventa": "Son los títulos en preventa de cada cadena: la página de preventas de Cinemex y la de \"Próximamente\" de Cinépolis, hasta su estreno (en un evento de una noche, hasta que empieza). Arriba, los títulos que las dos cadenas tienen en preventa; abajo, los de una sola, marcados como exclusiva cuando la otra cadena no los tiene en su cartelera de la zona. Por cadena, cada título tiene un panel fijo de hasta 30 funciones repartidas entre cines y cada día se lee su plano de asientos. La barra es el % de las butacas de ese panel que ya se vendieron, así una sala IMAX no pesa más que una tradicional y las dos cadenas se comparan aunque tengan salas de distinto tamaño. Desde la segunda lectura se mide el ritmo: cuántos puntos de su aforo vende cada día (en el detalle al pasar el cursor). La curva junta todas las lecturas del título según cuántos días faltaban para la función. Las funciones de Cinépolis cuyo plano responde \"ya no está disponible\" antes de empezar no entran: coinciden con funciones casi agotadas, así que su % vendido real puede ser algo mayor.",
-  "layer3": "Detalle y apéndice",
-  "layer3_desc": "Todo colapsado con una línea de resumen visible: quien lo necesita lo abre, quien no, no paga el costo visual.",
   "kpis_title": "Indicadores del periodo",
   "kpis_summary": "{us} vs {them} funciones por cine y día",
   "kpis_summary_seats": " · {us} vs {them} butacas ofertadas",
@@ -784,21 +787,7 @@ export const CARTELERA_TEXT = {
   "board_few": "Hace falta más de una captura desde que se publicó la función para reconstruir la cartelera.",
   "board_capture": "Captura",
   "board_empty": "En esa captura no había funciones publicadas para esta sala y fecha.",
-  "board_note": "\"Frente a hoy\" compara cada función con la cartelera vigente: igual, cambió después (y en qué) o ya no está publicada. Mueve el control para ver la cartelera en capturas anteriores.",
-  "ocupacion_title": "Ocupación medida tras el inicio de cada función",
-  "ocupacion_summary": "{n} funciones medidas de Cinépolis · {pct} % de butacas vendidas en promedio · {levels}{calibrated}",
-  "ocupacion_levels": "{levels} niveles de color para calibrar",
-  "ocupacion_no_levels": "aún sin semáforos de color para calibrar",
-  "ocupacion_calibrated": " · semáforo de Cinemex calibrado",
-  "ocupacion_uncalibrated": " · semáforo de Cinemex sin calibrar",
-  "ocupacion_empty": "Aún no hay medidas. El pase corre cada hora y lee el plano de las funciones de Cinépolis que empezaron hace 15 a 75 minutos.",
-  "ocupacion_cinepolis": "**Cinépolis.** {n} funciones medidas después de empezar; {pct} % de las butacas vendidas. Es la asistencia final de cada función y la base del modelo de consumo. La tabla cruza el color del semáforo del sitio con el porcentaje real vendido, para calibrar qué significa cada color.",
-  "ocupacion_cinemex_pending": "**Cinemex.** Publica alta, media o baja disponibilidad por función. Al calibrar cada nivel contra planos reales (una pasada única, por la tarde-noche, cuando existen los tres niveles) el semáforo se convierte en % vendido estimado para todas sus funciones.",
-  "ocupacion_cinemex": "**Cinemex.** {occupied} butacas ocupadas estimadas de {offered} ofertadas en el periodo ({pct} %), a partir del nivel de disponibilidad de cada función y su calibración ({estimated} de {shows} funciones estimables).",
-  "ocupacion_recent": "Últimas funciones medidas (Cinépolis)",
-  "ocupacion_note": "Se promueve a Capa 2 cuando la tabla de calibración tenga niveles de color con muestras suficientes. Mientras tanto no compite por atención.",
-  "footer": "Fuentes: cartelera pública de Cinemex y Cinépolis, capturada tres veces al día para los cines de la Ciudad de México y área metropolitana; aforo por sala de ambas cadenas leído de los planos de asientos; ocupación medida tras el inicio de cada función en Cinépolis; precios de lista muestreados por cine, formato y tipo de día; menú de dulcería de Cinépolis con precio por complejo; catálogo de dulcería a domicilio de ambas cadenas en Rappi y DiDi Food. Las películas se emparejan entre cadenas por título, con reglas para reestrenos, aniversarios y eventos y una tabla de equivalencias revisada a mano.{filter} Historia desde el {date}.",
-  "footer_filter": " Filtro activo: solo funciones que empiezan {hours}."
+  "board_note": "\"Frente a hoy\" compara cada función con la cartelera vigente: igual, cambió después (y en qué) o ya no está publicada. Mueve el control para ver la cartelera en capturas anteriores."
 } as const;
 
 export const DATE_TEXT = {
@@ -865,13 +854,17 @@ export const HOURS_TEXT = {
 } as const;
 
 export const ROLE_LABEL = {
+  "staff": "Equipo de la plataforma",
   "admin": "Administrador",
+  "analyst": "Analista",
   "viewer": "Consulta"
 } as const;
 
 export const ROLE_HELP = {
-  "admin": "Gestiona cuentas y ve todo.",
-  "viewer": "Ve la cartelera, la dulcería y los datos."
+  "staff": "Ve todos los módulos, todas las cuentas y Operaciones.",
+  "admin": "Gestiona las cuentas y el logo de la organización, y descarga.",
+  "analyst": "Ve, filtra, descarga CSV y PNG e imprime.",
+  "viewer": "Ve y filtra, sin descargar ni imprimir."
 } as const;
 
 export const AUTH_TEXT = {
@@ -907,10 +900,11 @@ export const AUTH_TEXT = {
   "TokenInvalid": "Este enlace ya no sirve: caducó o ya se usó. Pide uno nuevo desde “¿Olvidaste tu contraseña?”.",
   "WeakPassword": "La contraseña no cumple la regla mínima.",
   "DuplicateEmail": "Ya existe una cuenta con ese correo.",
-  "LastAdmin": "No puedes dejar el sistema sin administradores.",
+  "LastAdmin": "No puedes dejar la organización sin administradores.",
   "SelfChange": "No puedes cambiar tu propia cuenta desde aquí.",
+  "WrongPassword": "La contraseña actual no es correcta.",
+  "InvalidImage": "La imagen debe ser PNG, JPEG o WebP.",
   "users_title": "Usuarios",
-  "users_lead": "Quién entra al tablero y con qué rol. Las cuentas nuevas reciben un enlace para elegir su contraseña.",
   "new_account": "Nueva cuenta",
   "name": "Nombre",
   "role": "Rol",
@@ -927,8 +921,33 @@ export const AUTH_TEXT = {
   "mail_failed": "La cuenta quedó creada pero el correo no salió: {error}. Usa “Reenviar enlace” más tarde.",
   "session_expired": "Tu sesión terminó. Vuelve a entrar.",
   "admin_only": "Solo los administradores pueden ver esta página.",
+  "staff_only": "Solo el equipo de la plataforma puede ver esta página.",
+  "module_locked": "Tu organización no tiene este módulo.",
+  "download_locked": "Tu rol no permite descargar.",
   "deactivate_confirm": "{name} ya no podrá entrar hasta que reactives su cuenta.",
-  "cancel": "Cancelar"
+  "cancel": "Cancelar",
+  "settings_title": "Configuración",
+  "profile": "Perfil",
+  "avatar": "Foto de perfil",
+  "upload_image": "Subir imagen",
+  "remove_image": "Quitar",
+  "theme": "Tema",
+  "save": "Guardar",
+  "saved": "Cambios guardados.",
+  "change_email": "Cambiar correo",
+  "new_email": "Correo nuevo",
+  "current_password": "Contraseña actual",
+  "change_password": "Cambiar contraseña",
+  "new_password": "Contraseña nueva",
+  "password_changed": "Contraseña cambiada. Las demás sesiones se cerraron.",
+  "logo": "Logo de la empresa",
+  "logo_help": "Aparece en la navegación de todas las cuentas."
+} as const;
+
+export const THEME_LABEL = {
+  "system": "Como el sistema",
+  "light": "Claro",
+  "dark": "Oscuro"
 } as const;
 
 export const MAIL_INVITE = {
@@ -943,6 +962,17 @@ export const MAIL_RESET = {
   "html": "<p>Hola {name}:</p><p>Pediste restablecer tu contraseña. Elige una nueva en este enlace (vale {minutes} minutos y solo una vez):</p><p><a href=\"{link}\">{link}</a></p><p>Si no fuiste tú, ignora este correo: tu contraseña no cambia.</p>"
 } as const;
 
+export const MAIL_INTEREST = {
+  "module": {
+    "subject": "{org} pidió {module}",
+    "text": "{name} ({email}), de {org}, quiere conocer el módulo {module} de Absolut Cinema.\n"
+  },
+  "sales": {
+    "subject": "{org} quiere hablar con Ventas",
+    "text": "{name} ({email}), de {org}, pidió que Ventas le escriba.\n"
+  }
+} as const;
+
 export const DATASET_LABEL = {
   "cinemas": "Cines y salas",
   "auditoriums": "Salas y aforo",
@@ -952,18 +982,8 @@ export const DATASET_LABEL = {
   "delivery_prices": "Dulcería a domicilio"
 } as const;
 
-export const DATASET_HELP = {
-  "cinemas": "Un renglón por complejo, con sus salas y butacas medidas en el plano de asientos.",
-  "auditoriums": "Un renglón por sala: butacas totales y fuera de servicio según la última medición.",
-  "week_showtimes": "Funciones publicadas en el rango de fechas, tal como están hoy; las cerradas dicen si se cancelaron o concluyeron.",
-  "ticket_prices": "Boleto general y rango de boletos por cine, formato y tipo de día, con la fecha de la lectura.",
-  "concession_prices": "Menú en línea de Cinépolis por complejo; la última lectura de cada producto.",
-  "delivery_prices": "Precios de Cinemex y Cinépolis en Rappi y DiDi Food; la última lectura de cada producto por tienda."
-} as const;
-
 export const DATA_TEXT = {
   "title": "Datos",
-  "lead": "Las tablas del archivo histórico, para ordenar, filtrar, buscar y descargar.",
   "dataset": "Tabla",
   "chain": "Cadena",
   "cinemas": "Cines",
@@ -972,13 +992,16 @@ export const DATA_TEXT = {
   "category": "Categoría",
   "all": "Todas",
   "search": "Buscar",
-  "search_help": "Parte del nombre; sin distinguir mayúsculas.",
+  "search_help": "Parte del nombre, sin distinguir mayúsculas ni acentos. En funciones, de la película o del cine.",
   "only_open": "Solo funciones vigentes",
   "latest_only": "Solo la última lectura de cada producto",
   "format": "Formato",
   "day_type": "Tipo de día",
-  "rows": "{n} renglones",
-  "truncated": "Se muestran los primeros {n}; afina los filtros para ver el resto.",
+  "page": "{first}–{last} de {total}",
+  "previous": "Página anterior",
+  "next": "Página siguiente",
+  "page_size": "Renglones por página",
+  "page_size_value": "{n} por página",
   "download": "Descargar CSV",
   "empty": "No hay renglones con esos filtros.",
   "no_history": "El archivo histórico aún no tiene esta tabla poblada.",
@@ -989,8 +1012,6 @@ export const DATA_TEXT = {
 export const INDEP_TEXT = {
   "nav": "Independientes",
   "title": "Oferta independiente: la <span>Cineteca Nacional</span>",
-  "meta_zone": "Zona",
-  "meta_zone_value": "CDMX (sus tres sedes)",
   "meta_period": "Periodo",
   "meta_note": "Fuera de los shares frente a Cinépolis: cine de autor, un solo precio",
   "no_db": "Aún no hay datos: la base no existe todavía. Ver la página de cartelera.",
@@ -1003,12 +1024,8 @@ export const INDEP_TEXT = {
   "period_pick": "Elegir fechas",
   "period_range": "Del … al …",
   "period_caption": "La Cineteca publica su cartelera hasta el miércoles de la semana en curso.",
-  "layer1": "Lo que importa hoy",
-  "layer1_desc": "El hallazgo de la oferta independiente, si cruza su umbral; el mismo que aparece en la cartelera.",
   "layer1_none": "Ningún título de la Cineteca cruza el umbral: llenar {pct} % de sus butacas en al menos {n} funciones medidas sin que lo exhibamos en CDMX.",
   "layer1_pending": "El hallazgo se enciende cuando esté confirmada la lectura de las ventas en los planos de la Cineteca.",
-  "layer2": "Evidencia",
-  "layer2_desc": "Qué programa, cuánto se llena, cuánto se parece a nuestra cartelera y a qué horas.",
   "q_programa": "¿Qué programa la Cineteca en este periodo?",
   "q_ocupacion": "¿Cuánto se llena?",
   "q_solape": "¿Compite con nuestra cartelera?",
@@ -1030,8 +1047,6 @@ export const INDEP_TEXT = {
   "leer_ocupacion": "La ocupación se lee del plano de asientos de cada función entre 15 y 75 minutos después de empezar: la asistencia final. Se pondera por butacas, así una sala grande pesa más. La sala sale del plano, no de la cartelera, que no la publica.",
   "leer_solape": "Una película de la Cineteca cuenta como \"También en Cinemex\" si en el mismo periodo tenemos al menos una función de ella en algún cine de CDMX. Las películas se emparejan por título con las mismas reglas que Cinemex y Cinépolis. Mucho cine de autor no tiene pareja en nuestra cartelera: es el dato, no un error.",
   "leer_franjas": "Cada barra es la parte de la programación de cada cadena que empieza en esa franja, en % de sus propias funciones del periodo: la Cineteca contra Cinemex en CDMX. No se compara con Cinépolis ni entra a los shares de la cartelera.",
-  "layer3": "Apéndice",
-  "layer3_desc": "La cartelera completa del periodo, el aforo de sus salas y lo que aún no se captura.",
   "app_board": "Cartelera completa del periodo",
   "app_board_summary": "{titles} títulos · {shows} funciones",
   "app_capacity": "Aforo por sala",
@@ -1044,8 +1059,7 @@ export const INDEP_TEXT = {
     "**Sala en la cartelera.** La cartelera pública no dice en qué sala es cada función; la sala solo llega del plano de asientos, así que el aforo ofertado por título no se puede calcular como en las cadenas."
   ],
   "back": "Volver a la cartelera",
-  "link": "Ver la oferta independiente: qué programa y cuánto llena la Cineteca",
-  "footer": "Fuentes: cartelera pública de la Cineteca Nacional (sedes Chapultepec, de las Artes y México), capturada con la cartelera de las cadenas tres veces al día; ocupación leída del plano de asientos de cada función después de empezar. La Cineteca no entra a los shares de Cinemex frente a Cinépolis. Historia desde el {first}."
+  "footer": "Fuentes: cartelera pública de la Cineteca Nacional (sedes Chapultepec, de las Artes y México), capturada con la cartelera de las cadenas tres veces al día; ocupación leída del plano de asientos de cada función después de empezar. Historia desde el {first}."
 } as const;
 
 export const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron" as const;
@@ -1093,9 +1107,7 @@ export const MAP_METRIC = {
 export const MAP_TEXT = {
   "nav": "Mapa",
   "title": "Mapa de cines: <span>Cinemex</span>, Cinépolis y la Cineteca",
-  "meta_zone": "Zona",
   "meta_period": "Funciones",
-  "meta_note": "Cada dato con la fecha de su última lectura",
   "no_db": "Aún no hay datos: la base no existe todavía. Ver la página de cartelera.",
   "empty": "No hay cines con coordenadas en esta zona.",
   "size_by": "Tamaño del punto",
@@ -1103,7 +1115,6 @@ export const MAP_TEXT = {
   "chains": "Cadenas",
   "no_chains": "Elige al menos una cadena en la barra lateral.",
   "cinemas": "Cines",
-  "cinemas_placeholder": "Todos los cines de la zona",
   "cinemas_help": "Escribe parte del nombre para buscar; puedes elegir varios. Vacío muestra todos.",
   "filtered": "{n} de {total} cines",
   "highlights": "Destacados de la zona",
@@ -1331,7 +1342,6 @@ export const RECOMMEND_TEXT = {
 
 export const OPS_TEXT = {
   "title": "Operaciones",
-  "lead": "Estado de la captura, de las bases SQLite y de los servicios. Solo para quien opera la plataforma.",
   "window": "Ventana",
   "hours": "{n} h",
   "all_ok": "Sin problemas en las últimas {hours} h.",
@@ -1423,20 +1433,123 @@ export const OPS_TEXT = {
   ]
 } as const;
 
+export const PROVIDER_TEXT = {
+  "nav": "Proveedores",
+  "title": "Proveedores",
+  "question": "¿Cuántos cines, salas y funciones tiene cada distribuidor en cada cadena?",
+  "no_data": "Sin funciones en el periodo.",
+  "columns": {
+    "provider": "Distribuidor",
+    "kind": "Tipo",
+    "chain": "Cadena",
+    "cinemas": "Cines",
+    "share_cinemas": "% de cines",
+    "screens": "Salas",
+    "shows": "Funciones",
+    "share_shows": "% de funciones",
+    "large_shows": "Premium o gran formato"
+  }
+} as const;
+
+export const PROVIDER_KIND_LABEL = {
+  "distribuidor": "Distribuidor",
+  "programa_propio": "Programa propio",
+  "evento": "Evento",
+  "sin_clasificar": "Sin clasificar"
+} as const;
+
 export const LAYER_TEXT = {
-  "tag": "CAPA {num}",
-  "read_it": "Cómo leerla"
+  "read_it": "Cómo leerla",
+  "evidence": "Ver la evidencia"
+} as const;
+
+export const CINES_TEXT = {
+  "q_ranking": "Venta por cine",
+  "q_competitors": "Los Cinépolis más fuertes",
+  "q_rivals": "Tu rival número uno, cine por cine",
+  "axis": "% de butacas vendidas",
+  "previous": "{days} días anteriores: {pct} %",
+  "competitor_headers": [
+    "",
+    "Cinépolis",
+    "Boletos",
+    "% vendido",
+    "Frente a los {days} días anteriores",
+    "Nuestros cines a {km} km o menos"
+  ],
+  "rival_headers": [
+    "Cinemex",
+    "% vendido",
+    "Su rival",
+    "% vendido",
+    "Diferencia",
+    "Distancia",
+    "Cinépolis cerca"
+  ],
+  "neighbor": "{name} {pct} %",
+  "no_neighbors": "Ninguno",
+  "more_neighbors": "+{n} más",
+  "ahead": "cines que venden más que su rival",
+  "km": "{km} km",
+  "show_all": "Ver los {n} lugares de Cinépolis",
+  "empty": "No hay planos medidos después del inicio en esta zona: solo se leen en las plazas de muestreo de planos.",
+  "leer_ranking": "Cada función se lee una vez en el plano de asientos, entre 15 y 75 minutos después de empezar, en ambas cadenas y con la misma regla. El % vendido es butacas vendidas entre butacas medidas, de los últimos {days} días. Solo entran los cines con {min} funciones medidas o más.",
+  "leer_competitors": "Cada lugar junta el complejo y su sala VIP, que comparten edificio. El orden por boletos vendidos compara a Cinépolis consigo mismo; contra nuestros cines se compara en % vendido, porque los cines tienen distinto tamaño.",
+  "leer_rivals": "El rival de cada cine es el Cinépolis a {km} km o menos que más boletos vende, que no siempre es el más cercano. La línea une los dos % vendidos; el número de la derecha es la diferencia en puntos porcentuales."
+} as const;
+
+export const FINDING_UNIT = {
+  "pct": "{value} %",
+  "pp": "{value} pp",
+  "pct_diff": "{value} %",
+  "money": "${value}",
+  "count": "{value}",
+  "pace": "{value} pts/día"
+} as const;
+
+export const FINDING_TEXT = {
+  "versus": "frente a",
+  "theme": "Tema"
+} as const;
+
+export const FINDING_THEME_LABEL = {
+  "programacion": "Programación",
+  "preventa": "Preventa",
+  "precios": "Precios",
+  "cines": "Cines",
+  "dulceria": "Dulcería",
+  "independientes": "Independientes"
+} as const;
+
+export const DOWNLOAD_TEXT = {
+  "png": "Descargar PNG",
+  "csv": "Descargar CSV",
+  "data": "Ver datos",
+  "chart": "grafica",
+  "csv_headers": [
+    "Concepto",
+    "Cadena",
+    "Valor",
+    "Unidad"
+  ]
 } as const;
 
 export const PAGE_LABEL = {
   "cartelera": "Cartelera",
+  "programacion": "Programación semanal",
+  "preventa": "Preventa",
+  "precios": "Precios y butacas",
+  "cines": "Cines",
+  "historial": "Historial de funciones",
   "mapa": "Mapa",
   "recomendador": "¿A dónde ir?",
   "dulceria": "Dulcería",
   "independientes": "Independientes",
+  "proveedores": "Proveedores",
   "datos": "Datos",
   "usuarios": "Usuarios",
-  "operaciones": "Operaciones"
+  "operaciones": "Operaciones",
+  "configuracion": "Configuración"
 } as const;
 
 export const MODULE_LABEL = {
@@ -1446,14 +1559,193 @@ export const MODULE_LABEL = {
   "admin": "Administración"
 } as const;
 
+export const UPGRADE_TEXT = {
+  "title": "{module} no está en tu plan",
+  "sales_title": "Comunicarse con Ventas",
+  "sales_body": "Ventas te escribe para ver qué módulos necesita tu organización.",
+  "body": {
+    "cartelera": "Compara la programación, la preventa, los precios y los cines de Cinemex y Cinépolis, con el mapa y la Cineteca.",
+    "dulceria": "Compara los precios de dulcería en sala y a domicilio de Cinemex y Cinépolis.",
+    "datos": "Explora y descarga las tablas completas de la captura. Viene en el plan Completo."
+  },
+  "cta": "Quiero conocerlo",
+  "sent": "Listo. Ventas te escribirá pronto.",
+  "close": "Cerrar",
+  "locked": "No incluido en tu plan"
+} as const;
+
 export const NAV_LABEL = {
-  "cartelera": "Resumen",
+  "cartelera": "Hallazgos",
+  "programacion": "Programación semanal",
+  "preventa": "Preventa",
+  "precios": "Precios y butacas",
+  "cines": "Cines",
+  "historial": "Historial de funciones",
   "mapa": "Mapa",
   "recomendador": "¿A dónde ir?",
   "dulceria": "En sala",
   "independientes": "Independientes",
+  "proveedores": "Proveedores",
   "datos": "Datos",
   "usuarios": "Usuarios",
   "operaciones": "Operaciones",
+  "configuracion": "Configuración",
   "domicilio": "A domicilio"
 } as const;
+
+export const SHELL_TEXT = {
+  "search": "Buscar secciones",
+  "no_results": "Ninguna sección coincide.",
+  "account": "Cuenta",
+  "notifications": "Preferencias de notificación",
+  "language": "Preferencias de idioma",
+  "appearance": "Aspecto",
+  "shortcuts": "Atajos de teclado",
+  "sales": "Comunicarse con Ventas",
+  "upgrade": "Mejorar",
+  "invite": "Cuéntale a un amigo",
+  "shortcut_mac": "⌘K",
+  "shortcut_other": "Ctrl K"
+} as const;
+
+export const HELP_TEXT = {
+  "open": "Ayuda",
+  "search": "Encuentra guías",
+  "no_results": "Ninguna guía coincide.",
+  "back": "Volver",
+  "close": "Cerrar",
+  "print": "Imprimir o guardar PDF"
+} as const;
+
+export const HELP_TOPICS = [
+  {
+    "key": "exportar",
+    "title": "Exportar y compartir",
+    "summary": "Lleva cifras y gráficas a Excel, Google Sheets o una presentación",
+    "guides": [
+      {
+        "key": "excel",
+        "title": "Exportar a Excel",
+        "summary": "Cada gráfica y cada hallazgo se descargan como CSV.",
+        "steps": [
+          "Abajo de la gráfica o del hallazgo, elige «Descargar CSV».",
+          "Abre el archivo con doble clic. Excel lee los acentos sin pasos extra.",
+          "Para la tabla completa, usa Datos: el CSV trae todo lo filtrado, hasta 5,000 renglones."
+        ]
+      },
+      {
+        "key": "sheets",
+        "title": "Exportar a Google Sheets",
+        "summary": "Google Sheets importa el mismo CSV.",
+        "steps": [
+          "Descarga el CSV de la gráfica, del hallazgo o de Datos.",
+          "En Google Sheets, abre Archivo › Importar › Subir y elige el archivo.",
+          "Deja «Detectar automáticamente» como separador y elige dónde va la hoja."
+        ]
+      },
+      {
+        "key": "png",
+        "title": "Llevar una gráfica a una presentación",
+        "summary": "«Descargar PNG» guarda la gráfica como imagen a doble resolución.",
+        "steps": [
+          "Abajo de la gráfica, elige «Descargar PNG».",
+          "Inserta la imagen en PowerPoint, Keynote o Google Slides."
+        ]
+      },
+      {
+        "key": "pdf",
+        "title": "Imprimir o guardar en PDF",
+        "summary": "El botón de la impresora en la barra superior imprime la pantalla completa.",
+        "steps": [
+          "Elige el botón de la impresora. La pantalla carga todas sus secciones primero.",
+          "Para un PDF, elige «Guardar como PDF» como destino en el diálogo de impresión."
+        ]
+      },
+      {
+        "key": "link",
+        "title": "Compartir una vista",
+        "summary": "La zona, el periodo y la franja viajan en el enlace.",
+        "steps": [
+          "Elige los filtros en la barra de la pantalla.",
+          "Copia la dirección del navegador y compártela.",
+          "Quien la abre necesita su propia cuenta y ve la misma vista."
+        ]
+      }
+    ]
+  },
+  {
+    "key": "leer",
+    "title": "Leer los datos",
+    "summary": "Qué mide cada cifra y por qué se compara así",
+    "guides": [
+      {
+        "key": "shares",
+        "title": "Por qué todo está en porcentajes",
+        "summary": "Cinemex y Cinépolis tienen distinto número de cines y salas. Un total engaña.",
+        "steps": [
+          "Cada cifra es el porcentaje de la programación de cada cadena.",
+          "Las diferencias entre porcentajes están en puntos porcentuales (pp)."
+        ]
+      },
+      {
+        "key": "today",
+        "title": "Por qué hoy no cuentan las funciones que ya empezaron",
+        "summary": "Cinépolis borra cada función al empezar. Cinemex la conserva unas horas.",
+        "steps": [
+          "Para comparar parejo, el día en curso solo cuenta las funciones que aún no empiezan.",
+          "La hora de inicio se compara en la zona horaria de cada cine."
+        ]
+      },
+      {
+        "key": "week",
+        "title": "La semana de cine",
+        "summary": "La semana va de jueves a miércoles, como la publican ambas cadenas."
+      },
+      {
+        "key": "findings",
+        "title": "Por qué una pantalla no muestra hallazgos",
+        "summary": "Un hallazgo solo aparece si la diferencia cruza su umbral. Si ninguna lo cruza, la pantalla lo dice.",
+        "steps": [
+          "Prueba con otro periodo o con otra zona."
+        ]
+      },
+      {
+        "key": "cineteca",
+        "title": "Dónde están la Cineteca y los independientes",
+        "summary": "Tienen su propia página, Independientes. No entran a la comparación con Cinépolis."
+      }
+    ]
+  },
+  {
+    "key": "usar",
+    "title": "Usar el dashboard",
+    "summary": "Filtros, búsqueda y aspecto",
+    "guides": [
+      {
+        "key": "filters",
+        "title": "Cambiar zona, periodo y franja",
+        "summary": "La barra de la pantalla filtra todo lo que ves.",
+        "steps": [
+          "Zona: una plaza o todo el país.",
+          "Periodo: el rango de fechas.",
+          "Franja horaria: las horas de inicio de las funciones.",
+          "Los filtros se conservan al cambiar de pantalla dentro de Cartelera y Dulcería."
+        ]
+      },
+      {
+        "key": "search",
+        "title": "Ir rápido a una sección",
+        "summary": "La búsqueda de la barra superior abre cualquier sección.",
+        "steps": [
+          "Usa ⌘K en Mac o Ctrl K en Windows.",
+          "Escribe parte del nombre y elige la sección."
+        ]
+      },
+      {
+        "key": "appearance",
+        "title": "Cambiar a tema oscuro",
+        "summary": "En el menú de tu avatar, elige «Aspecto»."
+      }
+    ]
+  }
+] as const;
