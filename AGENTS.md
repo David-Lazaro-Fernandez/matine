@@ -77,6 +77,9 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
   tabla versionada `scraper/title_pairs.csv`). Toda comparación de películas entre cadenas agrupa por
   `title_key(title_norm)`, registrada en SQLite por `analytics.connect()`; no compares `title_norm` entre cadenas. Un par
   dudoso se decide con `scripts/title_pairs.py`, nunca por parecido automático.
+- **Qué distribuidora tiene un título lo decide `scraper/distributors.py`**: `distributor_map.csv` junta las variantes y
+  `title_distributors.csv` decide cuando las cadenas no coinciden. Lo que compara distribuidoras entre cadenas pasa por
+  `distributor_reach`; un título sin decidir es `sin_conciliar`, nunca se adivina.
 - **La geografía tiene una sola fuente: `scraper/plazas.py`.** Qué ciudades de Cinépolis y qué áreas de Cinemex forman
   una plaza se define ahí (stdlib) y lo comparten el muestreo de planos (`config.SEATS_PLAZAS`) y el filtro de plaza de
   `analytics/` (`analytics/plaza.py`). Los planos de asientos **no se censan a nivel nacional**: solo entran las plazas

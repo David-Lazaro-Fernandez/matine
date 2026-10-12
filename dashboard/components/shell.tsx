@@ -63,7 +63,7 @@ type Icon = React.ComponentType<{ className?: string }>;
 
 // Cada módulo se contrata aparte: Cartelera trae las páginas de películas, Dulcería las de precios de dulcería.
 const MODULES: { key: ModuleKey; icon: Icon; iconSelected: Icon; pages: PageKey[] }[] = [
-  { key: 'cartelera', icon: MoviesAndTv24Regular, iconSelected: MoviesAndTv24Filled, pages: ['cartelera', 'programacion', 'preventa', 'precios', 'cines', 'historial', 'mapa', 'recomendador', 'independientes', 'proveedores'] },
+  { key: 'cartelera', icon: MoviesAndTv24Regular, iconSelected: MoviesAndTv24Filled, pages: ['cartelera', 'programacion', 'preventa', 'precios', 'cines', 'historial', 'mapa', 'recomendador', 'independientes', 'distribuidoras'] },
   { key: 'dulceria', icon: Food24Regular, iconSelected: Food24Filled, pages: ['dulceria', 'domicilio'] },
   { key: 'datos', icon: Database24Regular, iconSelected: Database24Filled, pages: ['datos'] },
   { key: 'admin', icon: Settings24Regular, iconSelected: Settings24Filled, pages: ['usuarios', 'operaciones'] },
@@ -78,7 +78,7 @@ const PAGE_ICON: Partial<Record<PageKey, Icon>> = {
   mapa: Map20Regular,
   recomendador: Location20Regular,
   independientes: VideoClip20Regular,
-  proveedores: Organization20Regular,
+  distribuidoras: Organization20Regular,
   dulceria: BuildingShop20Regular,
   domicilio: VehicleTruckProfile20Regular,
   datos: Database20Regular,
@@ -87,11 +87,11 @@ const PAGE_ICON: Partial<Record<PageKey, Icon>> = {
   configuracion: Settings20Regular,
 };
 const HREF: Partial<Record<PageKey, string>> = { cartelera: '/', domicilio: '/dulceria/domicilio/' };
-// Usuarios es de quien gestiona cuentas. Operaciones y Proveedores son solo del equipo de la plataforma: Proveedores
+// Usuarios es de quien gestiona cuentas. Operaciones y Distribuidoras son solo del equipo de la plataforma: Distribuidoras
 // todavía no se vende.
 function canSee(user: Profile, key: PageKey): boolean {
   if (key === 'usuarios') return user.can_manage;
-  if (key === 'operaciones' || key === 'proveedores') return user.role === 'staff';
+  if (key === 'operaciones' || key === 'distribuidoras') return user.role === 'staff';
   return true;
 }
 function isLocked(user: Profile, key: ModuleKey): boolean {

@@ -909,6 +909,27 @@ exclusivas deja de contar Infinity Vision como exclusiva de Cinépolis ("el mayo
 material extra de la edición de aniversario, sin confirmar. Primera revisión de candidatos: uno, "El Descenso" frente a
 "El Desaire", rechazado.
 
+### Distribuidoras (`scraper/distributors.py`, `analytics/distributors.py`, 2026-10-12)
+
+Cada cadena manda la distribuidora como texto libre (Cinemex `info.distributor`, Cinépolis `movie.distributor`).
+`distributor_map.csv` junta las variantes en un nombre y un tipo (`distribuidor`, `programa_propio`, `evento`,
+`error_fuente`); un texto que no está en el mapa sale como `sin_clasificar`, visible.
+
+Para la misma película las cadenas pueden dar distribuidoras distintas: Cinemex a veces pone el estudio y Cinépolis la
+distribuidora local. Verificado 2026-10-12: Verity (Amazon MGM Studios / Universal), El árbol mágico (Diamond Films /
+Disney), Shaun el cordero (StudioCanal / Cinemex Distribución), dos conciertos de BTS (Trafalgar / +QueCine). Sin
+conciliar, la brecha más grande de la semana era "Amazon MGM +9 pp a nuestro favor", que es una diferencia de etiqueta.
+Por eso cada función cuenta con la distribuidora de su título (`title_key`):
+
+1. la de `scraper/title_distributors.csv` (versionada, la decide una persona), si tiene fila;
+2. si no, la única que dan las cadenas en el periodo, aunque una de ellas no traiga dato;
+3. si dan varias, cada cadena conserva la suya con tipo `sin_conciliar`. Esas funciones salen en la tabla de alcance y
+   quedan fuera de la brecha (`distributor_gaps`). `scraper.health` lista los títulos por decidir.
+
+La página Distribuidoras (solo staff) abre con la brecha de share de funciones por distribuidora entre cadenas
+(`distributor_conclusions`, umbral `DISTRIBUTOR_MIN_PP` = 3 pp). Los programas propios no entran a la brecha: cada
+cadena tiene el suyo.
+
 ### Venta por cine (`analytics/cinema_sales.py`, 2026-10-11)
 
 El plano después del inicio se lee en ambas cadenas con la misma regla (15 a 75 minutos después de empezar, plazas de
