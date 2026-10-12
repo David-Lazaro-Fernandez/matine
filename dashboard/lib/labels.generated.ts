@@ -1418,7 +1418,7 @@ export const OPS_TEXT = {
 export const PROVIDER_TEXT = {
   "nav": "Proveedores",
   "title": "Proveedores",
-  "question": "¿Cuántos cines, salas y funciones le damos a cada distribuidor?",
+  "question": "¿Cuántos cines, salas y funciones tiene cada distribuidor en cada cadena?",
   "no_data": "Sin funciones en el periodo.",
   "columns": {
     "provider": "Distribuidor",

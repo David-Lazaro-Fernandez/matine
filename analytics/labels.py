@@ -1012,7 +1012,7 @@ COLUMN_LABEL.update({
 PROVIDER_TEXT = {
     "nav": "Proveedores",
     "title": "Proveedores",
-    "question": "¿Cuántos cines, salas y funciones le damos a cada distribuidor?",
+    "question": "¿Cuántos cines, salas y funciones tiene cada distribuidor en cada cadena?",
     "no_data": "Sin funciones en el periodo.",
     "columns": {"provider": "Distribuidor", "kind": "Tipo", "chain": "Cadena", "cinemas": "Cines", "share_cinemas": "% de cines",
                 "screens": "Salas", "shows": "Funciones", "share_shows": "% de funciones",
