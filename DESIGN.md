@@ -93,12 +93,12 @@ zona, periodo y franja:
    dice y no inventa.
 2. **Programación semanal** (`/programacion/`). Indicadores, resumen general, películas, horarios y formatos.
 3. **Preventa** (`/preventa/`). Preventa por película y curva de venta.
-4. **Precios y butacas** (`/precios/`). Precios de lista, aforo y butacas ofertadas.
-5. **Cines** (`/cines/`, `components/cartelera/cines.tsx`). La competencia por cine en los últimos 7 días, vista desde
+4. **Cines** (`/cines/`, `components/cartelera/cines.tsx`). La competencia por cine en los últimos 7 días, vista desde
    el competidor: el cliente ya conoce su propia venta. El % vendido de cada cadena con un punto por cine como
    referencia, los Cinépolis más fuertes por boletos vendidos con nuestros cines a 3 km o menos, y el rival número uno
    de cada Cinemex (el Cinépolis cercano que más vende, no el más cercano) en una gráfica de pesas. No usa el periodo
    ni la franja, solo la zona: es lo ya vendido.
+5. **Precios y butacas** (`/precios/`). Precios de lista, aforo y butacas ofertadas.
 6. **Historial de funciones** (`/historial/`). La historia de una función y el registro de cambios.
 
 Una sección de evidencia es una tarjeta blanca: la pregunta, la conclusión, el gráfico y la guía "Cómo leerla"
