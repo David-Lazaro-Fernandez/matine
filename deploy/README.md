@@ -142,7 +142,7 @@ plataforma: todo, también Operaciones), `admin` (gestiona las cuentas de su org
 respaldo diario.
 
 ```sh
-# En /etc/absolut-cinema.env: AC_BASE_URL=https://DOMINIO   AC_MAIL_BACKEND=ses   AC_MAIL_FROM="Absolut Cinema <no-responder@DOMINIO>"
+# En /etc/absolut-cinema.env: AC_BASE_URL=https://DOMINIO   AC_MAIL_BACKEND=ses   AC_MAIL_FROM="Matine <no-response@DOMINIO>"
 systemctl restart absolut-cinema-dashboard
 sudo -u absolut make -C /opt/absolut-cinema user-create EMAIL=quien@cinemex.com NAME="Nombre Apellido" ROLE=admin
 ```

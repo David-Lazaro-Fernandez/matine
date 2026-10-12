@@ -122,6 +122,7 @@ línea por corrida en `data/logs/jobs.jsonl` con la duración, el resultado y el
 | `auth-prune` | acceso | Borra sesiones y enlaces de acceso vencidos hace más de 90 días | domingos 04:07 | 10 min | servidor | `app.db: session`, `token` |
 | `backup` | operación | Copia consistente de snapshots.db y del crudo al bucket | 05:07 | 30 min; 1 reintento a los 10 min | servidor | `bucket de respaldo` |
 | `deploy` | operación | Trae origin/stable si se movió, reinstala si cambió requirements, sincroniza unidades y reinicia el dashboard y la API | cada hora a :02 y :17 y :32 y :47 | 10 min | servidor | `código en /opt/absolut-cinema`, `data/logs/deploy.log` |
+| `integrations` | avisos | Avisos de Slack tras cada captura y resumen del lunes por correo, a las organizaciones que lo configuraron | cada hora a :20 | 10 min | servidor | `data/app.db`, `Slack`, `correo` |
 <!-- jobs:end -->
 
 Fuera del registro, siempre encendidos en el servidor: `absolut-cinema-dashboard.service` (API interna del dashboard en

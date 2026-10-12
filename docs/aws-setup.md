@@ -276,7 +276,7 @@ CINEMEX_BASE_URL=https://api.cinemex.com/rest/v2.38/
 
 # Acceso al dashboard: cuentas en data/app.db (se crea sola), correo por SES y URL pública para los enlaces
 AC_MAIL_BACKEND=ses
-AC_MAIL_FROM=Absolut Cinema <no-responder@DOMINIO>
+AC_MAIL_FROM=Matine <no-response@DOMINIO>
 AC_BASE_URL=https://DOMINIO
 
 # S3

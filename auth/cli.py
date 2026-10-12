@@ -4,6 +4,7 @@ Uso: .venv/bin/python -m auth.cli create --email E --name N [--role staff|admin|
                                | list | reset --email E | deactivate --email E | activate --email E
                                | role --email E --role R | org-create --name N --modules a,b|completo
                                | org-modules --org ID --modules a,b|completo | org-list | prune
+                               | org-integrations --org ID [--slack-webhook URL] [--digest-to a@x,b@y]
 Siempre imprime el enlace además de enviarlo por correo; con AC_MAIL_BACKEND=console también queda en
 data/logs/mail.log. `role` es la única forma de dar el rol `staff`. Sale con 1 en error.
 """
@@ -44,6 +45,10 @@ def main(argv=None):
     p = sub.add_parser("org-modules", help="cambia los módulos de una organización")
     p.add_argument("--org", type=int, required=True)
     p.add_argument("--modules", type=_modules, required=True, help=f"{','.join(MODULES)} o {_FULL_PLAN}")
+    p = sub.add_parser("org-integrations", help="avisos de Slack y destinatarios del resumen de una organización")
+    p.add_argument("--org", type=int, required=True)
+    p.add_argument("--slack-webhook", help="URL de webhook de Slack; cadena vacía la quita")
+    p.add_argument("--digest-to", help="correos separados por coma; cadena vacía los quita")
     sub.add_parser("org-list", help="todas las organizaciones")
     sub.add_parser("prune", help="borra sesiones y tokens vencidos hace más de 90 días")
     args = ap.parse_args(argv)
@@ -90,6 +95,20 @@ def _run(conn, args):
             print(f"error: no hay organización {args.org}", file=sys.stderr)
             return 1
         print(f"organización {args.org}: {', '.join(args.modules) or 'sin módulos'}")
+    elif args.cmd == "org-integrations":
+        changes = {}
+        if args.slack_webhook is not None:
+            changes["slack_webhook"] = args.slack_webhook
+        if args.digest_to is not None:
+            changes["digest_recipients"] = args.digest_to.split(",")
+        try:
+            orgs.set_settings(conn, args.org, changes)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+        settings = orgs.integrations(conn, args.org)
+        print(f"organización {args.org}: slack {'sí' if settings.get('slack_webhook') else 'no'}, "
+              f"resumen a {len(settings.get('digest_recipients') or [])} correos")
     elif args.cmd == "org-list":
         for org in orgs.list_orgs(conn):
             print(f"{org['id']:>4}  {org['name']:<30} {', '.join(org['modules']) or 'sin módulos'}")

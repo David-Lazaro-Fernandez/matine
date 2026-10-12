@@ -221,7 +221,7 @@ APP_DB_PATH = Path(os.environ.get("AC_APP_DB", DATA_DIR / "app.db"))
 # `console` escribe data/logs/mail.log; `ses` envía por Amazon SES.
 MAIL_BACKEND = os.environ.get("AC_MAIL_BACKEND", "console")
 # En SES, identidad verificada.
-MAIL_FROM = os.environ.get("AC_MAIL_FROM", "Absolut Cinema <no-responder@localhost>")
+MAIL_FROM = os.environ.get("AC_MAIL_FROM", "Matine <no-response@matine.lat>")
 # Base de los enlaces del correo.
 BASE_URL = os.environ.get("AC_BASE_URL", "http://localhost:8501").rstrip("/")
 MAIL_LOG_PATH = LOG_DIR / "mail.log"
