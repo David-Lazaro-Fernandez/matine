@@ -18,4 +18,5 @@ export const NAV_LINKS = [
   { name: 'Piloto', href: '/#piloto' },
   { name: 'Metodología', href: '/#metodologia' },
   { name: '¿A dónde ir?', href: '/a-donde-ir/' },
+  { name: 'Precios', href: '/precios/' },
 ];
