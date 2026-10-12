@@ -36,6 +36,7 @@ import {
   Map20Regular,
   MoviesAndTv24Filled,
   MoviesAndTv24Regular,
+  Organization20Regular,
   People20Regular,
   Settings24Filled,
   Settings24Regular,
@@ -53,7 +54,7 @@ type Icon = React.ComponentType<{ className?: string }>;
 
 // Cada módulo es un plan: Cartelera trae las páginas de películas, Dulcería las de precios de dulcería.
 const MODULES: { key: ModuleKey; icon: Icon; iconSelected: Icon; pages: PageKey[]; admin?: boolean }[] = [
-  { key: 'cartelera', icon: MoviesAndTv24Regular, iconSelected: MoviesAndTv24Filled, pages: ['cartelera', 'mapa', 'recomendador', 'independientes'] },
+  { key: 'cartelera', icon: MoviesAndTv24Regular, iconSelected: MoviesAndTv24Filled, pages: ['cartelera', 'mapa', 'recomendador', 'independientes', 'proveedores'] },
   { key: 'dulceria', icon: Food24Regular, iconSelected: Food24Filled, pages: ['dulceria', 'domicilio'] },
   { key: 'datos', icon: Database24Regular, iconSelected: Database24Filled, pages: ['datos'] },
   { key: 'admin', icon: Settings24Regular, iconSelected: Settings24Filled, pages: ['usuarios', 'operaciones'], admin: true },
@@ -63,6 +64,7 @@ const PAGE_ICON: Partial<Record<PageKey, Icon>> = {
   mapa: Map20Regular,
   recomendador: Location20Regular,
   independientes: VideoClip20Regular,
+  proveedores: Organization20Regular,
   dulceria: BuildingShop20Regular,
   domicilio: VehicleTruckProfile20Regular,
   datos: Database20Regular,

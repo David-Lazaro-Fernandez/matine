@@ -1423,6 +1423,31 @@ export const OPS_TEXT = {
   ]
 } as const;
 
+export const PROVIDER_TEXT = {
+  "nav": "Proveedores",
+  "title": "Proveedores",
+  "question": "¿Cuántos cines, salas y funciones le damos a cada distribuidor?",
+  "no_data": "Sin funciones en el periodo.",
+  "columns": {
+    "provider": "Distribuidor",
+    "kind": "Tipo",
+    "chain": "Cadena",
+    "cinemas": "Cines",
+    "share_cinemas": "% de cines",
+    "screens": "Salas",
+    "shows": "Funciones",
+    "share_shows": "% de funciones",
+    "large_shows": "Premium o gran formato"
+  }
+} as const;
+
+export const PROVIDER_KIND_LABEL = {
+  "distribuidor": "Distribuidor",
+  "programa_propio": "Programa propio",
+  "evento": "Evento",
+  "sin_clasificar": "Sin clasificar"
+} as const;
+
 export const LAYER_TEXT = {
   "tag": "CAPA {num}",
   "read_it": "Cómo leerla"
@@ -1434,6 +1459,7 @@ export const PAGE_LABEL = {
   "recomendador": "¿A dónde ir?",
   "dulceria": "Dulcería",
   "independientes": "Independientes",
+  "proveedores": "Proveedores",
   "datos": "Datos",
   "usuarios": "Usuarios",
   "operaciones": "Operaciones"
@@ -1452,6 +1478,7 @@ export const NAV_LABEL = {
   "recomendador": "¿A dónde ir?",
   "dulceria": "En sala",
   "independientes": "Independientes",
+  "proveedores": "Proveedores",
   "datos": "Datos",
   "usuarios": "Usuarios",
   "operaciones": "Operaciones",
