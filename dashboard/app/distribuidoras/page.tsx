@@ -4,25 +4,28 @@
 // `GET /api/distribuidoras`. Los filtros de plaza y periodo viven en la URL, igual que en la Cartelera.
 import * as React from 'react';
 import { MessageBar, MessageBarBody } from '@fluentui/react-components';
-import { type Cell, PageHeader, Pregunta, Seccion, SkeletonTable, Table } from '@/components/common';
+import { type Cell, Leerla, Leyenda, PageHeader, Pregunta, Seccion, SkeletonTable, Table } from '@/components/common';
 import { PeriodSelector, PlazaSelector, usePeriod, usePlaza } from '@/components/filters';
+import { MoviesDumbbell } from '@/components/movies-dumbbell';
 import { ApiError, api, query } from '@/lib/api';
-import { n, pp, range_es } from '@/lib/format';
-import { CHAIN_LABEL, DISTRIBUTOR_KIND_LABEL, DISTRIBUTOR_TEXT as T } from '@/lib/labels.generated';
+import { fill, fixed, n, pp, range_es } from '@/lib/format';
+import { CHAIN_COLOR, CHAIN_LABEL, COMPARED, DISTRIBUTOR_KIND_LABEL, DISTRIBUTOR_TEXT as T, US } from '@/lib/labels.generated';
 
 type Row = Record<string, string | number | null>;
+type Chain = (typeof COMPARED)[number];
+type Gap = { distributor: string; kind: string; gap_pp: number } & Record<`share_${Chain}` | `shows_${Chain}`, number>;
 type Distribuidoras = {
   d0: string;
   d1: string;
   conclusions: { brecha?: string; sin_conciliar?: string };
-  gaps: Row[];
+  gaps: Gap[];
   distributors: Row[];
 };
 
 const TEXT_COLUMNS = ['distributor', 'kind', 'chain'];
-const ONE_DECIMAL = ['share_cinemas', 'share_shows', 'share_cinemex', 'share_cinepolis'];
+const ONE_DECIMAL = ['share_cinemas', 'share_shows'];
 
-// Las filas llegan ordenadas desde la API; aquí solo se cambian las llaves por su texto.
+// Las filas llegan ordenadas por funciones; aquí solo se cambian las llaves por su texto.
 function table(rows: Row[], headers: Record<string, string>) {
   const columns = Object.keys(headers);
   return {
@@ -30,12 +33,24 @@ function table(rows: Row[], headers: Record<string, string>) {
     rows: rows.map((r) => columns.map((c): Cell => {
       if (c === 'kind') return DISTRIBUTOR_KIND_LABEL[String(r[c]) as keyof typeof DISTRIBUTOR_KIND_LABEL] ?? String(r[c]);
       if (c === 'chain') return CHAIN_LABEL[String(r[c]) as keyof typeof CHAIN_LABEL] ?? String(r[c]);
-      if (c === 'gap_pp') return pp(Number(r[c]));
       const v = r[c];
       return typeof v === 'number' ? n(v, ONE_DECIMAL.includes(c) ? 1 : 0) : v ?? '';
     })),
     numCols: columns.flatMap((c, i) => (TEXT_COLUMNS.includes(c) ? [] : [i])),
   };
+}
+
+// Las pesas de la sección Películas, con una distribuidora por fila. Llegan ordenadas por la diferencia.
+function gapRows(gaps: Gap[]) {
+  return gaps.map((g) => ({
+    ...g,
+    title: g.distributor,
+    delta: pp(g.gap_pp),
+    winner: g.gap_pp > 0 ? US : '',
+    tooltip: Object.fromEntries(COMPARED.filter((c) => g[`shows_${c}`]).map((c) => [c, fill(T.gap_tooltip, {
+      distributor: g.distributor, chain: CHAIN_LABEL[c], share: fixed(g[`share_${c}`], 1), shows: n(g[`shows_${c}`]),
+    })])),
+  }));
 }
 
 export default function Page() {
@@ -76,7 +91,9 @@ export default function Page() {
       {header(true)}
       <Seccion slug="brecha">
         <Pregunta texto={T.q_gaps} conclusion={data.conclusions.brecha} nota={data.conclusions.sin_conciliar} />
-        <Table {...table(data.gaps, T.gap_columns)} />
+        <Leyenda items={COMPARED.map((c) => [CHAIN_LABEL[c], CHAIN_COLOR[c]] as const)} />
+        <MoviesDumbbell movies={gapRows(data.gaps)} axisTitle={T.gap_axis} />
+        <Leerla>{T.leer_gaps}</Leerla>
       </Seccion>
       <Seccion slug="distribuidoras">
         <Pregunta texto={T.question} />
