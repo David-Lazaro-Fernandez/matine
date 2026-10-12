@@ -59,6 +59,13 @@ if grep -Eq '^deploy/.*\.(service|timer)$' <<< "$changed"; then
   bash deploy/units.sh
 fi
 
+# Las respuestas precalculadas tienen la forma del código anterior. Sin ellas la API calcula en vivo hasta la siguiente
+# corrida de `api.precalc`.
+if grep -Eq '^(analytics|api)/' <<< "$changed"; then
+  log "cambió analytics/ o api/: borrando las respuestas precalculadas"
+  rm -f data/precalc.db data/precalc.db-wal data/precalc.db-shm
+fi
+
 systemctl restart absolut-cinema-dashboard absolut-cinema-api
 if healthy; then
   log "desplegado ${before:0:10} -> ${target:0:10}: dashboard y API sanos"

@@ -15,11 +15,15 @@ from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, StringConstraints
 from typing_extensions import TypedDict
 
+import auth
 from analytics.labels import ROLE_LABEL
 
 from . import pages, session
 
 Role = Literal[tuple(ROLE_LABEL)]
+Theme = Literal[auth.THEMES]
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+Image = Annotated[str, StringConstraints(max_length=auth.IMAGE_MAX_CHARS)]
 Email = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=320)]
 Password = Annotated[str, StringConstraints(min_length=1, max_length=1024)]
 Token = Annotated[str, StringConstraints(min_length=1, max_length=200)]
@@ -32,6 +36,12 @@ class Me(TypedDict):
     email: str
     name: str
     role: str
+
+
+class Profile(Me):
+    avatar: str | None
+    theme: Theme
+    logo: str | None
 
 
 class Account(TypedDict):
@@ -76,8 +86,28 @@ class Reset(BaseModel):
 
 class NewAccount(BaseModel):
     email: Email
-    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    name: Name
     role: Role = "viewer"
+
+
+class ProfileChange(BaseModel):
+    name: Name
+    theme: Theme
+    avatar: Image | None = None
+
+
+class EmailChange(BaseModel):
+    email: Email
+    password: Password
+
+
+class PasswordChange(BaseModel):
+    current: Password
+    new: Password
+
+
+class LogoChange(BaseModel):
+    logo: Image | None = None
 
 
 class AccountAction(BaseModel):
@@ -129,9 +159,33 @@ def redeem_token(body: Reset, response: Response):
 
 
 @api.get("/yo")
-def me(user: User) -> Me:
-    """Usuario de la sesión y su rol, para armar la navegación."""
-    return user
+def me(user: User) -> Profile:
+    """Usuario de la sesión con su rol, avatar y tema, y el logo de la organización, para armar la navegación."""
+    return session.profile(user["id"])
+
+
+@api.post("/perfil")
+def update_profile(body: ProfileChange, user: User) -> Profile:
+    """Cambia nombre, tema y avatar de la propia cuenta. Sin `avatar`, lo quita."""
+    return session.update_profile(user["id"], body.name, body.theme, body.avatar)
+
+
+@api.post("/perfil/correo")
+def change_email(body: EmailChange, user: User) -> Profile:
+    """Cambia el correo de entrada. Pide la contraseña actual: 403 si no coincide."""
+    return session.change_email(user["id"], body.email, body.password)
+
+
+@api.post("/perfil/contrasena", status_code=204)
+def change_password(body: PasswordChange, user: User, request: Request, response: Response):
+    """Cambia la contraseña, cierra las demás sesiones y renueva la cookie de esta."""
+    session.change_password(request, response, user["id"], body.current, body.new)
+
+
+@api.post("/logo")
+def set_logo(body: LogoChange, admin: Admin) -> Profile:
+    """Fija el logo que ven todas las cuentas. Sin `logo`, lo quita."""
+    return session.set_logo(admin["id"], body.logo)
 
 
 @api.get("/usuarios")

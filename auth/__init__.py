@@ -13,32 +13,41 @@ from .errors import (
                      AuthError,
                      DuplicateEmail,
                      InvalidCredentials,
+                     InvalidImage,
                      LastAdmin,
                      MailFailed,
                      SelfChange,
                      TokenInvalid,
                      WeakPassword,
+                     WrongPassword,
 )
 from .flows import (
+                     IMAGE_MAX_CHARS,
+                     THEMES,
                      activate,
+                     change_email,
+                     change_password,
                      deactivate,
                      invite,
                      link_for,
                      login,
                      logout,
                      peek_token,
+                     profile,
                      redeem_token,
                      request_reset,
                      resend,
+                     set_logo,
                      set_role,
+                     update_profile,
 )
 from .sessions import current_session, prune
 from .users import list_users
 
 __all__ = [
-    "AccountInactive", "AccountLocked", "AuthError", "DuplicateEmail", "InvalidCredentials", "LastAdmin", "MailFailed",
-    "SelfChange",
-    "TokenInvalid", "WeakPassword",
-    "activate", "connect", "current_session", "deactivate", "invite", "link_for", "list_users", "login", "logout",
-    "peek_token", "prune", "redeem_token", "request_reset", "resend", "rows", "set_role",
+    "AccountInactive", "AccountLocked", "AuthError", "DuplicateEmail", "InvalidCredentials", "InvalidImage", "LastAdmin",
+    "MailFailed", "SelfChange", "TokenInvalid", "WeakPassword", "WrongPassword", "IMAGE_MAX_CHARS", "THEMES",
+    "activate", "change_email", "change_password", "connect", "current_session", "deactivate", "invite", "link_for",
+    "list_users", "login", "logout", "peek_token", "profile", "prune", "redeem_token", "request_reset", "resend",
+    "rows", "set_logo", "set_role", "update_profile",
 ]

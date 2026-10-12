@@ -180,7 +180,11 @@ def recorded(capture_db, tmp_path, monkeypatch):
 def test_datos_reads_the_recorded_capture(client, viewer, recorded):
     _login(client, "viewer@example.test")
     body = client.get("/api/datos").json()
-    assert body["dataset"] == "cinemas" and body["rows"] and not body["truncated"]
+    assert body["dataset"] == "cinemas" and body["rows"] and body["total"] >= len(body["rows"])
+    first = client.get("/api/datos", params={"dataset": "week_showtimes", "limit": 25, "sort": "starts_at", "desc": True}).json()
+    second = client.get("/api/datos", params={"dataset": "week_showtimes", "limit": 25, "offset": 25, "sort": "starts_at", "desc": True}).json()
+    assert len(first["rows"]) == 25 and first["rows"][-1]["starts_at"] >= second["rows"][0]["starts_at"]
+    assert client.get("/api/datos", params={"limit": 5001}).status_code == 422
     assert {d["key"] for d in body["datasets"]} >= {"cinemas", "week_showtimes"}
     body = client.get("/api/datos", params={"dataset": "week_showtimes", "chain": "cinemex"}).json()
     assert (body["d0"], body["d1"]) == analytics.cinema_week("2026-09-26")
@@ -324,5 +328,68 @@ def test_cartelera_reads_the_recorded_capture(client, viewer, recorded):
             assert client.get(path, params=params).status_code == 422
     assert client.get("/api/cartelera/seccion/nada").status_code == 422
     assert client.get("/api/cartelera/apendice/historia").status_code == 422
+    assert client.get("/api/cartelera/apendice/ocupacion").status_code == 422
+    cines = client.get("/api/cartelera/cines").json()
+    assert set(cines) == {"days", "min_shows", "max_km", "chains", "cinemas", "competitors", "rivals"}
+    assert client.get("/api/cartelera/cines", params={"plaza": "nada"}).status_code == 422
     assert client.get("/api/cartelera/cambios", params={"kinds": ["availability"]}).status_code == 422
     assert client.get("/api/cartelera/historia", params={"chain": "cineteca"}).status_code == 422
+
+
+PNG = "data:image/png;base64,iVBORw0KGgo="
+
+
+def test_profile_changes_name_theme_and_avatar(client, viewer):
+    _login(client, "viewer@example.test")
+    me = client.get("/api/yo").json()
+    assert (me["theme"], me["avatar"], me["logo"]) == ("system", None, None)
+    res = client.post("/api/perfil", json={"name": "Otra", "theme": "dark", "avatar": PNG})
+    assert res.status_code == 200 and (res.json()["name"], res.json()["theme"], res.json()["avatar"]) == ("Otra", "dark", PNG)
+    for avatar in ("data:image/svg+xml;base64,PHN2Zz4=", "data:image/png;base64,no es base64"):
+        res = client.post("/api/perfil", json={"name": "Otra", "theme": "dark", "avatar": avatar})
+        assert res.status_code == 422 and res.json()["detail"] == AUTH_TEXT["InvalidImage"]
+    assert client.post("/api/perfil", json={"name": "Otra", "theme": "rosa"}).status_code == 422
+    assert client.post("/api/perfil", json={"name": "Otra", "theme": "light"}).json()["avatar"] is None
+
+
+def test_email_change_needs_the_current_password(client, viewer, admin):
+    _login(client, "viewer@example.test")
+    res = client.post("/api/perfil/correo", json={"email": "nuevo@example.test", "password": "mala"})
+    assert res.status_code == 403 and res.json()["detail"] == AUTH_TEXT["WrongPassword"]
+    res = client.post("/api/perfil/correo", json={"email": "ADMIN@example.test", "password": PASSWORD})
+    assert res.status_code == 409
+    res = client.post("/api/perfil/correo", json={"email": "Nuevo@example.test", "password": PASSWORD})
+    assert res.status_code == 200 and res.json()["email"] == "nuevo@example.test"
+    assert _login(TestClient(internal.app), "nuevo@example.test").status_code == 200
+
+
+def test_password_change_keeps_this_session_and_closes_the_others(client, viewer):
+    other = TestClient(internal.app)
+    _login(other, "viewer@example.test")
+    _login(client, "viewer@example.test")
+    body = {"current": PASSWORD, "new": "otra-contraseña-larga-456"}
+    assert client.post("/api/perfil/contrasena", json={**body, "current": "mala"}).status_code == 403
+    res = client.post("/api/perfil/contrasena", json={**body, "new": "corta"})
+    assert res.status_code == 422 and res.json()["detail"] == AUTH_TEXT["password_short"]
+    assert client.post("/api/perfil/contrasena", json=body).status_code == 204
+    assert client.get("/api/yo").status_code == 200
+    assert other.get("/api/yo").status_code == 401
+
+
+def test_only_an_admin_sets_the_logo_and_everyone_sees_it(client, viewer, admin):
+    _login(client, "viewer@example.test")
+    assert client.post("/api/logo", json={"logo": PNG}).status_code == 403
+    admin_client = TestClient(internal.app)
+    _login(admin_client, "admin@example.test")
+    assert admin_client.post("/api/logo", json={"logo": PNG}).json()["logo"] == PNG
+    assert client.get("/api/yo").json()["logo"] == PNG
+    assert admin_client.post("/api/logo", json={}).json()["logo"] is None
+
+
+def test_an_old_app_db_gets_the_new_columns(tmp_path):
+    path = tmp_path / "vieja.db"
+    with sqlite3.connect(path) as old:
+        old.execute("CREATE TABLE account (id INTEGER PRIMARY KEY, email TEXT, name TEXT, role TEXT)")
+    c = db.connect(path)
+    assert {"avatar", "theme"} <= {col["name"] for col in c.execute("PRAGMA table_info(account)")}
+    c.close()

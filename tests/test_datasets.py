@@ -32,7 +32,21 @@ def test_week_showtimes_joins_open_and_closed():
     conn.execute("""CREATE TABLE event (chain, show_id, kind, detected_at, cinema_id, movie_title, date, before_json)""")
     conn.execute("INSERT INTO event VALUES ('cinemex', 's0', 'removed', '2026-09-30T10:00:00+00:00', 'c1', 'Otra', '2026-10-01', ?)",
                  (json.dumps({"datetime_local": "2026-10-01T12:00:00", "screen": "2"}),))
-    both = datasets.week_showtimes(conn, "2026-10-01", "2026-10-01")
+    def ids(**kw):
+        return [r["show_id"] for r in datasets.page(conn, "week_showtimes", d0="2026-10-01", d1="2026-10-01", **kw)]
+
+    both = datasets.page(conn, "week_showtimes", d0="2026-10-01", d1="2026-10-01")
     assert [(r["show_id"], r["closed_kind"]) for r in both] == [("s0", "removed"), ("s1", None)]
-    assert [r["show_id"] for r in datasets.week_showtimes(conn, "2026-10-01", "2026-10-01", only_open=True)] == ["s1"]
-    assert [r["show_id"] for r in datasets.week_showtimes(conn, "2026-10-01", "2026-10-01", search="pelicula")] == ["s1"]
+    assert datasets.count(conn, "week_showtimes", d0="2026-10-01", d1="2026-10-01") == 2
+    assert ids(only_open=True) == ["s1"]
+    assert ids(search="pelicula") == ["s1"]
+    # También busca por el cine, sin mayúsculas ni acentos.
+    assert ids(search="PEDRÉGAL") == ["s0", "s1"]
+    assert ids(search="zzz") == []
+    # Ordena y pagina en la base; una columna que no existe se ignora.
+    assert ids(sort="starts_at", desc=True) == ["s1", "s0"]
+    assert ids(limit=1, offset=1) == ["s1"]
+    # El cine va con su cadena: el mismo id de otra cadena no entra.
+    assert ids(cinema_ids=("cinemex:c1",)) == ["s0", "s1"]
+    assert ids(cinema_ids=("cinepolis:c1",)) == []
+    assert ids(sort="nada; DROP TABLE cinema") == ["s0", "s1"]

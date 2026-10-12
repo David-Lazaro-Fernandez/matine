@@ -54,6 +54,11 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run build
 
+      - name: dashboard en celular (Playwright sobre el build)
+        run: |
+          .venv/bin/python -m playwright install --with-deps chromium
+          AC_UI=1 .venv/bin/python -m pytest -q tests/test_mobile.py
+
       - name: marcar commit estable con el build
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

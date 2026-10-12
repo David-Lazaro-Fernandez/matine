@@ -1,19 +1,32 @@
-"""Capa 1 y conclusiones de Capa 2 del dashboard: hallazgos redactados como decisión.
+"""Hallazgos del dashboard, como cifras y una gráfica, y las conclusiones de cada sección de evidencia.
 
-Cada hallazgo sale de las mismas consultas que el resto del dashboard y se redacta solo si cruza un
-umbral que lo hace relevante para una decisión de programación esta semana. Nunca hay cifras fijas
-aquí: si el dato no existe, el hallazgo no aparece. Hablamos en primera persona como Cinemex.
+Cada hallazgo sale de las mismas consultas que el resto del dashboard y solo aparece si cruza un umbral que lo hace
+relevante para una decisión de programación esta semana. Nunca hay cifras fijas aquí: si el dato no existe, el
+hallazgo no aparece. Un hallazgo no se redacta: da la evidencia y la lectura queda a cargo de quien lo usa.
 
-`findings()` devuelve hasta `top` dicts {topic, title, body, action, support: [{label, value, cmx}], strength, as_of}:
-se evalúan todas las reglas y entran las más fuertes (`strength` = brecha / umbral). `as_of` es la fecha del dato
+`findings()` devuelve hasta `top` dicts {topic, theme, label, metric, compare, delta, chart, context, strength, as_of}:
+- `theme`: la llave de `FINDING_THEME_LABEL` (programacion, preventa, precios, cines, dulceria, independientes).
+- `label`: tema y sujeto, 'Franja · 10 AM – 12 PM'.
+- `metric`, `compare`, `delta`: {label, value, unit, chain}; `unit` es pct, pp, pct_diff, money, count o pace.
+  `compare` y `delta` pueden ser None.
+- `chart`: {kind, unit, rows: [{label, values: {chain: valor}, highlight}]} o None. Una fila va resaltada. `kind` es la
+  forma del dato: bars (ranking), meter (% de un aforo), donut y stack (partes de un todo por cadena; stack para más de
+  cuatro partes), dumbbell (una cifra por cadena en cada fila) o diverging (cambios con signo).
+- `context`: la muestra y el periodo que sostienen la cifra, o None.
+Se evalúan todas las reglas y entran las más fuertes. `strength` es la brecha entre el umbral, por la raíz de `stake`,
+la parte de la programación en juego (0 a 1): un título chico que vende raro no pasa delante de una brecha de toda la
+cadena. El umbral decide si un hallazgo entra; `stake` solo decide el orden. `as_of` es la fecha del dato
 muestreado que sostiene el hallazgo (None si solo usa la cartelera vigente).
 `conclusions()` devuelve {resumen, peliculas, peliculas_note, franjas, formatos, preventa, dulceria}: la frase que abre cada
 sección de evidencia; `independent_conclusions()` lo mismo para la página de la oferta independiente."""
+import math
 from datetime import datetime, timedelta, timezone
 
+from .cinema_sales import DAYS as SALES_DAYS
+from .cinema_sales import chain_occupancy, main_rivals
 from .concessions import concession_basket
 from .db import rows
-from .delivery import delivery_compare, delivery_summary
+from .delivery import delivery_compare
 from .independents import (
     INDEP_MIN_SAMPLES,
     INDEP_MIN_SOLD_PCT,
@@ -33,13 +46,11 @@ from .labels import (
     SLOTS,
     THEM,
     US,
-    WEEKDAY_LABEL,
     date_es,
 )
 from .presale import presale_compare, presale_ranking
 from .queries import (
     concentration,
-    heatmap_day_slot,
     is_full_day,
     kpis,
     mix,
@@ -55,7 +66,7 @@ from .summary import general_summary
 THEM_NAME = CHAIN_LABEL[THEM]
 
 # Umbrales (en puntos porcentuales salvo que se indique) a partir de los cuales una diferencia
-# merece una tarjeta de Capa 1.
+# merece una tarjeta de hallazgo.
 # Diferencia entre Δ funciones y Δ butacas de un título.
 TITLE_SEATS_MIN_PP = 1.5
 # % mínimo de la parrilla de alguna cadena para considerar un título.
@@ -91,6 +102,10 @@ PRESALE_GAP_MIN_PP = 10.0
 PRESALE_EXCLUSIVE_MIN_PCT = 40.0
 # Cines muestreados por cadena para citar una combinación de formato y tipo de día.
 PRICE_MIN_CINEMAS = 5
+# Brecha del % de butacas vendidas entre cadenas, medido en el plano después del inicio.
+OCCUPANCY_MIN_PP = 2.0
+# Brecha del % vendido entre un lugar de Cinemex y su rival número uno, el Cinépolis cercano que más vende.
+RIVAL_MIN_PP = 15.0
 
 # Ventanas de muestreo. El precio se renueva una vez por semana por cine, formato y tipo de día. Con 14 días cubrimos
 # una vuelta completa con holgura. La ocupación se mide cada hora y una semana de cine basta para leer la demanda.
@@ -98,8 +113,15 @@ PRICE_SAMPLE_DAYS = 14
 DEMAND_SAMPLE_DAYS = 7
 # La dulcería a domicilio se captura a diario: un dato más viejo ya no describe el precio de hoy.
 CONCESSION_MAX_AGE_DAYS = 3
+# La pantalla de evidencia de cada tema, que es también su filtro en la portada.
+_THEME = {"titulo": "programacion", "concentracion": "programacion", "franjas": "programacion", "formato": "programacion",
+          "exclusivas": "programacion", "movimientos": "programacion", "demanda": "programacion",
+          "preventa": "preventa", "preventa_brecha": "preventa", "preventa_exclusiva": "preventa", "precio": "precios",
+          "ocupacion": "cines", "rival": "cines", "dulceria": "dulceria", "independientes": "independientes"}
 # El formato es una diferencia de sala, no de semana: solo desplaza a otro hallazgo si la brecha es muy grande.
 _STRUCTURAL_WEIGHT = 0.5
+# La dulcería a domicilio es un canal secundario: mueve mucho menos que el boleto, aunque toque a toda la cadena.
+_DELIVERY_WEIGHT = 0.3
 
 
 def _pp(v):
@@ -129,6 +151,23 @@ def _slot_name(key):
     return SLOT_SHORT[key].replace("P.M.", "PM").replace("A.M.", "AM")
 
 
+def _metric(label, value, unit, chain=None):
+    """Una cifra de la tarjeta: {label, value, unit, chain}. `unit` es pct, pp, pct_diff, money, count o pace."""
+    return {"label": label, "value": round(value, 2), "unit": unit, "chain": chain}
+
+
+def _chart(unit, rows, kind="bars"):
+    """La gráfica de la tarjeta: {kind, unit, rows}. Cada fila es (texto, {cadena: valor}, resaltada)."""
+    return {"kind": kind, "unit": unit, "rows": [{"label": label, "values": {c: round(v, 2) for c, v in values.items() if v is not None},
+                                    "highlight": highlight} for label, values, highlight in rows]}
+
+
+def _card(topic, label, metric, strength, compare=None, delta=None, chart=None, context=None, as_of=None, stake=100.0):
+    """`strength` es la brecha entre el umbral; `stake`, el % de la programación del que habla la tarjeta."""
+    return {"topic": topic, "theme": _THEME[topic], "label": label, "metric": metric, "compare": compare, "delta": delta, "chart": chart,
+            "context": context, "strength": strength * math.sqrt(min(stake, 100.0) / 100.0), "as_of": as_of}
+
+
 def _title_finding(conn, d0, d1, hours=None, plaza=None):
     """¿Dónde la apuesta por sala (butacas) cuenta otra historia que la apuesta por funciones?"""
     movies = movies_by_chain(conn, d0, d1, limit=60, hours=hours, plaza=plaza)
@@ -152,46 +191,14 @@ def _title_finding(conn, d0, d1, hours=None, plaza=None):
     if not best or score < TITLE_SEATS_MIN_PP:
         return None
     m, su, st_, sg, kg = best
-    t = _short(m["title"])
-    support = [
-        {"label": "Parrilla Cinemex", "value": _pct(m["share_cinemex"]), "cmx": True},
-        {"label": f"Parrilla {THEM_NAME}", "value": _pct(m["share_cinepolis"]), "cmx": False},
-        {"label": "Butacas Cinemex", "value": _pct(su["share_seats"]), "cmx": True},
-        {"label": f"Butacas {THEM_NAME}", "value": _pct(st_["share_seats"]), "cmx": False},
-    ]
-    if sg > 0 and kg < 0:
-        title = f"{THEM_NAME} apuesta a {t} con salas grandes; nosotros con más funciones. Su butaca rinde más."
-        body = (f"Le damos {sg:.1f} pp más de parrilla, pero ellos lo programan en salas de {st_['avg_seats']:.0f} asientos "
-                f"frente a nuestras {su['avg_seats']:.0f}: con menos funciones ponen {abs(kg):.1f} pp más de sus butacas en juego.")
-        action = f"Decisión: ¿mover {t} a salas más grandes o sostener la ventaja por frecuencia?"
-    elif sg < 0 and kg > 0:
-        title = f"{THEM_NAME} da más funciones a {t}, pero nosotros ponemos más butacas: la apuesta real es nuestra."
-        body = (f"Ellos le dan {abs(sg):.1f} pp más de parrilla en salas de {st_['avg_seats']:.0f} asientos; nosotros la "
-                f"programamos en salas de {su['avg_seats']:.0f} y ponemos {kg:.1f} pp más de nuestras butacas.")
-        action = f"Decisión: confirmar con ocupación que {t} llena salas grandes antes de la siguiente semana de cine"
-    elif abs(kg) > abs(sg):
-        who_us = sg >= 0
-        title = (f"{t} es nuestra mayor apuesta y en butacas lo es aún más: {kg:+.1f} pp frente a {THEM_NAME}."
-                 if who_us else
-                 f"{THEM_NAME} apuesta a {t} más de lo que parece: {abs(kg):.1f} pp más de butacas, no solo {abs(sg):.1f} pp de funciones.")
-        body = (f"{'Le damos' if who_us else 'Le dan'} {abs(sg):.1f} pp más de parrilla y {'la programamos' if who_us else 'la programan'} "
-                f"en salas de {(su if who_us else st_)['avg_seats']:.0f} asientos frente a {(st_ if who_us else su)['avg_seats']:.0f} "
-                f"del otro lado: la diferencia en butacas ofertadas es {abs(kg):.1f} pp.")
-        action = (f"Decisión: confirmar con ocupación que {t} sostiene salas grandes" if who_us else
-                  f"Decisión: ¿subir {t} a salas más grandes para no ceder la apuesta?")
-    else:
-        who_us = sg >= 0
-        title = (f"Apostamos a {t} por frecuencia, no por sala: {sg:+.1f} pp de funciones pero solo {kg:+.1f} pp de butacas."
-                 if who_us else
-                 f"{THEM_NAME} apuesta a {t} por frecuencia: {abs(sg):.1f} pp más de funciones pero solo {abs(kg):.1f} pp más de butacas.")
-        body = (f"{'Nuestras' if who_us else 'Sus'} salas para {t} promedian {(su if who_us else st_)['avg_seats']:.0f} asientos frente a "
-                f"{(st_ if who_us else su)['avg_seats']:.0f}: la ventaja en funciones se diluye al medirla en butacas.")
-        action = (f"Decisión: ¿concentrar {t} en menos funciones y salas más grandes?" if who_us else
-                  f"Decisión: sostener la posición en {t}; su ventaja es menor de lo que parece")
-    support.append({"label": "Sala prom. Cinemex", "value": f"{su['avg_seats']:.0f} asientos", "cmx": True})
-    support.append({"label": f"Sala prom. {THEM_NAME}", "value": f"{st_['avg_seats']:.0f} asientos", "cmx": False})
-    return {"topic": "titulo", "title": title, "body": body, "action": action, "support": support[:4] + support[4:6],
-            "strength": score / TITLE_SEATS_MIN_PP}
+    return _card("titulo", f"Butacas · {_short(m['title'])}",
+                 _metric("De nuestras butacas", su["share_seats"], "pct", US), score / TITLE_SEATS_MIN_PP,
+                 compare=_metric(f"De las de {THEM_NAME}", st_["share_seats"], "pct", THEM),
+                 delta=_metric("Diferencia", kg, "pp"),
+                 chart=_chart("pct", [("Funciones", {US: m["share_cinemex"], THEM: m["share_cinepolis"]}, False),
+                                      ("Butacas", {US: su["share_seats"], THEM: st_["share_seats"]}, True)]),
+                 context=f"Sala promedio: {su['avg_seats']:.0f} asientos Cinemex, {st_['avg_seats']:.0f} {THEM_NAME}",
+                 stake=max(su["share_seats"], st_["share_seats"]))
 
 
 def _concentration_finding(conn, d0, d1, movies, hours=None, plaza=None):
@@ -202,28 +209,13 @@ def _concentration_finding(conn, d0, d1, movies, hours=None, plaza=None):
     gap = cu["top3_pct"] - ct["top3_pct"]
     if abs(gap) < TOP3_MIN_PP:
         return None
-    shared_top = sorted([m for m in movies if m["shows_cinemex"]], key=lambda m: -m["shows_cinemex"])[:2]
-    names = " o ".join(_short(m["title"], 24) for m in shared_top) or "los estrenos"
-    only_them = [m for m in movies if not m["shows_cinemex"] and m["shows_cinepolis"] >= EXCLUSIVE_MIN_SHOWS]
-    dt = ct["titles"] - cu["titles"]
-    if gap > 0:
-        title = (f"Concentramos la apuesta: 3 títulos se llevan {'casi la mitad' if cu['top3_pct'] >= 45 else _pct(cu['top3_pct'])} "
-                 f"de nuestra parrilla" + (f", con {dt} títulos menos en cartelera." if dt > 0 else "."))
-        body = (f"Coherente si la ventana de estrenos es fuerte; caro si {names} se enfrían. {THEM_NAME} reparte más"
-                + (f" y cubre {len(only_them)} títulos que no tenemos." if only_them else "."))
-        action = "Decisión: validar la concentración contra el calendario de estrenos"
-    else:
-        title = (f"{THEM_NAME} concentra más que nosotros: sus 3 títulos principales pesan {_pct(ct['top3_pct'])} de su parrilla "
-                 f"frente a nuestro {_pct(cu['top3_pct'])}.")
-        body = ("Cubrimos más ancho" + (f" con {-dt} títulos más" if dt < 0 else "") +
-                "; rinde si los títulos medianos venden, y cuesta si la taquilla está en los tres grandes.")
-        action = "Decisión: ¿recortar cola larga para reforzar los tres títulos principales?"
-    return {"topic": "concentracion", "title": title, "body": body, "action": action, "strength": abs(gap) / TOP3_MIN_PP, "support": [
-        {"label": "Top 3 Cinemex", "value": _pct(cu["top3_pct"]), "cmx": True},
-        {"label": f"Top 3 {THEM_NAME}", "value": _pct(ct["top3_pct"]), "cmx": False},
-        {"label": "Títulos Cinemex", "value": f"{cu['titles']}", "cmx": True},
-        {"label": f"Títulos {THEM_NAME}", "value": f"{ct['titles']}", "cmx": False},
-    ]}
+    return _card("concentracion", "Concentración · 3 títulos principales",
+                 _metric("De nuestra parrilla", cu["top3_pct"], "pct", US), abs(gap) / TOP3_MIN_PP,
+                 compare=_metric(f"De la de {THEM_NAME}", ct["top3_pct"], "pct", THEM),
+                 delta=_metric("Diferencia", gap, "pp"),
+                 chart=_chart("pct", [("3 títulos principales", {US: cu["top3_pct"], THEM: ct["top3_pct"]}, True),
+                                      ("Resto", {US: 100 - cu["top3_pct"], THEM: 100 - ct["top3_pct"]}, False)], "donut"),
+                 context=f"Títulos en cartelera: {cu['titles']} Cinemex, {ct['titles']} {THEM_NAME}")
 
 
 def _slot_finding(conn, d0, d1, hours=None, plaza=None):
@@ -234,43 +226,18 @@ def _slot_finding(conn, d0, d1, hours=None, plaza=None):
     if US not in slots or THEM not in slots or not slots[US]["total"] or not slots[THEM]["total"]:
         return None
     su, st_ = slots[US], slots[THEM]
-    gaps = {k: 100.0 * su[k] / su["total"] - 100.0 * st_[k] / st_["total"] for k, *_ in SLOTS}
+    share = {c: {k: 100.0 * r[k] / r["total"] for k, *_ in SLOTS} for c, r in ((US, su), (THEM, st_))}
+    gaps = {k: share[US][k] - share[THEM][k] for k, *_ in SLOTS}
     key = max(gaps, key=lambda k: abs(gaps[k]))
     g = gaps[key]
     if abs(g) < SLOT_MIN_PP:
         return None
-    peak_us = max(SLOTS, key=lambda s: su[s[0]])[0]
-    peak_them = max(SLOTS, key=lambda s: st_[s[0]])[0]
-    pct_us = 100.0 * su[peak_us] / su["total"]
-    pct_them = 100.0 * st_[peak_them] / st_["total"]
-    source = max((k for k in gaps if k != key), key=lambda k: gaps[k]) if g < 0 else min((k for k in gaps if k != key), key=lambda k: gaps[k])
-    evening = key in ("de_18_a_21", "despues_21")
-    if g < 0:
-        title = f"{THEM_NAME} nos gana {_slot_phrase(key)}: pone {abs(g):.1f} pp más de su parrilla ahí."
-        body = (f"Nuestra franja más cargada es {_slot_name(peak_us)} ({pct_us:.0f} % de las funciones); la suya es "
-                f"{_slot_name(peak_them)} ({pct_them:.0f} %)."
-                + (" En la franja de mayor taquilla entramos con menos oferta relativa." if evening else ""))
-        action = f"Decisión: ¿reasignar funciones de {_slot_name(source)} a {_slot_name(key)}?"
-    else:
-        title = f"Ganamos {_slot_phrase(key)}: ponemos {g:.1f} pp más de nuestra parrilla que {THEM_NAME}."
-        body = (f"Nuestra franja más cargada es {_slot_name(peak_us)} ({pct_us:.0f} % de las funciones); la de {THEM_NAME} es "
-                f"{_slot_name(peak_them)} ({pct_them:.0f} %)."
-                + ("" if evening else f" Donde más cedemos es {_slot_phrase(source)} ({gaps[source]:+.1f} pp)."))
-        action = (f"Decisión: sostener la ventaja {_slot_phrase(key)} y vigilar su ocupación" if evening else
-                  f"Decisión: ¿mover parte de la oferta de {_slot_name(key)} a {_slot_name(source)}?")
-    support = []
-    hm = heatmap_day_slot(conn, d0, d1, plaza=plaza)
-    days = sorted({r["weekday"] for r in hm})
-    if 1 < len(days) <= 2:
-        for r in hm:
-            if r["slot"] == key:
-                d = (r["share_cinemex"] or 0) - (r["share_cinepolis"] or 0)
-                support.append({"label": f"Δ {_slot_name(key)} ({WEEKDAY_LABEL[r['weekday']][:3].lower()})", "value": _pp(d), "cmx": d > 0})
-    else:
-        support.append({"label": f"Δ {_slot_name(key)}", "value": _pp(g), "cmx": g > 0})
-    support.append({"label": "Pico Cinemex", "value": f"{_slot_name(peak_us)} · {pct_us:.0f} %", "cmx": True})
-    support.append({"label": f"Pico {THEM_NAME}", "value": f"{_slot_name(peak_them)} · {pct_them:.0f} %", "cmx": False})
-    return {"topic": "franjas", "title": title, "body": body, "action": action, "support": support[:4], "strength": abs(g) / SLOT_MIN_PP}
+    return _card("franjas", f"Franja · {_slot_name(key)}",
+                 _metric("De nuestras funciones", share[US][key], "pct", US), abs(g) / SLOT_MIN_PP,
+                 compare=_metric(f"De las de {THEM_NAME}", share[THEM][key], "pct", THEM),
+                 delta=_metric("Diferencia", g, "pp"),
+                 chart=_chart("pct", [(_slot_name(k), {US: share[US][k], THEM: share[THEM][k]}, k == key) for k, *_ in SLOTS], "stack"),
+                 stake=max(share[US][key], share[THEM][key]))
 
 
 def _format_finding(conn, d0, d1, kp, hours=None, plaza=None):
@@ -279,26 +246,17 @@ def _format_finding(conn, d0, d1, kp, hours=None, plaza=None):
     g, b = max(gaps, key=lambda x: abs(x[0]))
     if abs(g) < FORMAT_MIN_PP:
         return None
-    u, t = mx.get(("format", US, b), 0), mx.get(("format", THEM, b), 0)
     us, them = kp.get(US), kp.get(THEM)
-    sub = (f" Ellos subtitulan más ({them['pct_subtitled']:.0f} % frente a {us['pct_subtitled']:.0f} %)."
-           if us and them and them["pct_subtitled"] > us["pct_subtitled"] + 1 else
-           f" Nosotros subtitulamos más ({us['pct_subtitled']:.0f} % frente a {them['pct_subtitled']:.0f} %)."
-           if us and them and us["pct_subtitled"] > them["pct_subtitled"] + 1 else "")
-    if g > 0:
-        title = f"Nuestra diferencia estructural es {FORMAT_LABEL[b]}: {_pct(u)} de nuestras funciones frente a {_pct(t)} en {THEM_NAME}."
-        action = f"Decisión: confirmar que la oferta {FORMAT_LABEL[b]} se traduce en ocupación y precio"
-    else:
-        title = f"{THEM_NAME} nos supera en {FORMAT_LABEL[b]}: {_pct(t)} de sus funciones frente a {_pct(u)} nuestras."
-        action = f"Decisión: ¿ampliar la oferta {FORMAT_LABEL[b]} donde tenemos sala?"
-    body = "Es una diferencia de sala, no de semana: cambia poco de un periodo a otro." + sub
-    return {"topic": "formato", "title": title, "body": body, "action": action,
-            "strength": _STRUCTURAL_WEIGHT * abs(g) / FORMAT_MIN_PP, "support": [
-        {"label": f"{FORMAT_LABEL[b]} Cinemex", "value": _pct(u), "cmx": True},
-        {"label": f"{FORMAT_LABEL[b]} {THEM_NAME}", "value": _pct(t), "cmx": False},
-        {"label": "Subtituladas Cinemex", "value": _pct(us["pct_subtitled"]) if us else "—", "cmx": True},
-        {"label": f"Subtituladas {THEM_NAME}", "value": _pct(them["pct_subtitled"]) if them else "—", "cmx": False},
-    ]}
+    return _card("formato", f"Formato · {FORMAT_LABEL[b]}",
+                 _metric("De nuestras funciones", mx.get(("format", US, b), 0), "pct", US),
+                 _STRUCTURAL_WEIGHT * abs(g) / FORMAT_MIN_PP,
+                 compare=_metric(f"De las de {THEM_NAME}", mx.get(("format", THEM, b), 0), "pct", THEM),
+                 delta=_metric("Diferencia", g, "pp"),
+                 chart=_chart("pct", [(FORMAT_LABEL[k], {US: mx.get(("format", US, k), 0), THEM: mx.get(("format", THEM, k), 0)}, k == b)
+                                      for k in FORMAT_LABEL], "donut"),
+                 context=(f"Subtituladas: {us['pct_subtitled']:.0f} % Cinemex, {them['pct_subtitled']:.0f} % {THEM_NAME}"
+                          if us and them else None),
+                 stake=max(mx.get(("format", US, b), 0), mx.get(("format", THEM, b), 0)))
 
 
 def _concession_gap(conn):
@@ -324,28 +282,15 @@ def _concession_finding(conn):
     gap, cmp_, as_of = _concession_gap(conn)
     if gap is None or abs(gap) < CONCESSION_MIN_PCT or not _is_fresh(as_of, CONCESSION_MAX_AGE_DAYS):
         return None
-    basket = {r["product_name"]: r for r in concession_basket(conn)}
-    pop = basket.get("Palomitas")
-    single = [r["pct_single_price"] for r in delivery_summary(conn) if r["chain"] == US and r["pct_single_price"] is not None]
-    by = {r["bucket"]: r for r in cmp_}
-    if gap > 0:
-        title = f"{THEM_NAME} cobra {gap:.0f} % más que nosotros en la dulcería a domicilio, y en sala fija el precio por complejo."
-        action = "Decisión: ¿sostener el precio único como argumento de valor o probar precio por zona en la canasta básica?"
-    else:
-        title = f"Nuestra dulcería a domicilio es {abs(gap):.0f} % más cara que la de {THEM_NAME}."
-        action = "Decisión: revisar la canasta básica frente a la suya antes de la siguiente campaña."
-    body = ("Nuestra lista es una sola en toda la ciudad" + (f" ({single[0]:.0f} % de los productos con un solo precio)" if single else "") + "; "
-            + (f"{THEM_NAME} mueve la canasta por complejo: palomitas de ${pop['min_price']:,.0f} a ${pop['max_price']:,.0f} en "
-               f"{int(pop['distinct_prices'])} niveles de precio." if pop else f"{THEM_NAME} fija precio por complejo."))
-    support = []
-    for key, label in (("combo_basico", "Combo básico"), ("combo_nachos", "Combo nachos"), ("nachos", "Nachos"), ("refresco", "Refresco")):
-        r = by.get(key)
-        if r and r["cinemex_median"] and r["cinepolis_median"]:
-            support.append({"label": label, "value": f"${r['cinemex_median']:,.0f} vs ${r['cinepolis_median']:,.0f}", "cmx": r["cinemex_median"] <= r["cinepolis_median"]})
-    if pop:
-        support.append({"label": f"Niveles de precio {THEM_NAME}", "value": f"{int(pop['distinct_prices'])} en {int(pop['cinemas'])} complejos", "cmx": False})
-    return {"topic": "dulceria", "title": title, "body": body, "action": action, "support": support[:5],
-            "strength": abs(gap) / CONCESSION_MIN_PCT, "as_of": as_of}
+    pop = {r["product_name"]: r for r in concession_basket(conn)}.get("Palomitas")
+    widest = max(cmp_, key=lambda r: (abs(r["delta_pct"]), r["bucket"]))
+    return _card("dulceria", "Dulcería a domicilio",
+                 _metric(f"Lo que cobra {THEM_NAME} sobre nuestro precio", gap, "pct_diff", THEM if gap > 0 else US),
+                 _DELIVERY_WEIGHT * abs(gap) / CONCESSION_MIN_PCT,
+                 chart=_chart("money", [(r["label"], {US: r["cinemex_median"], THEM: r["cinepolis_median"]}, r is widest) for r in cmp_], "dumbbell"),
+                 context=(f"Palomitas en sala {THEM_NAME}: de ${pop['min_price']:,.0f} a ${pop['max_price']:,.0f} en "
+                          f"{int(pop['distinct_prices'])} niveles de precio" if pop else None),
+                 as_of=as_of)
 
 
 def _exclusive_finding(movies):
@@ -353,15 +298,13 @@ def _exclusive_finding(movies):
     only_us = [m for m in movies if not m["shows_cinepolis"] and m["shows_cinemex"] >= EXCLUSIVE_MIN_SHOWS]
     if len(only_them) < EXCLUSIVE_MIN_TITLES:
         return None
-    names = ", ".join(_short(m["title"], 26) for m in only_them[:3])
-    title = f"{THEM_NAME} exhibe {len(only_them)} títulos que no tenemos; el mayor se lleva {_pct(only_them[0]['share_cinepolis'])} de su parrilla."
-    body = f"{names}" + (f" y {len(only_them) - 3} más." if len(only_them) > 3 else ".") + \
-           (f" Nosotros tenemos {len(only_us)} exclusivas." if only_us else "")
-    return {"topic": "exclusivas", "title": title, "body": body, "strength": len(only_them) / EXCLUSIVE_MIN_TITLES,
-            "action": "Decisión: ¿alguna exclusiva de Cinépolis merece sala esta semana?",
-            "support": [{"label": f"Solo {THEM_NAME}", "value": f"{len(only_them)} títulos", "cmx": False},
-                        {"label": "Solo Cinemex", "value": f"{len(only_us)} títulos", "cmx": True}] +
-                       [{"label": _short(m["title"], 22), "value": _pct(m["share_cinepolis"]), "cmx": False} for m in only_them[:2]]}
+    return _card("exclusivas", f"Exclusivas de {THEM_NAME}",
+                 _metric(f"Títulos que solo exhibe {THEM_NAME}", len(only_them), "count", THEM),
+                 len(only_them) / EXCLUSIVE_MIN_TITLES,
+                 compare=_metric("Títulos que solo exhibimos nosotros", len(only_us), "count", US),
+                 chart=_chart("pct", [(_short(m["title"], 40), {THEM: m["share_cinepolis"]}, i == 0) for i, m in enumerate(only_them[:5])]),
+                 context=f"% de la parrilla de {THEM_NAME}",
+                 stake=sum(m["share_cinepolis"] for m in only_them))
 
 
 def _moves_finding(conn, d0, d1, movies, hours=None, plaza=None):
@@ -371,39 +314,20 @@ def _moves_finding(conn, d0, d1, movies, hours=None, plaza=None):
     pick = next((m for m in big if m["chain"] == THEM), None) or next((m for m in big if m["chain"] == US), None)
     if not pick:
         return None
-    them = pick["chain"] == THEM
-    t = _short(pick["title"])
+    chain = pick["chain"]
     net = pick["shows_now"] - pick["shows_then"]
     since = date_es(_local_date(pick["since"]), with_year=False)
-    who = THEM_NAME if them else "Nosotros"
-    verb = ("le sumó" if them else "le sumamos") if net > 0 else ("le quitó" if them else "le quitamos")
-    title = (f"Desde el {since}, {who.lower() if not them else who} {verb} {abs(net):,} funciones a {t}: pasó de "
-             f"{_pct(pick['share_then'])} a {_pct(pick['share_now'])} de lo que {'le' if them else 'nos'} falta de semana.")
-    title = title[0].upper() + title[1:]
-    others = sorted((m for m in moves if m["chain"] == pick["chain"] and m["title_norm"] != pick["title_norm"]
-                     and m["delta_pp"] * pick["delta_pp"] < 0), key=lambda m: -abs(m["delta_pp"]))[:2]
-    body = (f"{'Esas funciones se fueron' if net < 0 else 'El espacio salió'} "
-            + ("de " if net > 0 else "a ") + " y ".join(f"{_short(m['title'], 26)} ({_pp(m['delta_pp'])})" for m in others) + ". "
-            if others else "")
-    ours = next((m for m in moves if m["chain"] != pick["chain"] and m["title_norm"] == pick["title_norm"]), None)
+    others = sorted((m for m in moves if m["chain"] == chain and m["title_norm"] != pick["title_norm"]
+                     and m["delta_pp"] * pick["delta_pp"] < 0), key=lambda m: -abs(m["delta_pp"]))[:3]
     mine = [r for r in movies if r["title_norm"] == pick["title_norm"]]
-    if them:
-        us_share = mine[0]["share_cinemex"] if mine else 0
-        body += (f"Nosotros le damos {_pct(us_share)} de nuestra parrilla" +
-                 (f" ({_pp(ours['delta_pp'])} en el mismo lapso)." if ours else "."))
-        action = (f"Decisión: ¿seguimos su lectura de la demanda o sostenemos {t}?" if net < 0 else
-                  f"Decisión: ¿le damos más sala a {t} antes del fin de semana?")
-    else:
-        body += f"{THEM_NAME} no movió ese título en la misma medida." if not ours or abs(ours["delta_pp"]) < MOVE_MIN_PP else \
-                f"{THEM_NAME} lo movió {_pp(ours['delta_pp'])} en el mismo lapso."
-        action = "Decisión: confirmar con ocupación que el ajuste fue el correcto"
-    support = [{"label": f"Antes {CHAIN_LABEL[pick['chain']]}", "value": _pct(pick["share_then"]), "cmx": not them},
-               {"label": f"Ahora {CHAIN_LABEL[pick['chain']]}", "value": _pct(pick["share_now"]), "cmx": not them},
-               {"label": "Δ", "value": _pp(pick["delta_pp"]), "cmx": not them}]
-    if them and mine:
-        support.append({"label": "Nuestra parrilla", "value": _pct(mine[0]["share_cinemex"]), "cmx": True})
-    return {"topic": "movimientos", "title": title, "body": body.strip(), "action": action, "support": support,
-            "strength": abs(pick["delta_pp"]) / MOVE_MIN_PP}
+    ours = f" · Cinemex le da {mine[0]['share_cinemex']:.0f} %" if chain == THEM and mine else ""
+    return _card("movimientos", f"Movimiento de {CHAIN_LABEL[chain]} · {_short(pick['title'])}",
+                 _metric("De lo que falta de semana, ahora", pick["share_now"], "pct", chain), abs(pick["delta_pp"]) / MOVE_MIN_PP,
+                 compare=_metric("Antes", pick["share_then"], "pct", chain),
+                 delta=_metric("Cambio", pick["delta_pp"], "pp"),
+                 chart=_chart("pp", [(_short(m["title"], 40), {chain: m["delta_pp"]}, m is pick) for m in [pick, *others]], "diverging"),
+                 context=f"Desde el {since} · {net:+,} funciones{ours}".replace("-", "−"),
+                 stake=max(pick["share_now"], pick["share_then"]))
 
 
 def _price_finding(conn, d0, d1, hours=None, plaza=None):
@@ -421,26 +345,14 @@ def _price_finding(conn, d0, d1, hours=None, plaza=None):
            for r in prices(conn, days=PRICE_SAMPLE_DAYS, plaza=plaza) if r["cinemas"] >= PRICE_MIN_CINEMAS}
     cells = sorted(((mc / mu - 1, b, d, mu, mc) for (ch, b, d), mu in med.items() if ch == US
                     for mc in [med.get((THEM, b, d))] if mu and mc), key=lambda x: (-abs(x[0]), x[1], x[2]))
-    if gap > 0:
-        title = (f"Ir al cine con nosotros cuesta {gap:.0f} % menos: nuestro boleto promedio de la cartelera es "
-                 f"${us['avg_price']:,.0f} frente a ${them['avg_price']:,.0f} en {THEM_NAME}.")
-    else:
-        title = (f"Somos {abs(gap):.0f} % más caros en lo que programamos: boleto promedio de ${us['avg_price']:,.0f} "
-                 f"frente a ${them['avg_price']:,.0f} en {THEM_NAME}.")
-    body = "El promedio pondera el precio de cada formato y tipo de día por las funciones que cada cadena programa en el periodo."
-    support = [{"label": "Boleto prom. Cinemex", "value": f"${us['avg_price']:,.0f}", "cmx": True},
-               {"label": f"Boleto prom. {THEM_NAME}", "value": f"${them['avg_price']:,.0f}", "cmx": False}]
-    if cells:
-        r, b, d, mu, mc = cells[0]
-        where = f"{FORMAT_LABEL[b]}, {DAY_TYPE_LABEL[d].lower()}"
-        body += f" La mayor diferencia está en {where}: ${mu:,.0f} nuestro frente a ${mc:,.0f} suyo."
-        support.append({"label": f"{FORMAT_LABEL[b]} · {DAY_TYPE_LABEL[d].lower()}", "value": f"${mu:,.0f} vs ${mc:,.0f}", "cmx": mu <= mc})
-        action = (f"Decisión: ¿hay margen para subir {where} sin perder la ventaja de precio?" if r > 0 else
-                  f"Decisión: revisar {where}, donde cobramos más que {THEM_NAME}")
-    else:
-        action = "Decisión: revisar la política de precio frente a la suya"
-    return {"topic": "precio", "title": title, "body": body, "action": action, "support": support,
-            "strength": _STRUCTURAL_WEIGHT * abs(gap) / PRICE_MIN_PCT, "as_of": min(us["last_sampled"], them["last_sampled"])}
+    return _card("precio", "Precio del boleto",
+                 _metric("Nuestro boleto promedio", us["avg_price"], "money", US), _STRUCTURAL_WEIGHT * abs(gap) / PRICE_MIN_PCT,
+                 compare=_metric(f"El de {THEM_NAME}", them["avg_price"], "money", THEM),
+                 delta=_metric(f"{THEM_NAME} frente a nosotros", gap, "pct_diff"),
+                 chart=_chart("money", [(f"{FORMAT_LABEL[b]} · {DAY_TYPE_LABEL[d].lower()}", {US: mu, THEM: mc}, i == 0)
+                                        for i, (_, b, d, mu, mc) in enumerate(cells[:4])], "dumbbell") if cells else None,
+                 context=f"Ponderado por la parrilla de cada cadena · precios de los últimos {PRICE_SAMPLE_DAYS} días",
+                 as_of=min(us["last_sampled"], them["last_sampled"]))
 
 
 def _demand_finding(conn, movies, plaza=None):
@@ -461,34 +373,24 @@ def _demand_finding(conn, movies, plaza=None):
                 and m["share_cinemex"] > m["share_cinepolis"])
         score = abs(o["demand_index"] - 1) / DEMAND_MIN_DEV
         if (hot or cold) and (not best or score > best[0]):
-            best = (score, o, m, hot)
+            best = (score, o, m)
     if not best:
         return None
-    score, o, m, hot = best
-    t = _short(o["title"])
-    dev = abs(o["demand_index"] - 1) * 100
-    if hot:
-        title = (f"{t} vende en {THEM_NAME} {dev:.0f} % más de lo normal para su horario, y le damos "
-                 + ("cero funciones." if not m["shows_cinemex"] else f"menos parrilla que ellos ({_pct(m['share_cinemex'])} frente a {_pct(m['share_cinepolis'])})."))
-        action = f"Decisión: ¿abrir más funciones de {t} esta semana?"
-    else:
-        title = (f"{t} vende en {THEM_NAME} {dev:.0f} % menos de lo normal para su horario, y le damos más parrilla que "
-                 f"ellos ({_pct(m['share_cinemex'])} frente a {_pct(m['share_cinepolis'])}).")
-        action = f"Decisión: ¿mover funciones de {t} a un título con más demanda?"
-    body = (f"Medido en {o['samples']:,} planos de sus funciones ya empezadas en los últimos {DEMAND_SAMPLE_DAYS} días: "
-            f"{o['sold_pct']:.1f} % de butacas vendidas frente a {o['expected_pct']:.1f} % esperado por franja y tipo de día. "
-            f"Es su sala, no la nuestra: nuestra ocupación entra cuando lleguen tus datos.")
-    return {"topic": "demanda", "title": title, "body": body, "action": action, "strength": score, "as_of": o["last_sampled"],
-            "support": [{"label": f"Vendido {THEM_NAME}", "value": f"{o['sold_pct']:.1f} %", "cmx": False},
-                        {"label": "Esperado por horario", "value": f"{o['expected_pct']:.1f} %", "cmx": False},
-                        {"label": "Parrilla Cinemex", "value": _pct(m["share_cinemex"]), "cmx": True},
-                        {"label": f"Parrilla {THEM_NAME}", "value": _pct(m["share_cinepolis"]), "cmx": False}]}
+    score, o, m = best
+    return _card("demanda", f"Demanda · {_short(o['title'])}",
+                 _metric(f"Butacas vendidas en {THEM_NAME}", o["sold_pct"], "pct", THEM), score,
+                 compare=_metric("Lo esperado para su horario", o["expected_pct"], "pct"),
+                 delta=_metric("Diferencia", o["sold_pct"] - o["expected_pct"], "pp"),
+                 chart=_chart("pct", [("Parrilla", {US: m["share_cinemex"], THEM: m["share_cinepolis"]}, True)]),
+                 context=f"{o['samples']:,} planos de funciones ya empezadas · últimos {DEMAND_SAMPLE_DAYS} días",
+                 as_of=o["last_sampled"], stake=max(m["share_cinemex"], m["share_cinepolis"]))
 
 
 def _presale_finding(conn, plaza=None):
     """La preventa nuestra que se despega: por ritmo (puntos de aforo vendidos al día) si hay dos lecturas, si no por
     el % del aforo que ya lleva vendido. No depende del periodo: la preventa es de funciones futuras."""
-    ranking = [r for r in presale_ranking(conn, plaza=plaza) if r["shows"] >= PRESALE_MIN_SHOWS]
+    everything = presale_ranking(conn, plaza=plaza)
+    ranking = [r for r in everything if r["shows"] >= PRESALE_MIN_SHOWS]
     paced = [r for r in ranking if r["pace_pct_day"] is not None and r["paced_shows"] >= PRESALE_MIN_SHOWS]
     key = "pace_pct_day" if len(paced) >= 2 else "sold_pct"
     pool = sorted(paced if len(paced) >= 2 else ranking, key=lambda r: -r[key])
@@ -498,22 +400,20 @@ def _presale_finding(conn, plaza=None):
     ratio = first[key] / second[key] if second[key] > 0 else float("inf")
     if ratio < PRESALE_MIN_RATIO:
         return None
-    t = _short(first["title"])
-    when = (f"a {first['days_to_release']} días de su estreno" if first["days_to_release"] is not None else "en preventa")
-    fmt = (lambda v: f"{v:.1f} pts/día") if key == "pace_pct_day" else (lambda v: f"{v:.0f} %")
-    lead = ("más del triple" if ratio >= 3 else "más del doble") + f" que {_short(second['title'], 28)}"
-    title = (f"{t} es la preventa que más rápido se vende: {first[key]:.1f} puntos de su aforo al día, {lead}."
-             if key == "pace_pct_day" else
-             f"{t} es la preventa más vendida: lleva {first[key]:.0f} % de su aforo, {lead}.")
-    body = (f"Lleva {first['sold_pct']:.0f} % de las butacas vendidas en un panel de {first['shows']} funciones, {when}. "
-            + ("" if key == "pace_pct_day" else "Con una sola lectura del panel el ritmo diario aún no se puede medir. "))
-    return {"topic": "preventa", "title": title, "body": body.strip(),
-            "action": f"Decisión: ¿abrir más funciones o salas grandes de {t} para el estreno?",
-            "strength": min(ratio, 10.0) / PRESALE_MIN_RATIO, "as_of": first["last_sampled"],
-            "support": [{"label": f"{_short(first['title'], 22)}", "value": fmt(first[key]), "cmx": True},
-                        {"label": f"{_short(second['title'], 22)}", "value": fmt(second[key]), "cmx": False},
-                        {"label": "Vendido del panel", "value": f"{first['sold_pct']:.0f} %", "cmx": True},
-                        {"label": "Funciones leídas", "value": f"{first['shows']}", "cmx": False}]}
+    unit = "pace" if key == "pace_pct_day" else "pct"
+    what = "Ritmo de venta" if key == "pace_pct_day" else "Aforo vendido"
+    when = f" · a {first['days_to_release']} días de su estreno" if first["days_to_release"] is not None else ""
+    return _card("preventa", f"Preventa · {_short(first['title'])}",
+                 _metric(what, first[key], unit, US), min(ratio, 10.0) / PRESALE_MIN_RATIO,
+                 compare=_metric(f"Segundo lugar, {_short(second['title'], 28)}", second[key], unit, US),
+                 chart=_chart(unit, [(_short(r["title"], 40), {US: r[key]}, r is first) for r in pool[:5]]),
+                 context=f"{first['sold_pct']:.0f} % vendido en {first['shows']} funciones{when}",
+                 as_of=first["last_sampled"], stake=100.0 * first["shows"] / sum(r["shows"] for r in everything))
+
+
+def _presale_shows(compare, *chains):
+    """Funciones en preventa de `chains` en `presale_compare`; 1 si no hay, para dividir sin error."""
+    return sum(r[f"shows_{c}"] or 0 for r in compare for c in chains) or 1
 
 
 def _presale_gap_finding(compare):
@@ -522,25 +422,19 @@ def _presale_gap_finding(compare):
               if r["gap_pp"] is not None and min(r["shows_cinemex"], r["shows_cinepolis"]) >= PRESALE_MIN_SHOWS]
     if not shared:
         return None
-    r = max(shared, key=lambda x: (abs(x["gap_pp"]), x["title"]))
+    shared.sort(key=lambda x: (-abs(x["gap_pp"]), x["title"]))
+    r = shared[0]
     if abs(r["gap_pp"]) < PRESALE_GAP_MIN_PP:
         return None
-    t = _short(r["title"])
-    us, them = r["sold_pct_cinemex"], r["sold_pct_cinepolis"]
-    if r["gap_pp"] < 0:
-        title = f"En la preventa de {t}, {THEM_NAME} va adelante: lleva {them:.0f} % de su aforo vendido y nosotros {us:.0f} %."
-        action = f"Decisión: ¿reforzar la venta anticipada de {t} (difusión, salas, horarios) antes del estreno?"
-    else:
-        title = f"En la preventa de {t} vamos adelante: llevamos {us:.0f} % de nuestro aforo vendido y {THEM_NAME} {them:.0f} %."
-        action = f"Decisión: ¿abrir más funciones de {t} mientras la demanda se inclina hacia nosotros?"
-    body = (f"Medido con el plano de {r['shows_cinemex']} funciones nuestras y {r['shows_cinepolis']} suyas en preventa, en % del "
-            f"aforo para que el tamaño de sala no pese.")
-    return {"topic": "preventa_brecha", "title": title, "body": body, "action": action,
-            "strength": abs(r["gap_pp"]) / PRESALE_GAP_MIN_PP, "as_of": None,
-            "support": [{"label": "Vendido Cinemex", "value": f"{us:.0f} %", "cmx": True},
-                        {"label": f"Vendido {THEM_NAME}", "value": f"{them:.0f} %", "cmx": False},
-                        {"label": "Δ", "value": _pp(r["gap_pp"]), "cmx": r["gap_pp"] > 0},
-                        {"label": "Estreno", "value": date_es(r["release_date"], with_year=False) if r["release_date"] else "—", "cmx": False}]}
+    release = f" · estreno el {date_es(r['release_date'], with_year=False)}" if r["release_date"] else ""
+    return _card("preventa_brecha", f"Preventa · {_short(r['title'])}",
+                 _metric("Nuestro aforo vendido", r["sold_pct_cinemex"], "pct", US), abs(r["gap_pp"]) / PRESALE_GAP_MIN_PP,
+                 compare=_metric(f"El de {THEM_NAME}", r["sold_pct_cinepolis"], "pct", THEM),
+                 delta=_metric("Diferencia", r["gap_pp"], "pp"),
+                 chart=_chart("pct", [(_short(x["title"], 40), {US: x["sold_pct_cinemex"], THEM: x["sold_pct_cinepolis"]}, x is r)
+                                      for x in shared[:5]], "dumbbell"),
+                 context=f"{r['shows_cinemex']} funciones nuestras y {r['shows_cinepolis']} suyas{release}",
+                 stake=100.0 * (r["shows_cinemex"] + r["shows_cinepolis"]) / _presale_shows(compare, US, THEM))
 
 
 def _presale_exclusive_finding(compare):
@@ -552,17 +446,15 @@ def _presale_exclusive_finding(compare):
     if not hot:
         return None
     first = hot[0]
-    t = _short(first["title"])
-    title = (f"{THEM_NAME} tiene en preventa {len(theirs)} títulos que no exhibimos, y {t} ya lleva "
-             f"{first['sold_pct_cinepolis']:.0f} % de su aforo vendido.")
-    body = ("Otros que ya venden: " + ", ".join(f"{_short(r['title'], 26)} ({r['sold_pct_cinepolis']:.0f} %)" for r in hot[1:3]) + "."
-            if len(hot) > 1 else f"Es el único de sus exclusivas en preventa que pasa de {PRESALE_EXCLUSIVE_MIN_PCT:.0f} %.")
-    when = date_es(first["release_date"], with_year=False) if first["release_date"] else None
-    return {"topic": "preventa_exclusiva", "title": title, "body": body,
-            "action": f"Decisión: ¿buscar {t} para nuestra cartelera o contraprogramar {'el ' + when if when else 'su estreno'}?",
-            "strength": first["sold_pct_cinepolis"] / PRESALE_EXCLUSIVE_MIN_PCT, "as_of": None,
-            "support": [{"label": _short(r["title"], 22), "value": f"{r['sold_pct_cinepolis']:.0f} %", "cmx": False} for r in hot[:3]]
-                       + [{"label": f"Exclusivas de {THEM_NAME}", "value": f"{len(theirs)}", "cmx": False}]}
+    release = f" · estreno el {date_es(first['release_date'], with_year=False)}" if first["release_date"] else ""
+    return _card("preventa_exclusiva", f"Preventa exclusiva de {THEM_NAME} · {_short(first['title'])}",
+                 _metric("Aforo vendido", first["sold_pct_cinepolis"], "pct", THEM),
+                 first["sold_pct_cinepolis"] / PRESALE_EXCLUSIVE_MIN_PCT,
+                 compare=_metric(f"Títulos en preventa que solo tiene {THEM_NAME}", len(theirs), "count", THEM),
+                 chart=_chart("pct", [(_short(r["title"], 40), {THEM: r["sold_pct_cinepolis"]}, r is first) for r in hot[:5]], "meter"),
+                 context=f"{first['shows_cinepolis']} funciones suyas{release}",
+                 stake=100.0 * first["shows_cinepolis"] / _presale_shows(compare, THEM))
+
 
 def _independent_finding(conn, d0, d1, hours=None, plaza=None):
     """Un título que llena la Cineteca y que no exhibimos en CDMX. Solo con zona CDMX o nacional (la Cineteca solo tiene
@@ -570,29 +462,57 @@ def _independent_finding(conn, d0, d1, hours=None, plaza=None):
     if plaza not in (None, "cdmx") or not OCCUPANCY_CONFIRMED:
         return None
     overlap = independent_overlap(conn, d0, d1, hours=hours)
-    full = [r for r in overlap if r["status"] == "indep_only" and r["samples"] >= INDEP_MIN_SAMPLES
-            and (r["sold_pct"] or 0) >= INDEP_MIN_SOLD_PCT]
+    full = sorted((r for r in overlap if r["status"] == "indep_only" and r["samples"] >= INDEP_MIN_SAMPLES
+                   and (r["sold_pct"] or 0) >= INDEP_MIN_SOLD_PCT), key=lambda r: (-r["sold_pct"], r["title_norm"]))
     if not full:
         return None
-    best = max(full, key=lambda r: (r["sold_pct"], r["title_norm"]))
-    t = _short(best["title"])
-    more = len(full) - 1
-    title = f"{t} llena {_pct(best['sold_pct'])} de las butacas de la Cineteca y no la exhibimos en CDMX."
-    body = (f"Medido en {best['samples']:,} funciones ya empezadas en sus sedes en los últimos {OCCUPANCY_DAYS} días; "
-            f"tiene {best['shows_indep']:,} funciones suyas en el periodo."
-            + (f" Otros {more} títulos solo suyos pasan de {_pct(INDEP_MIN_SOLD_PCT)}." if more else "")
-            + " Es cine de autor con un solo precio: no compite por share, pero es demanda que no atendemos.")
-    return {"topic": "independientes", "title": title, "body": body,
-            "action": f"Decisión: ¿abrir funciones de {t} en una sala de CDMX?",
-            "strength": best["sold_pct"] / INDEP_MIN_SOLD_PCT, "as_of": None,
-            "support": [{"label": "Vendido en la Cineteca", "value": _pct(best["sold_pct"]), "cmx": False},
-                        {"label": "Funciones medidas", "value": f"{best['samples']:,}", "cmx": False},
-                        {"label": "Funciones Cineteca", "value": f"{best['shows_indep']:,}", "cmx": False},
-                        {"label": "Funciones Cinemex CDMX", "value": "0", "cmx": True}]}
+    best = full[0]
+    return _card("independientes", f"Cineteca · {_short(best['title'])}",
+                 _metric("Butacas vendidas en la Cineteca", best["sold_pct"], "pct", "cineteca"),
+                 best["sold_pct"] / INDEP_MIN_SOLD_PCT,
+                 compare=_metric("Funciones nuestras en CDMX", 0, "count", US),
+                 chart=_chart("pct", [(_short(r["title"], 40), {"cineteca": r["sold_pct"]}, r is best) for r in full[:5]], "meter"),
+                 context=f"{best['samples']:,} funciones medidas · últimos {OCCUPANCY_DAYS} días")
+
+
+def _occupancy_finding(conn, plaza=None):
+    """Qué cadena llena más sus salas: % de butacas vendidas de todas sus funciones medidas, esta semana y la anterior."""
+    by = {r["chain"]: r for r in chain_occupancy(conn, plaza=plaza)}
+    us, them = by.get(US), by.get(THEM)
+    if not us or not them:
+        return None
+    gap = us["sold_pct"] - them["sold_pct"]
+    if abs(gap) < OCCUPANCY_MIN_PP:
+        return None
+    return _card("ocupacion", "Ocupación · todas las salas",
+                 _metric("De nuestras butacas vendidas", us["sold_pct"], "pct", US), abs(gap) / OCCUPANCY_MIN_PP,
+                 compare=_metric(f"De las de {THEM_NAME}", them["sold_pct"], "pct", THEM),
+                 delta=_metric("Diferencia", gap, "pp"),
+                 chart=_chart("pct", [(f"Últimos {SALES_DAYS} días", {US: us["sold_pct"], THEM: them["sold_pct"]}, True),
+                                      (f"{SALES_DAYS} días anteriores", {US: us["sold_pct_prev"], THEM: them["sold_pct_prev"]}, False)], "meter"),
+                 context=(f"{us['shows'] + them['shows']:,} funciones medidas en el plano después de empezar · "
+                          f"{us['cinemas']} cines Cinemex, {them['cinemas']} {THEM_NAME}"))
+
+
+def _rival_finding(conn, plaza=None):
+    """El lugar de Cinemex que más vende de menos (o de más) frente a su rival número uno."""
+    duels = sorted(main_rivals(conn, plaza=plaza), key=lambda d: (-abs(d["gap_pp"]), d[US]["name"]))
+    if not duels or abs(duels[0]["gap_pp"]) < RIVAL_MIN_PP:
+        return None
+    d = duels[0]
+    return _card("rival", f"Rival · {_short(d[US]['name'])} frente a {_short(d[THEM]['name'])}",
+                 _metric("De nuestras butacas vendidas", d[US]["sold_pct"], "pct", US), abs(d["gap_pp"]) / RIVAL_MIN_PP,
+                 compare=_metric(f"De las de {THEM_NAME}", d[THEM]["sold_pct"], "pct", THEM),
+                 delta=_metric("Diferencia", d["gap_pp"], "pp"),
+                 chart=_chart("pct", [(_short(x[US]["name"], 40), {US: x[US]["sold_pct"], THEM: x[THEM]["sold_pct"]}, x is d)
+                                      for x in duels[:5]], "dumbbell"),
+                 context=(f"El {THEM_NAME} que más vende a {d['km']} km · {d[US]['shows']:,} y {d[THEM]['shows']:,} "
+                          f"funciones medidas · últimos {SALES_DAYS} días"),
+                 stake=100.0 * (d[US]["shows"] + d[THEM]["shows"]) / sum(x[US]["shows"] + x[THEM]["shows"] for x in duels))
 
 
 def findings(conn, d0=None, d1=None, top=3, hours=None, plaza=None):
-    """Los `top` hallazgos más fuertes (`strength` = brecha / umbral). Cada regla solo entra si
+    """Los `top` hallazgos más fuertes (`strength` = brecha / umbral); `top=None` los devuelve todos. Cada regla solo entra si
     cruza su umbral y, si depende de un muestreo, si el dato está vigente: movimientos del competidor, demanda por
     título (ocupación de Cinépolis), nuestra preventa que se despega, brecha de preventa en un
     mismo título, preventa exclusiva de Cinépolis que ya vende, título por butacas, concentración, dulcería, precio del boleto, franjas, formato,
@@ -607,6 +527,8 @@ def findings(conn, d0=None, d1=None, top=3, hours=None, plaza=None):
     compare = presale_compare(conn, plaza=plaza)
     out = []
     for fn in (lambda: _moves_finding(conn, d0, d1, movies, hours=hours, plaza=plaza),
+               lambda: _occupancy_finding(conn, plaza=plaza),
+               lambda: _rival_finding(conn, plaza=plaza),
                lambda: _demand_finding(conn, movies, plaza=plaza),
                lambda: _presale_finding(conn, plaza=plaza),
                lambda: _presale_gap_finding(compare),
@@ -631,7 +553,7 @@ CONCLUSION_SECTIONS = ("resumen", "peliculas", "franjas", "formatos", "preventa"
 
 
 def conclusions(conn, d0=None, d1=None, shown=8, total=15, hours=None, plaza=None, sections=CONCLUSION_SECTIONS):
-    """Frase de apertura de cada sección de evidencia (Capa 2). `sections` calcula solo esas llaves de
+    """Frase de apertura de cada sección de evidencia. `sections` calcula solo esas llaves de
     `CONCLUSION_SECTIONS`; `"peliculas"` trae también `peliculas_note`. Ejemplo: `sections=("franjas",)` → {franjas}."""
     d0 = d0 or today()
     d1 = d1 or d0

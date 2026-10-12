@@ -7,7 +7,7 @@ VENV ?= .venv/bin
 
 .PHONY: help job units units-check labels tick snapshot seats occupancy post-start health prices concessions delivery capacity capacity-cinemex presale \
         calibrate-cinemex dashboard api backup launchd-load launchd-unload \
-        user-create user-list user-reset user-deactivate user-activate auth-prune deploy restart check lint test test-live fixtures hooks \
+        user-create user-list user-reset user-deactivate user-activate auth-prune deploy restart check lint test test-live test-ui fixtures hooks \
         marketing-dev marketing-build export-places
 
 help:               ## lista los targets
@@ -125,6 +125,11 @@ test:               ## pruebas (las de pantalla se omiten si no hay data/snapsho
 
 test-live:          ## la captura contra las APIs reales, alcance chico de cada cadena (red; Cinépolis necesita WARP fuera de la Mac)
 	AC_LIVE=1 $(VENV)/python -m pytest -q tests/test_live_capture.py
+
+test-ui:            ## el dashboard en celular con Chromium (build de dashboard/, captura grabada); deja capturas de pantalla
+	cd dashboard && pnpm run build
+	$(VENV)/python -m playwright install chromium
+	AC_UI=1 $(VENV)/python -m pytest -q tests/test_mobile.py
 
 fixtures:           ## graba de nuevo las respuestas reales de ambas APIs y el esperado; EXPECTED=1 solo regenera el esperado
 	$(PY) scripts/capture_fixtures.py $(if $(EXPECTED),--expected,)

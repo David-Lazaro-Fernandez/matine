@@ -26,6 +26,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing_extensions import TypedDict
 
 import analytics
+from analytics import cinema_sales
 from analytics.labels import COMPARED, FULL_DAY, HOUR_MARKS, KIND_LABEL, PRIME_START_HOUR
 from jobs import keys as job_keys
 from jobs import registry as job_registry
@@ -42,7 +43,6 @@ FIRST_SNAPSHOT = "2026-09-07"
 CARTELERA_KINDS = ("added", "removed", "moved", "changed")
 _EVENTS_LIMIT = 300
 _EVENTS_DAYS = 7
-_OCCUPANCY_RECENT = 30
 # El Resumen general muestra siempre todo el día y desde las 6 PM, sin el filtro de franja.
 _SUMMARY_HOURS = (FULL_DAY, (PRIME_START_HOUR, 24))
 # La llave de `analytics.conclusions` de cada sección de la Capa 2.
@@ -52,7 +52,7 @@ _CONCLUSION = {"resumen": "resumen", "peliculas": "peliculas", "horarios": "fran
 Plaza = Literal[tuple(plazas.PLAZAS)]
 Chain = Literal[COMPARED]
 Section = Literal[tuple(_CONCLUSION)]
-Appendix = Literal["indicadores", "cambios", "precios", "butacas", "ocupacion"]
+Appendix = Literal["indicadores", "cambios", "precios", "butacas"]
 Rows = list[dict[str, Any]]
 
 
@@ -107,11 +107,6 @@ class Apendice(TypedDict, total=False):
     capacity_summary: Rows
     offered_by_title: dict[str, Rows]
     capacity_by_cinema: dict[str, Rows]
-    occupancy_summary: Rows
-    semaphore_calibration: Rows
-    occupancy_total: dict[str, Any]
-    estimated_occupancy: Rows
-    occupancy_recent: Rows
 
 
 class Historia(TypedDict):
@@ -173,7 +168,7 @@ def cartelera(plaza: Plaza | None = None, d0: date | None = None, d1: date | Non
             "computed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "shown_movies": SHOWN_MOVIES, "total_movies": TOTAL_MOVIES,
             "coverage": analytics.coverage(conn, plaza=plaza),
-            "capture": analytics.capture_status(conn, limit=12),
+            "capture": analytics.capture_status(conn),
             "kpis": analytics.kpis(conn, **scope),
         }
 
@@ -183,9 +178,9 @@ def cartelera(plaza: Plaza | None = None, d0: date | None = None, d1: date | Non
 @router.get("/cartelera/hallazgos")
 def hallazgos(plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
               h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Hallazgos:
-    """Los hallazgos de la Capa 1 (`analytics.findings`), con los mismos filtros y validaciones que `/cartelera`."""
+    """Todos los hallazgos que cruzan su umbral (`analytics.findings`), del más fuerte al más débil, con los mismos filtros y validaciones que `/cartelera`."""
     scope = _scope(plaza, d0, d1, h0, h1)
-    return read(_key("cartelera/hallazgos", scope), lambda conn: {"findings": analytics.findings(conn, **scope)})
+    return read(_key("cartelera/hallazgos", scope), lambda conn: {"findings": analytics.findings(conn, top=None, **scope)})
 
 
 def _section(conn, slug, scope):
@@ -236,31 +231,46 @@ def _appendix(conn, slug, scope):
                                                          plaza=plaza)}
     if slug == "precios":
         return {"prices": analytics.prices(conn, plaza=plaza), "price_summary": analytics.price_summary(conn, plaza=plaza)}
-    if slug == "butacas":
-        return {"capacity_summary": analytics.capacity_summary(conn, plaza=plaza),
-                "offered_by_title": {c: analytics.offered_by_title(conn, limit=TOTAL_MOVIES, chain=c, **scope)
-                                     for c in COMPARED},
-                "capacity_by_cinema": {c: analytics.capacity_by_cinema(conn, chain=c, plaza=plaza) for c in COMPARED}}
-    calibration = analytics.semaphore_calibration(conn, chain="cinemex")
-    occupancy_total = analytics.occupancy_total(conn, plaza=plaza)[0]
-    return {"occupancy_summary": analytics.occupancy_summary(conn, plaza=plaza),
-            "semaphore_calibration": calibration,
-            "occupancy_total": occupancy_total,
-            "estimated_occupancy": (analytics.estimated_occupancy(conn, chain="cinemex", **scope)
-                                    if calibration else []),
-            "occupancy_recent": (analytics.occupancy_recent(conn, limit=_OCCUPANCY_RECENT, plaza=plaza)
-                                 if occupancy_total["samples"] else [])}
+    return {"capacity_summary": analytics.capacity_summary(conn, plaza=plaza),
+            "offered_by_title": {c: analytics.offered_by_title(conn, limit=TOTAL_MOVIES, chain=c, **scope)
+                                 for c in COMPARED},
+            "capacity_by_cinema": {c: analytics.capacity_by_cinema(conn, chain=c, plaza=plaza) for c in COMPARED}}
 
 
 @router.get("/cartelera/apendice/{slug}")
 def apendice(slug: Appendix, plaza: Plaza | None = None, d0: date | None = None, d1: date | None = None,
              h0: int = FULL_DAY[0], h1: int = FULL_DAY[1]) -> Apendice:
     """Un apéndice de la Capa 3. `indicadores` trae `offered_seats` y `concentration`; `cambios`, `events_by_kind` y
-    `recent_events`; `precios`, `prices` y `price_summary`; `butacas`, `capacity_summary`, `offered_by_title` y
-    `capacity_by_cinema`; y `ocupacion`, los `occupancy_*`, `semaphore_calibration` y `estimated_occupancy`.
+    `recent_events`; `precios`, `prices` y `price_summary`; y `butacas`, `capacity_summary`, `offered_by_title` y
+    `capacity_by_cinema`.
     """
     scope = _scope(plaza, d0, d1, h0, h1)
     return read(_key(f"cartelera/apendice/{slug}", scope), lambda conn: _appendix(conn, slug, scope))
+
+
+class Cines(TypedDict):
+    days: int
+    min_shows: int
+    max_km: float
+    chains: Rows
+    cinemas: Rows
+    competitors: Rows
+    rivals: Rows
+
+
+@router.get("/cartelera/cines")
+def cines(plaza: Plaza | None = None) -> Cines:
+    """La venta por cine de los últimos 7 días (`analytics.cinema_sales`): el total de cada cadena, el % de cada cine, los
+    lugares de Cinépolis por boletos vendidos y el rival número uno de cada lugar de Cinemex. No depende del periodo: es
+    lo ya vendido."""
+    def compute(conn):
+        return {"days": cinema_sales.DAYS, "min_shows": cinema_sales.MIN_SHOWS, "max_km": cinema_sales.RIVAL_MAX_KM,
+                "chains": analytics.chain_occupancy(conn, plaza=plaza),
+                "cinemas": analytics.cinema_occupancy(conn, plaza=plaza),
+                "competitors": analytics.competitor_sites(conn, plaza=plaza),
+                "rivals": analytics.main_rivals(conn, plaza=plaza)}
+
+    return read(("cartelera/cines", plaza), compute)
 
 
 @router.get("/cartelera/curva")

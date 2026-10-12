@@ -12,6 +12,7 @@ import pytest
 
 from analytics import cinema_week
 from analytics.labels import date_es, range_es, time_12
+from scraper.normalize import norm_title
 
 FORMAT_TS = Path(__file__).resolve().parents[1] / "dashboard" / "lib" / "format.ts"
 _NODE = ["node", "--experimental-strip-types", "--no-warnings"]
@@ -37,6 +38,7 @@ CASES = (
                                               (2.5, 0), (3.5, 0), (0.125, 2), (999.95, 1), (1e6, 0))]
     + [("pp", [v], pp(v)) for v in (0, 1.26, -1.26, -0.04, 0.05, -0.05, 12.345, -0.0)]
     + [("cinemaWeek", [d], list(cinema_week(d))) for d in ("2026-10-08", "2026-10-10", "2026-10-14", "2026-12-31")]
+    + [("fold", [t], norm_title(t)) for t in ("Cinemanía", "CINÉPOLIS · Plaza Satélite", "Ñoño  y  Pingüino", "  ", "4DX/IMAX®")]
 )
 
 _SCRIPT = """

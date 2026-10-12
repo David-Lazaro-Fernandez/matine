@@ -63,7 +63,18 @@ CREATE TABLE IF NOT EXISTS audit (                -- quién hizo qué: altas, ca
   detail     TEXT                                 -- JSON
 );
 CREATE INDEX IF NOT EXISTS audit_at ON audit (at);
+
+CREATE TABLE IF NOT EXISTS setting (              -- ajustes de la organización que fija un admin, como el logo
+  key         TEXT PRIMARY KEY,
+  value       TEXT,
+  updated_at  TEXT NOT NULL,
+  updated_by  INTEGER REFERENCES account
+);
 """
+
+# Columnas de `account` posteriores a la primera versión. `CREATE TABLE IF NOT EXISTS` no las agrega a una base que
+# ya existe, así que `connect` las agrega con `ALTER TABLE`.
+_ACCOUNT_COLUMNS = {"avatar": "TEXT", "theme": "TEXT NOT NULL DEFAULT 'system'"}
 
 _BOOLEANS = {"active", "has_password", "pending_invite"}
 
@@ -97,7 +108,21 @@ def connect(path=None):
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(SCHEMA)
+    _add_columns(conn)
     return conn
+
+
+def _add_columns(conn):
+    present = {column["name"] for column in conn.execute("PRAGMA table_info(account)")}
+    for name, declaration in _ACCOUNT_COLUMNS.items():
+        if name in present:
+            continue
+        try:
+            conn.execute(f"ALTER TABLE account ADD COLUMN {name} {declaration}")
+        # Otro proceso pudo agregar la columna entre la lectura y el ALTER.
+        except sqlite3.OperationalError as e:
+            if "duplicate column" not in str(e):
+                raise
 
 
 @contextmanager

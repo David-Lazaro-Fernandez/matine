@@ -56,14 +56,16 @@ const CHECK = '✓';
 const useStyles = makeStyles({
   columns: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
     gap: tokens.spacingHorizontalXXL,
     marginTop: tokens.spacingVerticalL,
-    '@media (max-width: 768px)': { gridTemplateColumns: '1fr' },
+    '@media (max-width: 768px)': { gridTemplateColumns: 'minmax(0, 1fr)' },
   },
   stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
-  pair: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: tokens.spacingHorizontalS },
-  roleRow: { display: 'grid', gridTemplateColumns: '3fr 2fr', gap: tokens.spacingHorizontalS },
+  pair: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: tokens.spacingHorizontalS },
+  roleRow: { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: tokens.spacingHorizontalS },
+  // Fluent fija 250 px de ancho mínimo. En dos columnas de tableta no caben.
+  dropdown: { minWidth: 0 },
   code: { fontFamily: tokens.fontFamilyMonospace, wordBreak: 'break-all', userSelect: 'all' },
 });
 
@@ -80,8 +82,10 @@ function errorText(err: unknown): string {
 }
 
 function RoleDropdown({ value, onChange, label }: { value: Role; onChange: (role: Role) => void; label?: string }) {
+  const s = useStyles();
   return (
     <Dropdown
+      className={s.dropdown}
       aria-label={label}
       value={ROLE_LABEL[value]}
       selectedOptions={[value]}
@@ -210,6 +214,7 @@ function ManageAccount({ others, onDone }: { others: Account[]; onDone: () => vo
       <div className={s.stack}>
         <Field label={AUTH_TEXT.pick_account}>
           <Dropdown
+            className={s.dropdown}
             value={label(target)}
             selectedOptions={[String(target.id)]}
             onOptionSelect={(_, data) => {
@@ -262,7 +267,7 @@ export default function Page() {
 
   return (
     <>
-      <PageHeader title={AUTH_TEXT.users_title} meta={[AUTH_TEXT.users_lead]} />
+      <PageHeader title={AUTH_TEXT.users_title} />
       {error && <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>}
       {!users && !error && (
         <>

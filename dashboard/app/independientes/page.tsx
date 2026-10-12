@@ -4,21 +4,18 @@
 // Los datos salen de `GET /api/independientes`. El periodo es propio: la Cineteca publica hasta el miércoles en curso.
 import * as React from 'react';
 import {
-  Field,
   Input,
   MessageBar,
   MessageBarBody,
-  Radio,
-  RadioGroup,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import { CalendarLtr20Regular } from '@fluentui/react-icons';
 import { useSearchParams } from 'next/navigation';
 import type { ComponentProps } from 'react';
 import {
   Apendice,
   AppLink,
-  Capa,
   type Cell,
   type Finding,
   Hallazgo,
@@ -31,7 +28,7 @@ import {
   Table,
   SkeletonCapas,
 } from '@/components/common';
-import { PlazaSelector, today, usePlaza, useSetParams } from '@/components/filters';
+import { FilterMenu, PlazaSelector, today, usePlaza, useSetParams } from '@/components/filters';
 import { IndepOccupancyHeatmap } from '@/components/independientes/occupancy-heatmap';
 import { IndepOverlapBars } from '@/components/independientes/overlap-bars';
 import { IndepSlotsBars } from '@/components/independientes/slots-bars';
@@ -108,24 +105,19 @@ function PeriodRadio() {
   };
   return (
     <>
-      <Field label={T.period_header} hint={T.period_caption}>
-        <RadioGroup
-          aria-label={T.period_header}
-          value={key}
-          onChange={(_, data) => setParams(data.value === 'fechas'
-            ? { periodo: data.value, d0, d1 }
-            : { periodo: data.value, d0: null, d1: null })}
-        >
-          {(Object.keys(labels) as PeriodKey[]).map((k) => <Radio key={k} value={k} label={labels[k]} />)}
-        </RadioGroup>
-      </Field>
+      <FilterMenu
+        label={T.period_header}
+        icon={<CalendarLtr20Regular />}
+        value={key}
+        note={T.period_caption}
+        options={(Object.keys(labels) as PeriodKey[]).map((k) => [k, labels[k]])}
+        onChange={(value) => setParams(value === 'fechas' ? { periodo: value, d0, d1 } : { periodo: value, d0: null, d1: null })}
+      />
       {key === 'fechas' && (
-        <Field label={T.period_range}>
-          <div className={s.dates}>
-            <Input type="date" value={d0} min={min} max={d1} onChange={(_, data) => data.value && setParams({ d0: data.value })} />
-            <Input type="date" value={d1} min={d0} max={max} onChange={(_, data) => data.value && setParams({ d1: data.value })} />
-          </div>
-        </Field>
+        <div className={s.dates}>
+          <Input type="date" aria-label={T.period_range} value={d0} min={min} max={d1} onChange={(_, data) => data.value && setParams({ d0: data.value })} />
+          <Input type="date" aria-label={T.period_range} value={d1} min={d0} max={max} onChange={(_, data) => data.value && setParams({ d1: data.value })} />
+        </div>
       )}
     </>
   );
@@ -178,7 +170,7 @@ export default function Page() {
     <PageHeader
       key="h"
       title={T.title}
-      meta={withMeta ? [[`${T.meta_zone}:`, T.meta_zone_value], [`${T.meta_period}:`, range_es(d0, d1)], T.meta_note] : undefined}
+      meta={withMeta ? [[`${T.meta_period}:`, range_es(d0, d1)], T.meta_note] : undefined}
     >
       <PlazaSelector />
       {supported && <PeriodRadio />}
@@ -210,13 +202,11 @@ function Contenido({ data }: { data: Independientes }) {
 
   return (
     <>
-      <Capa num={1} title={T.layer1} desc={T.layer1_desc} />
       {!data.findings.length && info(data.occupancy_confirmed
         ? fill(T.layer1_none, { pct: fixed(th.indep_min_sold_pct, 0), n: th.indep_min_samples })
         : T.layer1_pending)}
-      {data.findings.map((f) => <Hallazgo key={f.title} f={f} />)}
+      {data.findings.map((f) => <Hallazgo key={f.topic} f={f} />)}
 
-      <Capa num={2} title={T.layer2} desc={T.layer2_desc} />
       <Seccion slug="indep-programa">
         <Pregunta texto={T.q_programa} conclusion={c.programa} nota={T.programa_note} />
         <Leyenda items={indepLegend} />
@@ -270,7 +260,6 @@ function Contenido({ data }: { data: Independientes }) {
         <Leerla>{T.leer_franjas}</Leerla>
       </Seccion>
 
-      <Capa num={3} title={T.layer3} desc={T.layer3_desc} />
       <Apendice title={T.app_board} resumen={fill(T.app_board_summary, { titles: n(data.board.length), shows: n(sum(data.board, 'shows')) })}>
         <div className={s.scroll}>
           <Table {...table(data.board, ['title', 'shows', 'cinemas', 'share_shows', 'spanish', 'subtitled', 'other', 'first_date', 'last_date'])} />

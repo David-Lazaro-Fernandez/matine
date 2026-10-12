@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from analytics import queries  # noqa: E402
+from analytics import labels, queries  # noqa: E402
 
 # El paquete exporta la función con el mismo nombre.
 findings = importlib.import_module("analytics.findings")
@@ -78,6 +78,8 @@ def test_findings_keeps_the_strongest(monkeypatch):
     monkeypatch.setattr(findings, "presale_compare", lambda *a, **k: [])
     monkeypatch.setattr(findings, "_moves_finding", rule("movimientos", 1.2))
     monkeypatch.setattr(findings, "_demand_finding", lambda *a, **k: None)
+    monkeypatch.setattr(findings, "_occupancy_finding", lambda *a, **k: None)
+    monkeypatch.setattr(findings, "_rival_finding", lambda *a, **k: None)
     monkeypatch.setattr(findings, "_price_finding", lambda *a, **k: None)
     monkeypatch.setattr(findings, "_presale_finding", lambda *a, **k: None)
     monkeypatch.setattr(findings, "_presale_gap_finding", lambda *a, **k: None)
@@ -140,3 +142,13 @@ def test_occupancy_by_title_compares_against_its_own_time_slot():
     assert (out["alta"]["expected_pct"], out["alta"]["demand_index"]) == (20.0, 1.5)
     assert out["baja"]["demand_index"] == 0.5
     assert out["matine"]["demand_index"] == 1.0
+
+
+def test_every_theme_has_a_label():
+    assert set(findings._THEME.values()) <= set(labels.FINDING_THEME_LABEL)
+
+
+def test_stake_orders_a_small_title_below_a_whole_chain_gap():
+    title = findings._card("demanda", "", None, 10.0, stake=4.0)
+    chain = findings._card("ocupacion", "", None, 2.75)
+    assert (round(title["strength"], 2), chain["strength"]) == (2.0, 2.75)

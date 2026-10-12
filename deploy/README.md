@@ -97,10 +97,11 @@ Son dos piezas desacopladas:
    (`ExecStartPre`), y el que no coincide (o no tiene archivo) se reinicia solo, con una línea en `deploy.log`. Así un
    `git pull` a mano en el servidor entra en menos de 15 min. Si todo coincide, sale en silencio. Si `origin/stable` se
    movió, `git reset --hard` a ese commit
-   como el usuario `absolut`, reinstala el venv si cambió algún `requirements-*.txt`, `deploy/units.sh` si cambió una
+   como el usuario `absolut`, reinstala el venv si cambió algún `requirements-*.txt`, borra `data/precalc.db` si cambió `analytics/` o `api/` (la
+   caché tiene la forma del código anterior; la API calcula en vivo hasta la siguiente captura), `deploy/units.sh` si cambió una
    unidad en `deploy/`, reinicia el dashboard y espera a que `/api/salud` responda. Escribe una línea en
    `data/logs/deploy.log` solo cuando despliega o falla, y sale con 1 si el dashboard no levanta (queda visible en
-   `systemctl list-timers`). No toca `data/`: los cambios de esquema de ambas bases son aditivos y se aplican solos al
+   `systemctl list-timers`). Fuera de esa caché no toca `data/`: los cambios de esquema de ambas bases son aditivos y se aplican solos al
    conectar (`store.py`, `auth/db.py`).
    `pip install` no desinstala lo que se quita de `requirements-*.txt`. Para liberar ese espacio, recrea el venv a mano:
    `sudo -u absolut python3 -m venv --clear .venv && sudo -u absolut .venv/bin/pip install -q -r requirements.txt` y

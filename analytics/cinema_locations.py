@@ -118,13 +118,19 @@ def cinema_highlights(conn, d0=None, d1=None, from_now=True, plaza=None, chains=
     return out
 
 
+def site_id(chain, lat, lng):
+    """La llave del lugar de un cine: cadena y coordenadas redondeadas a ~10 m. Un complejo y su sala Platino o VIP
+    comparten edificio y llave: ('cinemex', 19.3201, -99.18) → 'cinemex:19.3201,-99.18'."""
+    return f"{chain}:{round(lat, _SITE_DECIMALS)},{round(lng, _SITE_DECIMALS)}"
+
+
 def cinema_sites(conn, d0=None, d1=None, from_now=True, plaza=None, chains=MAP_CHAINS, cinema_ids=None):
     """Los cines de `cinema_map` agrupados por lugar: una fila por cadena y coordenadas (redondeadas a ~10 m), porque
     un complejo y su sala Platino o VIP comparten edificio. Por fila: `site_id`, `chain`, `lat`, `lng` y `cinemas` (las
     filas de `cinema_map` de ese lugar, por nombre). Orden: cadena y primer nombre."""
     sites = {}
     for r in cinema_map(conn, d0, d1, from_now, plaza=plaza, chains=chains, cinema_ids=cinema_ids):
-        key = f"{r['chain']}:{round(r['lat'], _SITE_DECIMALS)},{round(r['lng'], _SITE_DECIMALS)}"
+        key = site_id(r["chain"], r["lat"], r["lng"])
         sites.setdefault(key, {"site_id": key, "chain": r["chain"], "lat": r["lat"], "lng": r["lng"], "cinemas": []})["cinemas"].append(r)
     for s in sites.values():
         s["cinemas"].sort(key=lambda r: (r["cinema_name"] or "", r["cinema_id"]))

@@ -11,6 +11,7 @@ import {
   AccordionPanel,
   Badge,
   Body1,
+  Button,
   DataGrid,
   DataGridBody,
   DataGridCell,
@@ -32,10 +33,16 @@ import {
   createMotionComponent,
   motionTokens,
 } from '@fluentui/react-components';
+import { ArrowDownload16Regular } from '@fluentui/react-icons';
 import { useRouter } from 'next/navigation';
+import type { VisualizationSpec } from 'vega-embed';
+import { useDataColor } from '@/app/providers';
 import { ApiError, api } from '@/lib/api';
-import { fill } from '@/lib/format';
-import { AUTH_TEXT, LAYER_TEXT, RED, RED_SOFT, WARN } from '@/lib/labels.generated';
+import { downloadCsv, downloadSpecPng } from '@/lib/download';
+import { fill, fixed, n, signed } from '@/lib/format';
+import {
+  AUTH_TEXT, CHAIN_COLOR, CHAIN_LABEL, DOWNLOAD_TEXT, FINDING_TEXT, FINDING_THEME_LABEL, FINDING_UNIT, LAYER_TEXT, LINE, RED, RED_SOFT, WARN,
+} from '@/lib/labels.generated';
 
 const useStyles = makeStyles({
   skeletonStack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
@@ -57,8 +64,8 @@ const useStyles = makeStyles({
   filters: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXXL}`,
-    alignItems: 'flex-start',
+    gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalS}`,
+    alignItems: 'center',
     marginTop: tokens.spacingVerticalS,
   },
   pageFooter: {
@@ -67,19 +74,6 @@ const useStyles = makeStyles({
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     color: tokens.colorNeutralForeground3,
     fontSize: tokens.fontSizeBase200,
-  },
-  capaTag: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
-    margin: `${tokens.spacingVerticalXXXL} 0 ${tokens.spacingVerticalXS}`,
-  },
-  capaTitle: { margin: 0 },
-  capaDesc: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: tokens.fontSizeBase300,
-    margin: `0 0 ${tokens.spacingVerticalL}`,
-    maxWidth: '640px',
   },
   card: {
     backgroundColor: tokens.colorNeutralBackground1,
@@ -123,64 +117,122 @@ const useStyles = makeStyles({
   hallazgo: {
     backgroundColor: tokens.colorNeutralBackground1,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderLeft: `4px solid ${RED}`,
     borderRadius: tokens.borderRadiusMedium,
-    padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`,
+    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXL}`,
     display: 'grid',
-    gridTemplateColumns: '1fr 240px',
-    gap: tokens.spacingHorizontalXXL,
-    alignItems: 'center',
+    gridTemplateColumns: 'minmax(220px, 2fr) minmax(0, 3fr)',
+    gap: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXXL}`,
     marginBottom: tokens.spacingVerticalL,
-    '@media (max-width: 760px)': { gridTemplateColumns: '1fr' },
+    '@media (max-width: 760px)': { gridTemplateColumns: 'minmax(0, 1fr)' },
   },
-  hallazgoTitle: {
-    fontSize: tokens.fontSizeBase500,
+  // En la rejilla, las tarjetas de una fila miden lo mismo: la cifra toma el espacio sobrante y la gráfica y el pie van
+  // abajo, a la misma altura.
+  hallazgoCompacto: { gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: 'auto 1fr auto auto', marginBottom: 0 },
+  grafica: { minWidth: 0 },
+  // Cabe la gráfica más alta: seis filas de pesas o cinco de barras con su leyenda.
+  graficaCompacta: { height: '184px', display: 'flex', flexDirection: 'column', justifyContent: 'center' },
+  hallazgoLabel: {
+    gridColumn: '1 / -1',
+    margin: 0,
+    fontSize: tokens.fontSizeBase300,
     fontWeight: tokens.fontWeightSemibold,
-    lineHeight: tokens.lineHeightBase500,
-    margin: `0 0 ${tokens.spacingVerticalXS}`,
+    color: tokens.colorNeutralForeground2,
   },
-  hallazgoBody: { color: tokens.colorNeutralForeground2, fontSize: tokens.fontSizeBase300, margin: 0 },
-  accion: {
-    display: 'inline-block',
-    marginTop: tokens.spacingVerticalS,
-    fontSize: tokens.fontSizeBase200,
-    fontWeight: tokens.fontWeightSemibold,
-    color: RED,
-    backgroundColor: RED_SOFT,
-    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalS}`,
-    borderRadius: tokens.borderRadiusMedium,
-  },
-  soporte: {
-    borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
-    paddingLeft: tokens.spacingHorizontalXL,
-    '@media (max-width: 760px)': {
-      borderLeft: 'none',
-      paddingLeft: 0,
-      borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-      paddingTop: tokens.spacingVerticalM,
-    },
-  },
-  par: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: tokens.spacingHorizontalS,
-    fontSize: tokens.fontSizeBase200,
-    padding: `${tokens.spacingVerticalXXS} 0`,
-    color: tokens.colorNeutralForeground3,
-  },
-  parValue: {
-    color: tokens.colorNeutralForeground1,
+  cifra: {
+    display: 'block',
+    fontSize: tokens.fontSizeHero800,
+    lineHeight: tokens.lineHeightHero800,
     fontWeight: tokens.fontWeightSemibold,
     fontVariantNumeric: 'tabular-nums',
+  },
+  cifraLabel: { display: 'block', color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
+  comparacion: {
+    marginTop: tokens.spacingVerticalS,
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground2,
+    '& b': { fontVariantNumeric: 'tabular-nums', color: tokens.colorNeutralForeground1 },
+  },
+  delta: { marginTop: tokens.spacingVerticalXS },
+  barras: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS, minWidth: 0 },
+  barraFila: { display: 'grid', gridTemplateColumns: 'minmax(80px, 2fr) minmax(0, 3fr)', gap: tokens.spacingHorizontalS, alignItems: 'center' },
+  barraNombre: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  barraNombreResaltado: { color: tokens.colorNeutralForeground1, fontWeight: tokens.fontWeightSemibold },
+  barraPar: { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 },
+  barra: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS, fontSize: tokens.fontSizeBase100 },
+  barraRelleno: { display: 'block', height: '10px', borderRadius: '2px', minWidth: '2px' },
+  pista: { flex: '0 0 78%', display: 'flex' },
+  pistaMedidor: { backgroundColor: tokens.colorNeutralBackground3, borderRadius: '2px' },
+  divergente: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', fontSize: tokens.fontSizeBase100 },
+  divergenteLado: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: tokens.spacingHorizontalXS, minWidth: 0 },
+  divergenteDerecho: { justifyContent: 'flex-start', borderLeft: `1px solid ${tokens.colorNeutralStroke1}` },
+  donas: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: tokens.spacingHorizontalXXL },
+  dona: { margin: 0, width: '132px', textAlign: 'center' },
+  donaCifra: { fontSize: '15px', fontWeight: tokens.fontWeightSemibold, fill: tokens.colorNeutralForeground1, fontVariantNumeric: 'tabular-nums' },
+  donaNombre: { fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground2 },
+  apilada: { display: 'flex', flex: '1 1 0', gap: '2px', height: '16px', minWidth: 0 },
+  apiladaParte: { minWidth: '3px', borderRadius: '2px' },
+  pesasFila: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, fontSize: tokens.fontSizeBase100, minWidth: 0 },
+  pesas: { position: 'relative', flex: '0 0 62%', height: '14px' },
+  pesasLinea: { position: 'absolute', top: '6px', height: '2px', backgroundColor: tokens.colorNeutralStroke1 },
+  pesasLineaResaltada: { backgroundColor: tokens.colorNeutralForeground3 },
+  pesasPunto: {
+    position: 'absolute',
+    top: '2px',
+    width: '10px',
+    height: '10px',
+    marginLeft: '-5px',
+    borderRadius: '50%',
+    boxShadow: `0 0 0 2px ${tokens.colorNeutralBackground1}`,
+  },
+  barraValor: { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: tokens.colorNeutralForeground2 },
+  hallazgoAcciones: { '@media print': { display: 'none' }, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalM },
+  hallazgoPie: {
+    gridColumn: '1 / -1',
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
   },
   cmx: { color: RED, fontWeight: tokens.fontWeightSemibold },
   cnp: { fontWeight: tokens.fontWeightSemibold },
   sum: { fontWeight: tokens.fontWeightSemibold, backgroundColor: tokens.colorNeutralBackground2 },
   mal: { color: WARN, fontWeight: tokens.fontWeightSemibold },
-  table: { fontSize: tokens.fontSizeBase200, fontVariantNumeric: 'tabular-nums', margin: `${tokens.spacingVerticalXS} 0 ${tokens.spacingVerticalS}` },
-  headerCell: { color: tokens.colorNeutralForeground3, fontWeight: tokens.fontWeightSemibold },
+  // Una tabla más ancha que la pantalla se desplaza dentro de su caja, no la página.
+  // El borde va en la caja que se desplaza: así enmarca lo que se ve aunque la tabla sea más ancha.
+  tableScroll: {
+    overflowX: 'auto',
+    margin: `${tokens.spacingVerticalXS} 0 ${tokens.spacingVerticalS}`,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  table: {
+    fontSize: tokens.fontSizeBase200,
+    fontVariantNumeric: 'tabular-nums',
+    // El borde de la caja ya cierra la tabla abajo.
+    '& .fui-DataGridBody .fui-DataGridRow:last-child': { borderBottom: 'none' },
+  },
+  // Sin `overflowWrap`, el DataGrid encoge las columnas hasta que el texto se encima sobre la de al lado.
+  // La celda ocupa toda la altura de la fila para que la línea entre columnas llegue de arriba abajo.
+  tableCell: {
+    overflowWrap: 'anywhere',
+    alignSelf: 'stretch',
+    ':not(:last-child)': { borderRight: `1px solid ${tokens.colorNeutralStroke2}` },
+  },
+  headerCell: {
+    color: tokens.colorNeutralForeground3,
+    fontWeight: tokens.fontWeightSemibold,
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
   num: { justifyContent: 'flex-end', textAlign: 'right' },
+  wideCol: { flexGrow: 3 },
   accessPage: {
     display: 'flex',
     justifyContent: 'center',
@@ -252,20 +304,6 @@ export function PageFooter({ children }: { children: React.ReactNode }) {
   return <footer className={useStyles().pageFooter}>{children}</footer>;
 }
 
-// Rótulo de capa: Capa num={1} title="Hallazgos" desc="…".
-export function Capa({ num, title, desc, anchor }: { num: number; title: string; desc: string; anchor?: string }) {
-  const s = useStyles();
-  return (
-    <>
-      <div className={s.capaTag} id={anchor ?? `capa${num}`}>
-        <Badge appearance="tint" color="brand">{fill(LAYER_TEXT.tag, { num })}</Badge>
-        <Subtitle1 as="h2" className={s.capaTitle}>{title}</Subtitle1>
-      </div>
-      <p className={s.capaDesc}>{desc}</p>
-    </>
-  );
-}
-
 // Tarjeta de una sección de evidencia. `slug` es el ancla de la sección.
 export function Seccion({ slug, children }: { slug: string; children: React.ReactNode }) {
   return <Entrada><section id={slug} className={useStyles().card}>{children}</section></Entrada>;
@@ -300,12 +338,16 @@ export function Leerla({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Apéndice de la Capa 3: cerrado, con una línea de resumen visible junto al título.
+// Con `true`, los apéndices de adentro empiezan abiertos: es la pantalla de ese tema.
+export const ApendiceAbierto = React.createContext(false);
+
+// Apéndice: cerrado, con una línea de resumen visible junto al título. Abierto dentro de `ApendiceAbierto`.
 export function Apendice({ title, resumen, children }: { title: string; resumen?: string | null; children: React.ReactNode }) {
   const s = useStyles();
+  const open = React.useContext(ApendiceAbierto);
   return (
     <Entrada>
-      <Accordion collapsible className={s.apendice}>
+      <Accordion collapsible defaultOpenItems={open ? ['apendice'] : []} className={s.apendice}>
         <AccordionItem value="apendice">
           <AccordionHeader expandIconPosition="end" className={s.apendiceHeader}>
             {title}
@@ -321,11 +363,12 @@ export function Apendice({ title, resumen, children }: { title: string; resumen?
 // Leyenda HTML arriba de una gráfica: items = [[texto, color], …].
 export function Leyenda({ items, square = false }: { items: readonly (readonly [string, string])[]; square?: boolean }) {
   const s = useStyles();
+  const dataColor = useDataColor();
   return (
     <div className={s.leyenda}>
       {items.map(([text, color]) => (
         <span key={text}>
-          <i className={mergeClasses(s.dot, square && s.square)} style={{ backgroundColor: color }} />
+          <i className={mergeClasses(s.dot, square && s.square)} style={{ backgroundColor: dataColor(color) }} />
           {text}
         </span>
       ))}
@@ -333,32 +376,304 @@ export function Leyenda({ items, square = false }: { items: readonly (readonly [
   );
 }
 
-// Un hallazgo de `analytics.findings`.
+// Un hallazgo de `analytics.findings`: cifras y una gráfica, sin redacción.
+type FindingUnit = keyof typeof FINDING_UNIT;
+type FindingMetric = { label: string; value: number; unit: FindingUnit; chain: string | null };
+type FindingChart = {
+  kind: 'bars' | 'meter' | 'donut' | 'stack' | 'dumbbell' | 'diverging';
+  unit: FindingUnit;
+  rows: { label: string; values: Record<string, number>; highlight: boolean }[];
+};
 export type Finding = {
-  title: string;
-  body: string;
-  action: string;
-  support: { label: string; value: string; cmx: boolean }[];
+  topic: string;
+  theme: keyof typeof FINDING_THEME_LABEL;
+  label: string;
+  metric: FindingMetric;
+  compare: FindingMetric | null;
+  delta: FindingMetric | null;
+  chart: FindingChart | null;
+  context: string | null;
 };
 
-// Tarjeta de hallazgo de la Capa 1: titular como decisión, contexto, chip de decisión y números de soporte.
-export function Hallazgo({ f }: { f: Finding }) {
+// 4.62 'pct' → '4.6 %'; 3.27 'pp' → '+3.3 pp'; 52 'pct_diff' → '+52 %'; 245 'money' → '$245'.
+function findingValue(v: number, unit: FindingUnit): string {
+  const value = {
+    pct: fixed(v, Math.abs(v) < 10 ? 1 : 0),
+    pp: signed(v, 1),
+    pct_diff: signed(v, 0),
+    money: n(v),
+    count: n(v),
+    pace: fixed(v, 1),
+  }[unit];
+  return fill(FINDING_UNIT[unit], { value });
+}
+
+function chainColor(chain: string | null): string | undefined {
+  return chain ? CHAIN_COLOR[chain as keyof typeof CHAIN_COLOR] : undefined;
+}
+
+function chartChains(chart: FindingChart): string[] {
+  return [...new Set(chart.rows.flatMap((r) => Object.keys(r.values)))];
+}
+
+function chainName(chain: string): string {
+  return CHAIN_LABEL[chain as keyof typeof CHAIN_LABEL] ?? chain;
+}
+
+function ChainLegend({ chains }: { chains: string[] }) {
+  return chains.length > 1 ? <Leyenda items={chains.map((c) => [chainName(c), chainColor(c) ?? LINE] as const)} /> : null;
+}
+
+// La gráfica de la tarjeta según la forma del dato (`kind`, de `analytics.findings`).
+function FindingGraphic({ chart }: { chart: FindingChart }) {
+  if (chart.kind === 'donut') return <FindingDonuts chart={chart} />;
+  if (chart.kind === 'stack') return <FindingStack chart={chart} />;
+  if (chart.kind === 'dumbbell') return <FindingDumbbell chart={chart} />;
+  return <FindingBars chart={chart} />;
+}
+
+// Barras por cadena, una fila por categoría. La fila resaltada lleva el color de cada cadena y el resto va atenuado.
+// `meter` mide contra el 100 % sobre una pista; `diverging` crece a cada lado de un eje central según el signo.
+function FindingBars({ chart }: { chart: FindingChart }) {
   const s = useStyles();
+  const chains = chartChains(chart);
+  const meter = chart.kind === 'meter';
+  const diverging = chart.kind === 'diverging';
+  const top = meter ? 100 : Math.max(...chart.rows.flatMap((r) => Object.values(r.values).map(Math.abs)), 0) || 1;
+  const dataColor = useDataColor();
+  const muted = (c: string) => dataColor(c === 'cinemex' ? RED_SOFT : LINE);
+  return (
+    <div className={s.barras}>
+      <ChainLegend chains={chains} />
+      {chart.rows.map((row, i) => (
+        <div key={i} className={s.barraFila}>
+          <span className={mergeClasses(s.barraNombre, row.highlight && s.barraNombreResaltado)} title={row.label}>{row.label}</span>
+          <div className={s.barraPar}>
+            {chains.map((c) => {
+              if (!(c in row.values)) return null;
+              const v = row.values[c];
+              const fillColor = meter || row.highlight ? dataColor(chainColor(c) ?? LINE) : muted(c);
+              const bar = (
+                <span
+                  className={s.barraRelleno}
+                  style={{ width: `${(100 * Math.abs(v)) / top}%`, backgroundColor: fillColor, opacity: meter && !row.highlight ? 0.4 : 1 }}
+                />
+              );
+              const value = <span className={s.barraValor}>{findingValue(v, chart.unit)}</span>;
+              if (diverging) {
+                return (
+                  <div key={c} className={s.divergente}>
+                    <span className={s.divergenteLado}>{v < 0 && <>{value}{bar}</>}</span>
+                    <span className={mergeClasses(s.divergenteLado, s.divergenteDerecho)}>{v >= 0 && <>{bar}{value}</>}</span>
+                  </div>
+                );
+              }
+              return (
+                <div key={c} className={s.barra}>
+                  <span className={mergeClasses(s.pista, meter && s.pistaMedidor)}>{bar}</span>
+                  {value}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Una dona por cadena: las partes de su programación. La parte resaltada lleva el color de la cadena; las demás van en
+// gris y se separan con un espacio. Al centro, la cifra de la parte resaltada.
+function FindingDonuts({ chart }: { chart: FindingChart }) {
+  const s = useStyles();
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const gap = 1.5;
+  const dataColor = useDataColor();
+  return (
+    <div className={s.donas}>
+      {chartChains(chart).map((c) => {
+        const parts = chart.rows.filter((r) => r.values[c] > 0);
+        const total = parts.reduce((sum, r) => sum + r.values[c], 0) || 1;
+        const highlighted = chart.rows.find((r) => r.highlight);
+        let offset = 0;
+        return (
+          <figure key={c} className={s.dona}>
+            <svg viewBox="0 0 100 100" role="img"
+                 aria-label={`${chainName(c)}: ${parts.map((r) => `${r.label} ${findingValue(r.values[c], chart.unit)}`).join(', ')}`}>
+              {parts.map((r) => {
+                const length = (circumference * r.values[c]) / total;
+                const arc = (
+                  <circle key={r.label} cx="50" cy="50" r={radius} fill="none" strokeWidth="14"
+                          stroke={dataColor(r.highlight ? chainColor(c) ?? LINE : LINE)} transform="rotate(-90 50 50)"
+                          strokeDasharray={`${Math.max(length - gap, 0.5)} ${circumference}`} strokeDashoffset={-offset}>
+                    <title>{`${r.label}: ${findingValue(r.values[c], chart.unit)}`}</title>
+                  </circle>
+                );
+                offset += length;
+                return arc;
+              })}
+              {highlighted && c in highlighted.values && (
+                <text x="50" y="50" textAnchor="middle" dominantBaseline="central" className={s.donaCifra}>
+                  {findingValue(highlighted.values[c], chart.unit)}
+                </text>
+              )}
+            </svg>
+            <figcaption className={s.donaNombre}>{chainName(c)}</figcaption>
+          </figure>
+        );
+      })}
+    </div>
+  );
+}
+
+// Una barra al 100 % por cadena, con las partes en el orden de las filas (las franjas, de la mañana a la noche). La
+// parte resaltada lleva el color de la cadena y su cifra va a la derecha; las demás van en gris, con su cifra al pasar
+// el cursor.
+function FindingStack({ chart }: { chart: FindingChart }) {
+  const s = useStyles();
+  const dataColor = useDataColor();
+  return (
+    <div className={s.barras}>
+      {chartChains(chart).map((c) => {
+        const total = chart.rows.reduce((sum, r) => sum + (r.values[c] ?? 0), 0) || 1;
+        const highlighted = chart.rows.find((r) => r.highlight && c in r.values);
+        return (
+          <div key={c} className={s.barraFila}>
+            <span className={s.barraNombre}>{chainName(c)}</span>
+            <div className={s.pesasFila}>
+              <div className={s.apilada}>
+                {chart.rows.filter((r) => r.values[c] > 0).map((r) => (
+                  <span key={r.label} className={s.apiladaParte} title={`${r.label}: ${findingValue(r.values[c], chart.unit)}`}
+                        style={{ flex: `${r.values[c] / total} 1 0`, backgroundColor: dataColor(r.highlight ? chainColor(c) ?? LINE : LINE) }} />
+                ))}
+              </div>
+              {highlighted && <span className={s.barraValor}>{findingValue(highlighted.values[c], chart.unit)}</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Pesas: un punto por cadena en cada fila sobre una escala común, unidos por una línea. La distancia es la brecha.
+function FindingDumbbell({ chart }: { chart: FindingChart }) {
+  const s = useStyles();
+  const chains = chartChains(chart);
+  const values = chart.rows.flatMap((r) => Object.values(r.values));
+  const [lo, hi] = [Math.min(...values), Math.max(...values)];
+  const pad = (hi - lo) * 0.08 || 1;
+  const x = (v: number) => (100 * (v - lo + pad)) / (hi - lo + 2 * pad);
+  const dataColor = useDataColor();
+  return (
+    <div className={s.barras}>
+      <ChainLegend chains={chains} />
+      {chart.rows.map((row, i) => {
+        const present = chains.filter((c) => c in row.values);
+        const xs = present.map((c) => x(row.values[c]));
+        return (
+          <div key={i} className={s.barraFila}>
+            <span className={mergeClasses(s.barraNombre, row.highlight && s.barraNombreResaltado)} title={row.label}>{row.label}</span>
+            <div className={s.pesasFila}>
+              <span className={s.pesas}>
+                {xs.length > 1 && (
+                  <span className={mergeClasses(s.pesasLinea, row.highlight && s.pesasLineaResaltada)}
+                        style={{ left: `${Math.min(...xs)}%`, width: `${Math.max(...xs) - Math.min(...xs)}%` }} />
+                )}
+                {present.map((c, j) => (
+                  <span key={c} className={s.pesasPunto} style={{ left: `${xs[j]}%`, backgroundColor: dataColor(chainColor(c) ?? LINE) }}
+                        title={`${chainName(c)}: ${findingValue(row.values[c], chart.unit)}`} />
+                ))}
+              </span>
+              <span className={s.barraValor}>{present.map((c) => findingValue(row.values[c], chart.unit)).join(' · ')}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// La tarjeta como gráfica de Vega-Lite para el PNG: título con la cifra y barras por cadena con la fila resaltada.
+function findingSpec(f: Finding): VisualizationSpec {
+  const chart = f.chart!;
+  const chains = chartChains(chart);
+  const summary = [f.metric, f.compare, f.delta].filter(Boolean).map((m) => `${m!.label}: ${findingValue(m!.value, m!.unit)}`);
+  return {
+    $schema: 'https://vega.github.io/schema/vega-lite/v6.json',
+    title: { text: f.label, subtitle: [...summary, ...(f.context ? [f.context] : [])], anchor: 'start' },
+    width: 480,
+    data: {
+      values: chart.rows.flatMap((r) => Object.entries(r.values).map(([chain, value]) => ({
+        label: r.label, chain: CHAIN_LABEL[chain as keyof typeof CHAIN_LABEL] ?? chain, value, highlight: r.highlight,
+      }))),
+    },
+    mark: { type: 'bar', cornerRadiusEnd: 2 },
+    encoding: {
+      y: { field: 'label', type: 'nominal', sort: null, title: null },
+      yOffset: { field: 'chain', sort: null },
+      x: { field: 'value', type: 'quantitative', title: fill(FINDING_UNIT[chart.unit], { value: '' }).trim() || null },
+      color: {
+        field: 'chain', sort: null, legend: chains.length > 1 ? { title: null, orient: 'top' } : null,
+        scale: { domain: chains.map((c) => CHAIN_LABEL[c as keyof typeof CHAIN_LABEL] ?? c), range: chains.map((c) => chainColor(c) ?? LINE) },
+      },
+      opacity: { condition: { test: 'datum.highlight', value: 1 }, value: 0.3 },
+    },
+  };
+}
+
+// Las cifras de la tarjeta en formato largo: concepto, cadena, valor y unidad, una fila por cifra.
+function downloadFinding(f: Finding) {
+  const chain = (c: string | null) => (c ? CHAIN_LABEL[c as keyof typeof CHAIN_LABEL] ?? c : '');
+  const unit = (u: FindingUnit) => fill(FINDING_UNIT[u], { value: '' }).trim();
+  const metrics = [f.metric, f.compare, f.delta].filter((m): m is FindingMetric => m !== null)
+    .map((m) => [m.label, chain(m.chain), String(m.value), unit(m.unit)]);
+  const bars = (f.chart?.rows ?? []).flatMap((r) => Object.entries(r.values)
+    .map(([c, v]) => [r.label, chain(c), String(v), unit(f.chart!.unit)]));
+  downloadCsv(f.topic, [...DOWNLOAD_TEXT.csv_headers], [...metrics, ...bars]);
+}
+
+// Tarjeta de hallazgo: tema, la cifra, su comparación y la diferencia, una gráfica con lo importante resaltado y la
+// muestra que la sostiene, con su PNG y su CSV. `href` es la pantalla con la evidencia; `dataHref`, el explorador de Datos.
+export function Hallazgo({ f, href, dataHref, compact = false }: { f: Finding; href?: string; dataHref?: string; compact?: boolean }) {
+  const s = useStyles();
+  const dataColor = useDataColor();
+  const metricColor = (chain: string | null) => chain ? dataColor(chainColor(chain) ?? LINE) : undefined;
   return (
     <Entrada>
-      <div className={s.hallazgo}>
+      <div className={mergeClasses(s.hallazgo, compact && s.hallazgoCompacto)}>
+        <h3 className={s.hallazgoLabel}>{f.label}</h3>
         <div>
-          <h3 className={s.hallazgoTitle}>{f.title}</h3>
-          <p className={s.hallazgoBody}>{f.body}</p>
-          <span className={s.accion}>{f.action}</span>
-        </div>
-        <div className={s.soporte}>
-          {f.support.map((p) => (
-            <div key={p.label} className={s.par}>
-              <span>{p.label}</span>
-              <b className={mergeClasses(s.parValue, p.cmx && s.cmx)}>{p.value}</b>
+          <span className={s.cifra} style={{ color: metricColor(f.metric.chain) }}>{findingValue(f.metric.value, f.metric.unit)}</span>
+          <span className={s.cifraLabel}>{f.metric.label}</span>
+          {f.compare && (
+            <div className={s.comparacion}>
+              {FINDING_TEXT.versus} <b style={{ color: metricColor(f.compare.chain) }}>{findingValue(f.compare.value, f.compare.unit)}</b>{' '}
+              {f.compare.label.charAt(0).toLowerCase() + f.compare.label.slice(1)}
             </div>
-          ))}
+          )}
+          {f.delta && (
+            <div className={s.delta}>
+              <Badge appearance="tint" color="informative">{`${f.delta.label}: ${findingValue(f.delta.value, f.delta.unit)}`}</Badge>
+            </div>
+          )}
+        </div>
+        <div className={mergeClasses(s.grafica, compact && s.graficaCompacta)}>
+          {f.chart && f.chart.rows.length > 0 && <FindingGraphic chart={f.chart} />}
+        </div>
+        <div className={s.hallazgoPie}>
+          <span>{f.context}</span>
+          <span className={s.hallazgoAcciones}>
+            {f.chart && f.chart.rows.length > 0 && (
+              <Button appearance="subtle" size="small" icon={<ArrowDownload16Regular />} onClick={() => downloadSpecPng(findingSpec(f), f.topic)}>
+                {DOWNLOAD_TEXT.png}
+              </Button>
+            )}
+            <Button appearance="subtle" size="small" icon={<ArrowDownload16Regular />} onClick={() => downloadFinding(f)}>{DOWNLOAD_TEXT.csv}</Button>
+            {dataHref && <AppLink href={dataHref}>{DOWNLOAD_TEXT.data}</AppLink>}
+            {href && <AppLink href={href}>{LAYER_TEXT.evidence}</AppLink>}
+          </span>
         </div>
       </div>
     </Entrada>
@@ -374,9 +689,14 @@ function cellClasses(cell: Cell): CellClass[] {
   return typeof cell === 'string' ? [] : cell.slice(1).flat() as CellClass[];
 }
 
+// Lo que necesita una palabra larga de la interfaz, como 'Administrador', para no partirse.
+const TABLE_COLUMN_MIN_WIDTH = 104;
+
 // Tabla compacta como `table()` de ui/common.py, sobre el DataGrid de Fluent. `numCols` alinea a la derecha.
 // ponytail: sin virtualizar. El explorador de Datos necesita la versión de @fluentui-contrib para miles de renglones.
-export function Table({ headers, rows, numCols = [] }: { headers: string[]; rows: Cell[][]; numCols?: number[] }) {
+// `wideCols` son las columnas que crecen el triple que las demás, como una lista de nombres.
+export function Table({ headers, rows, numCols = [], wideCols = [] }: { headers: string[]; rows: Cell[][]; numCols?: number[]; wideCols?: number[] }) {
+  const dataColor = useDataColor();
   const s = useStyles();
   const columns = headers.map((header, i) =>
     createTableColumn<Cell[]>({
@@ -386,13 +706,15 @@ export function Table({ headers, rows, numCols = [] }: { headers: string[]; rows
     }),
   );
   const cellClass = (row: Cell[], i: number) =>
-    mergeClasses(numCols.includes(i) && s.num, ...cellClasses(row[i]).map((c) => s[c]));
+    mergeClasses(s.tableCell, numCols.includes(i) && s.num, wideCols.includes(i) && s.wideCol, ...cellClasses(row[i]).map((c) => s[c]));
   return (
-    <DataGrid items={rows} columns={columns} getRowId={(row) => rows.indexOf(row)} size="small" className={s.table}>
+    <div className={s.tableScroll}>
+    <DataGrid items={rows} columns={columns} getRowId={(row) => rows.indexOf(row)} size="small" className={s.table}
+      style={{ minWidth: headers.length * TABLE_COLUMN_MIN_WIDTH }}>
       <DataGridHeader>
         <DataGridRow>
           {({ renderHeaderCell, columnId }) => (
-            <DataGridHeaderCell className={mergeClasses(s.headerCell, numCols.includes(Number(columnId)) && s.num)}>
+            <DataGridHeaderCell className={mergeClasses(s.headerCell, s.tableCell, numCols.includes(Number(columnId)) && s.num, wideCols.includes(Number(columnId)) && s.wideCol)}>
               {renderHeaderCell()}
             </DataGridHeaderCell>
           )}
@@ -402,12 +724,16 @@ export function Table({ headers, rows, numCols = [] }: { headers: string[]; rows
         {({ item, rowId }) => (
           <DataGridRow<Cell[]> key={rowId}>
             {({ renderCell, columnId }) => (
-              <DataGridCell className={cellClass(item, Number(columnId))}>{renderCell(item)}</DataGridCell>
+              <DataGridCell className={cellClass(item, Number(columnId))}
+                style={cellClasses(item[Number(columnId)]).includes('cmx') ? { color: dataColor(RED) } : undefined}>
+                {renderCell(item)}
+              </DataGridCell>
             )}
           </DataGridRow>
         )}
       </DataGridBody>
     </DataGrid>
+    </div>
   );
 }
 
@@ -469,22 +795,12 @@ export function SkeletonTable({ rows = 6, columns = 5 }: { rows?: number; column
   );
 }
 
-export function SkeletonCapa() {
-  const s = useStyles();
-  return (
-    <Skeleton className={mergeClasses(s.capaTag, s.skeletonRow)} aria-busy>
-      <SkeletonItem size={24} style={{ width: 64 }} />
-      <SkeletonItem size={24} className={s.skeletonShort} />
-    </Skeleton>
-  );
-}
-
 export function SkeletonHallazgo() {
   const s = useStyles();
   return (
     <div className={s.hallazgo}>
       <SkeletonLines lines={3} />
-      <div className={s.soporte}><SkeletonLines lines={4} /></div>
+      <SkeletonLines lines={4} />
     </div>
   );
 }
@@ -519,11 +835,8 @@ export function SkeletonApendice() {
 export function SkeletonCapas({ findings = 2, sections = 1, appendices = 0 }: { findings?: number; sections?: number; appendices?: number }) {
   return (
     <>
-      <SkeletonCapa />
       {Array.from({ length: findings }, (_, i) => <SkeletonHallazgo key={i} />)}
-      <SkeletonCapa />
       {Array.from({ length: sections }, (_, i) => <SkeletonSeccion key={i} />)}
-      {appendices > 0 && <SkeletonCapa />}
       {Array.from({ length: appendices }, (_, i) => <SkeletonApendice key={i} />)}
     </>
   );
@@ -536,7 +849,7 @@ export function errorText(e: unknown): string {
   return (e instanceof ApiError && e.detail) || String(e);
 }
 
-type Loaded<T> = { data: T | null; error: unknown };
+export type Loaded<T> = { data: T | null; error: unknown };
 
 // GET a `path`; con null no pide nada. `data` y `error` siempre son de este `path`: al cambiar vuelven a null.
 export function useApi<T>(path: string | null): Loaded<T> {
@@ -555,6 +868,8 @@ export function useApi<T>(path: string | null): Loaded<T> {
 
 // Se pide antes de que el bloque entre en pantalla, para que ya esté al verse.
 const LAZY_MARGIN = '600px';
+// Pide todos los bloques diferidos de la página, para imprimirla completa (`PrintButton`).
+export const LOAD_ALL_EVENT = 'ac:load-all';
 
 // Como useApi, pero pide `path` solo cuando el elemento de `ref` está cerca de la pantalla. Un `path` nuevo lejos de
 // la pantalla espera a que el bloque se acerque.
@@ -566,7 +881,9 @@ export function useLazyApi<T>(path: string): Loaded<T> & { ref: (node: Element |
     if (!node) return;
     const observer = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting), { rootMargin: LAZY_MARGIN });
     observer.observe(node);
-    return () => observer.disconnect();
+    const loadAll = () => setNear(true);
+    window.addEventListener(LOAD_ALL_EVENT, loadAll);
+    return () => { observer.disconnect(); window.removeEventListener(LOAD_ALL_EVENT, loadAll); };
   }, [node]);
   React.useEffect(() => { if (near) setWanted(path); }, [near, path]);
   const loaded = useApi<T>(wanted);

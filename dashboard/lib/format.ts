@@ -90,3 +90,9 @@ export function cinemaWeek(iso: string): [string, string] {
   const thursday = addDays(iso, -((weekday - 3 + 7) % 7));
   return [thursday, addDays(thursday, 6)];
 }
+
+// Texto para buscar sin mayúsculas, acentos ni signos, como `norm_title` de scraper/normalize.py:
+// fold('Cinemanía · Plaza') → 'cinemania plaza'. Las búsquedas comparan fold(lo escrito) dentro de fold(el nombre).
+export function fold(text: string): string {
+  return text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
