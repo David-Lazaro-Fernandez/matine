@@ -186,7 +186,7 @@ function Rivales({ data }: { data: Cines }) {
       <Table
         headers={[...T.rival_headers]}
         rows={data.rivals.map((d): Cell[] => [
-          d[US].cinemas.join(' + '), d.gap_pp > 0 ? [percent(d[US].sold_pct), 'cmx'] : percent(d[US].sold_pct), d.cinepolis.cinemas.join(' + '), [percent(d.cinepolis.sold_pct), 'cnp'],
+          d[US].cinemas.join(' + '), d.gap_pp > 0 ? [percent(d[US].sold_pct), 'cmx'] : percent(d[US].sold_pct), d.cinepolis.cinemas.join(' + '), d.gap_pp < 0 ? [percent(d.cinepolis.sold_pct), 'cnp'] : percent(d.cinepolis.sold_pct),
           pp(d.gap_pp), fill(T.km, { km: fixed(d.km, 1) }), String(d.rivals),
         ])}
         numCols={[1, 3, 4, 5, 6]}
