@@ -3,6 +3,7 @@
 // Curva de venta de un título: el % de las butacas vendidas según los días que faltaban para la función, por cadena.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { fill } from '@/lib/format';
 import { CARTELERA_CHART_TEXT as TEXT, CHAIN_COLOR, CHAIN_LABEL, COMPARED } from '@/lib/labels.generated';
@@ -14,7 +15,7 @@ type Chain = (typeof COMPARED)[number];
 const HEIGHT = 220;
 
 // `curves` lleva la respuesta de `presale_curve` de cada cadena que tiene el título en preventa.
-export function PresaleCurve({ curves }: { curves: Partial<Record<Chain, CurveRow[]>> }) {
+export function PresaleCurve({ curves, contenedor }: { curves: Partial<Record<Chain, CurveRow[]>>; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     const values = COMPARED.flatMap((c) => (curves[c] ?? []).map((r) => ({ ...r, Cadena: CHAIN_LABEL[c] })));
     return {
@@ -42,5 +43,5 @@ export function PresaleCurve({ curves }: { curves: Partial<Record<Chain, CurveRo
     };
   }, [curves]);
 
-  return <VegaChart spec={spec} height={HEIGHT + 50} />;
+  return <VegaChart spec={spec} height={HEIGHT + 50} contenedor={contenedor} />;
 }

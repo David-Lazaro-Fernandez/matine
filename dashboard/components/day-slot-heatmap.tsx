@@ -1,35 +1,25 @@
 'use client';
 
 // Heatmap día×franja: la diferencia en pp entre la parte de parrilla de Cinemex y la de Cinépolis en cada celda.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { DIVERGING, INK, PAPER } from '@/lib/labels.generated';
 
 type Cell = { day: string; slot_label: string; gap_pp: number; label: string; tooltip: string };
 
 const ROW = 46;
-// Ancho mínimo de una columna: debajo de él la gráfica se desplaza en vez de apretar las franjas.
-const MIN_STEP = 134;
-// Lo que ocupan los nombres de los días a la izquierda.
-const DAY_LABELS_WIDTH = 100;
 
-export function DaySlotHeatmap({ cells, days, slots, limit }: { cells: Cell[]; days: string[]; slots: string[]; limit: number }) {
-  const box = useRef<HTMLDivElement>(null);
-  const [available, setAvailable] = useState(0);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const observer = new ResizeObserver(([entry]) => setAvailable(Math.floor(entry.contentRect.width)));
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+export function DaySlotHeatmap({ cells, days, slots, limit, contenedor }: {
+  cells: Cell[]; days: string[]; slots: string[]; limit: number; contenedor?: ContenedorGrafica;
+}) {
   const spec = useMemo<VisualizationSpec>(() => {
     const presentDays = days.filter((d) => cells.some((c) => c.day === d));
     const presentSlots = slots.filter((s) => cells.some((c) => c.slot_label === s));
     return {
       data: { values: cells },
-      width: { step: Math.max(MIN_STEP, Math.floor((available - DAY_LABELS_WIDTH) / presentSlots.length)) },
+      width: { step: 134 },
       height: { step: ROW },
       encoding: {
         x: {
@@ -61,7 +51,7 @@ export function DaySlotHeatmap({ cells, days, slots, limit }: { cells: Cell[]; d
         },
       ],
     };
-  }, [cells, days, slots, limit, available]);
+  }, [cells, days, slots, limit]);
 
-  return <div ref={box}><VegaChart spec={spec} height={ROW * days.length + 40} /></div>;
+  return <VegaChart spec={spec} height={ROW * days.length + 40} contenedor={contenedor} />;
 }

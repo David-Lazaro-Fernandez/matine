@@ -3,6 +3,7 @@
 // Barras 100 % por cadena con la mezcla de formatos o de idiomas de su programación.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { fill, fixed } from '@/lib/format';
 import {
@@ -20,7 +21,7 @@ const DIMENSIONS = {
 const MIN_LABELED_SHARE = 7;
 const HEIGHT = 90;
 
-export function MixBars({ rows, dimension }: { rows: MixRow[]; dimension: keyof typeof DIMENSIONS }) {
+export function MixBars({ rows, dimension, contenedor }: { rows: MixRow[]; dimension: keyof typeof DIMENSIONS; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     const { buckets, label, palette, firstLight } = DIMENSIONS[dimension];
     const order: string[] = [...buckets];
@@ -79,5 +80,5 @@ export function MixBars({ rows, dimension }: { rows: MixRow[]; dimension: keyof 
     };
   }, [rows, dimension]);
 
-  return <VegaChart spec={spec} height={HEIGHT + 10} />;
+  return <VegaChart spec={spec} height={HEIGHT + 10} contenedor={contenedor} />;
 }

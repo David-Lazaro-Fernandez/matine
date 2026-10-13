@@ -3,6 +3,7 @@
 // Barras agrupadas por franja: el % de la programación de cada cadena, la nuestra junto a la independiente.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { CHAIN_COLOR, CHAIN_LABEL, COLUMN_LABEL, SLOTS, SLOT_SHORT } from '@/lib/labels.generated';
 
@@ -12,7 +13,7 @@ type Slot = { slot: keyof typeof SLOT_SHORT; chain: Chain; shows: number; share:
 
 const HEIGHT = 260;
 
-export function IndepSlotsBars({ slots }: { slots: Slot[] }) {
+export function IndepSlotsBars({ slots, contenedor }: { slots: Slot[]; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     // Las filas traen nuestra cadena primero y solo las cadenas con funciones.
     const chains = [...new Set(slots.map((s) => s.chain))];
@@ -37,5 +38,5 @@ export function IndepSlotsBars({ slots }: { slots: Slot[] }) {
     };
   }, [slots]);
 
-  return <VegaChart spec={spec} height={HEIGHT + 40} />;
+  return <VegaChart spec={spec} height={HEIGHT + 40} contenedor={contenedor} />;
 }

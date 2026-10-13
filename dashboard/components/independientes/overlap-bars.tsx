@@ -3,6 +3,7 @@
 // Barras de los títulos con más funciones de la cadena independiente, en rojo los que también exhibimos en la plaza.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { CHAIN_COLOR, COLUMN_LABEL, GRAY_DARK, INDEP, INDEP_TEXT } from '@/lib/labels.generated';
 
@@ -21,7 +22,7 @@ type Overlap = {
 
 const ROW = 22;
 
-export function IndepOverlapBars({ titles }: { titles: Overlap[] }) {
+export function IndepOverlapBars({ titles, contenedor }: { titles: Overlap[]; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => ({
     data: { values: titles.map((t) => ({ ...t, status_label: INDEP_TEXT.status[t.status] })) },
     width: 'container',
@@ -43,5 +44,5 @@ export function IndepOverlapBars({ titles }: { titles: Overlap[] }) {
     },
   }), [titles]);
 
-  return <VegaChart spec={spec} height={ROW * titles.length + 40} />;
+  return <VegaChart spec={spec} height={ROW * titles.length + 40} contenedor={contenedor} />;
 }
