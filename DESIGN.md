@@ -87,7 +87,7 @@ zona, periodo y franja:
    evidencia" a la pantalla y sección que lo prueban. Los tres más fuertes van a todo lo ancho y el resto en dos
    columnas. El filtro Tema (`?tema=`) en la barra ofrece solo los temas que tienen algún hallazgo. La gráfica de cada
    tarjeta sigue la forma del dato (`chart.kind`): barras para un ranking, medidor contra el 100 % para el aforo vendido,
-   dona por cadena para partes de un todo con cuatro partes o menos, barra al 100 % por cadena para más partes, pesas
+   una línea por cadena para una serie de días, dona por cadena para partes de un todo con cuatro partes o menos, barra al 100 % por cadena para más partes, pesas
    para una cifra por cadena en cada fila y barras divergentes para cambios con signo. En dona y barra al 100 % solo la
    parte del hallazgo lleva el color de la cadena; las demás van en `LINE`. Si ninguno cruza su umbral, la pantalla lo
    dice y no inventa.

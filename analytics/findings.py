@@ -12,8 +12,9 @@ as_of}:
 - `metric`, `compare`, `delta`: {label, value, unit, chain}; `unit` es pct, pp, pct_diff, money, count o pace.
   `compare` y `delta` pueden ser None.
 - `chart`: {kind, unit, rows: [{label, values: {chain: valor}, highlight}]} o None. Una fila va resaltada. `kind` es la
-  forma del dato: bars (ranking), meter (% de un aforo), donut y stack (partes de un todo por cadena; stack para más de
-  cuatro partes), dumbbell (una cifra por cadena en cada fila) o diverging (cambios con signo).
+  forma del dato: bars (ranking), meter (% de un aforo), line (una serie por cadena a lo largo de los días), donut y
+  stack (partes de un todo por cadena; stack para más de cuatro partes), dumbbell (una cifra por cadena en cada fila) o
+  diverging (cambios con signo).
 - `context`: la muestra y el periodo que sostienen la cifra, o None.
 Se evalúan todas las reglas y entran las más fuertes. `strength` es la brecha entre el umbral, por la raíz de `stake`,
 la parte de la programación en juego (0 a 1): un título chico que vende raro no pasa delante de una brecha de toda la
@@ -28,7 +29,7 @@ from datetime import datetime, timedelta, timezone
 from scraper import distributors
 
 from .cinema_sales import DAYS as SALES_DAYS
-from .cinema_sales import chain_occupancy, main_rivals
+from .cinema_sales import chain_occupancy, chain_occupancy_by_day, main_rivals
 from .concessions import concession_basket
 from .db import rows
 from .delivery import delivery_compare
@@ -45,6 +46,7 @@ from .independents import (
 )
 from .labels import (
     CHAIN_LABEL,
+    DATE_TEXT,
     DAY_TYPE_LABEL,
     FORMAT_LABEL,
     FULL_DAY,
@@ -260,6 +262,9 @@ def _slot_finding(conn, d0, d1, hours=None, plaza=None):
     if not is_full_day(hours):
         # Con la franja recortada, la "franja ganadora" pierde el sentido comparativo.
         return None
+    if d0 == d1 == today():
+        # Hoy a medias solo quedan las franjas de la noche en ambas cadenas: ganaría la última por construcción.
+        return None
     slots = {r["chain"]: r for r in showtimes_by_slot(conn, d0, d1, plaza=plaza)}
     if US not in slots or THEM not in slots or not slots[US]["total"] or not slots[THEM]["total"]:
         return None
@@ -360,7 +365,7 @@ def _moves_finding(conn, d0, d1, movies, hours=None, plaza=None):
     mine = [r for r in movies if r["title_norm"] == pick["title_norm"]]
     ours = f" · Cinemex le da {mine[0]['share_cinemex']:.0f} %" if chain == THEM and mine else ""
     verb = "subió" if pick["delta_pp"] > 0 else "bajó"
-    label = (f"{CHAIN_LABEL[chain]} {verb} {_short(pick['title'], _LABEL_TITLE)} de {_pct1(pick['share_then'])} a "
+    label = (f"{CHAIN_LABEL[chain]} {verb} {_short(pick['title'])} de {_pct1(pick['share_then'])} a "
              f"{_pct1(pick['share_now'])} de lo que falta de la semana")
     action = None
     if chain == THEM:
@@ -370,7 +375,7 @@ def _moves_finding(conn, d0, d1, movies, hours=None, plaza=None):
                  _metric("De lo que falta de semana, ahora", pick["share_now"], "pct", chain), abs(pick["delta_pp"]) / MOVE_MIN_PP,
                  compare=_metric("Antes", pick["share_then"], "pct", chain),
                  delta=_metric("Cambio", pick["delta_pp"], "pp"),
-                 chart=_chart("pp", [(_short(m["title"], 40), {chain: m["delta_pp"]}, m is pick) for m in [pick, *others]], "diverging"),
+                 chart=_chart("pp", [(_short(m["title"]), {chain: m["delta_pp"]}, m is pick) for m in [pick, *others]], "diverging"),
                  context=f"Desde el {since} · {net:+,} funciones{ours}".replace("-", "−"),
                  stake=max(pick["share_now"], pick["share_then"]), action=action)
 
@@ -471,8 +476,8 @@ def _presale_finding(conn, plaza=None):
         else f"{_short(first['title'], _LABEL_TITLE)} {lead}"
     return _card("preventa", label,
                  _metric(what, first[key], unit, US), min(ratio, 10.0) / PRESALE_MIN_RATIO,
-                 compare=_metric(f"Segundo lugar, {_short(second['title'], 28)}", second[key], unit, US),
-                 chart=_chart(unit, [(_short(r["title"], 40), {US: r[key]}, r is first) for r in pool[:5]]),
+                 compare=_metric(f"Segundo lugar, {_short(second['title'], 32)}", second[key], unit, US),
+                 chart=_chart(unit, [(_short(r["title"]), {US: r[key]}, r is first) for r in pool[:5]]),
                  context=f"{first['sold_pct']:.0f} % vendido en {first['shows']} funciones{when}",
                  as_of=first["last_sampled"], stake=100.0 * first["shows"] / sum(r["shows"] for r in everything),
                  action=f"Valora asegurarle salas grandes a {_short(first['title'])} para su estreno.")
@@ -502,7 +507,7 @@ def _presale_gap_finding(compare):
                  _metric("Nuestro aforo vendido", r["sold_pct_cinemex"], "pct", US), abs(r["gap_pp"]) / PRESALE_GAP_MIN_PP,
                  compare=_metric(f"El de {THEM_NAME}", r["sold_pct_cinepolis"], "pct", THEM),
                  delta=_metric("Diferencia", r["gap_pp"], "pp"),
-                 chart=_chart("pct", [(_short(x["title"], 40), {US: x["sold_pct_cinemex"], THEM: x["sold_pct_cinepolis"]}, x is r)
+                 chart=_chart("pct", [(_short(x["title"]), {US: x["sold_pct_cinemex"], THEM: x["sold_pct_cinepolis"]}, x is r)
                                       for x in shared[:5]], "dumbbell"),
                  context=f"{r['shows_cinemex']} funciones nuestras y {r['shows_cinepolis']} suyas{release}",
                  stake=100.0 * (r["shows_cinemex"] + r["shows_cinepolis"]) / _presale_shows(compare, US, THEM),
@@ -525,9 +530,26 @@ def _independent_finding(conn, d0, d1, hours=None, plaza=None):
                  _metric("Butacas vendidas en la Cineteca", best["sold_pct"], "pct", "cineteca"),
                  best["sold_pct"] / INDEP_MIN_SOLD_PCT,
                  compare=_metric("Funciones nuestras en CDMX", 0, "count", US),
-                 chart=_chart("pct", [(_short(r["title"], 40), {"cineteca": r["sold_pct"]}, r is best) for r in full[:5]], "meter"),
+                 chart=_chart("pct", [(_short(r["title"]), {"cineteca": r["sold_pct"]}, r is best) for r in full[:5]], "meter"),
                  context=f"{best['samples']:,} funciones medidas · últimos {OCCUPANCY_DAYS} días",
                  action=f"Valora programar {_short(best['title'])} en alguno de nuestros complejos de CDMX.")
+
+
+def _day_name(iso):
+    d = datetime.fromisoformat(iso)
+    return f"{DATE_TEXT['weekdays_short'][d.weekday()].capitalize()} {d.day}"
+
+
+def _daily_sales_chart(conn, plaza=None):
+    """El % vendido de cada cadena día por día, con resaltado el día de mayor brecha; None si falta algún día."""
+    by_day = {}
+    for r in chain_occupancy_by_day(conn, plaza=plaza):
+        by_day.setdefault(r["date"], {})[r["chain"]] = r["sold_pct"]
+    days = [(d, v) for d, v in sorted(by_day.items()) if US in v and THEM in v]
+    if len(days) < SALES_DAYS:
+        return None
+    widest = max(days, key=lambda dv: abs(dv[1][US] - dv[1][THEM]))
+    return _chart("pct", [(_day_name(d), v, (d, v) == widest) for d, v in days], "line")
 
 
 def _occupancy_finding(conn, plaza=None):
@@ -547,8 +569,9 @@ def _occupancy_finding(conn, plaza=None):
                  _metric("De nuestras butacas vendidas", us["sold_pct"], "pct", US), abs(gap) / OCCUPANCY_MIN_PP,
                  compare=_metric(f"De las de {THEM_NAME}", them["sold_pct"], "pct", THEM),
                  delta=_metric("Diferencia", gap, "pp"),
-                 chart=_chart("pct", [(f"Últimos {SALES_DAYS} días", {US: us["sold_pct"], THEM: them["sold_pct"]}, True),
-                                      (f"{SALES_DAYS} días anteriores", {US: us["sold_pct_prev"], THEM: them["sold_pct_prev"]}, False)], "meter"),
+                 chart=_daily_sales_chart(conn, plaza) or _chart(
+                     "pct", [(f"Últimos {SALES_DAYS} días", {US: us["sold_pct"], THEM: them["sold_pct"]}, True),
+                             (f"{SALES_DAYS} días anteriores", {US: us["sold_pct_prev"], THEM: them["sold_pct_prev"]}, False)], "meter"),
                  context=(f"{us['shows'] + them['shows']:,} funciones medidas en el plano después de empezar · "
                           f"{us['cinemas']} cines Cinemex, {them['cinemas']} {THEM_NAME} · últimos {SALES_DAYS} días"),
                  action=action)
@@ -568,7 +591,7 @@ def _rival_finding(conn, plaza=None):
                  _metric("De nuestras butacas vendidas", d[US]["sold_pct"], "pct", US), abs(d["gap_pp"]) / RIVAL_MIN_PP,
                  compare=_metric(f"De las de {THEM_NAME}", d[THEM]["sold_pct"], "pct", THEM),
                  delta=_metric("Diferencia", d["gap_pp"], "pp"),
-                 chart=_chart("pct", [(_short(x[US]["name"], 40), {US: x[US]["sold_pct"], THEM: x[THEM]["sold_pct"]}, x is d)
+                 chart=_chart("pct", [(_short(x[US]["name"]), {US: x[US]["sold_pct"], THEM: x[THEM]["sold_pct"]}, x is d)
                                       for x in duels[:5]], "dumbbell"),
                  context=(f"El {THEM_NAME} que más vende a {d['km']} km · {d[US]['shows']:,} y {d[THEM]['shows']:,} "
                           f"funciones medidas · últimos {SALES_DAYS} días"),
