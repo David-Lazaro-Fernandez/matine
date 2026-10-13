@@ -8,13 +8,19 @@ filtra). Los módulos de una organización son claves de `MODULES`; un plan es s
 import json
 from datetime import datetime, timezone
 
-from .db import MODULES, cursor, one, rows
+from .db import MODULES, cursor, one, rows, transaction
 
 ROLES = ("staff", "admin", "analyst", "viewer")
 # Lo que un admin puede asignar desde el dashboard. `staff` solo se da por la línea de comandos.
 CLIENT_ROLES = ROLES[1:]
 _MANAGERS = {"staff", "admin"}
 _DOWNLOADERS = {"staff", "admin", "analyst"}
+# Lo que configura el admin desde el dashboard o la línea de comandos.
+SETTINGS = ("slack_webhook", "digest_recipients")
+# Estado que escribe el envío de `integrations/`: el cursor de alertas y la última semana con resumen enviado.
+STATE = ("slack_last_event_id", "digest_last_week", "slack_digest_week")
+SLACK_WEBHOOK_PREFIX = "https://hooks.slack.com/"
+MAX_RECIPIENTS = 20
 
 
 def modules_of(user):
@@ -60,3 +66,48 @@ def _known(modules):
 
 def _decode(row):
     return {**row, "modules": decode_modules(row["modules"])}
+
+
+def integrations(conn, org_id):
+    """Ajustes y estado de envío de una organización; {} si no existe."""
+    row = one(conn, "SELECT integrations FROM organization WHERE id = ?", (org_id,))
+    return json.loads(row["integrations"]) if row else {}
+
+
+def set_settings(conn, org_id, changes):
+    """Cambia los ajustes del admin. Un valor vacío o None quita el ajuste. Solo acepta webhooks de Slack, para que el
+    servidor no publique en cualquier URL."""
+    unknown = set(changes) - set(SETTINGS)
+    if unknown:
+        raise ValueError(f"ajustes desconocidos: {sorted(unknown)}")
+    if changes.get("slack_webhook") and not changes["slack_webhook"].startswith(SLACK_WEBHOOK_PREFIX):
+        raise ValueError(f"el webhook debe empezar por {SLACK_WEBHOOK_PREFIX}")
+    if "digest_recipients" in changes:
+        changes = {**changes, "digest_recipients": _recipients(changes["digest_recipients"])}
+    _merge(conn, org_id, changes)
+
+
+def record_state(conn, org_id, key, value):
+    """Guarda el estado de un envío. Solo lo llama `integrations/`; el admin no lo ve."""
+    if key not in STATE:
+        raise ValueError(f"estado desconocido: {key}")
+    _merge(conn, org_id, {key: value})
+
+
+def _recipients(emails):
+    clean = [e.strip() for e in emails or () if e.strip()]
+    if len(clean) > MAX_RECIPIENTS:
+        raise ValueError(f"máximo {MAX_RECIPIENTS} destinatarios")
+    bad = [e for e in clean if "@" not in e or " " in e]
+    if bad:
+        raise ValueError(f"correos inválidos: {bad}")
+    return clean
+
+
+def _merge(conn, org_id, changes):
+    with transaction(conn):
+        row = one(conn, "SELECT integrations FROM organization WHERE id = ?", (org_id,))
+        if row is None:
+            raise ValueError(f"no hay organización {org_id}")
+        values = {**json.loads(row["integrations"]), **changes}
+        conn.execute("UPDATE organization SET integrations = ? WHERE id = ?", (json.dumps(values), org_id))

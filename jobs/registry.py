@@ -137,6 +137,16 @@ REGISTRY = {
         "writes": ("app.db: session", "token"),
     },
     # S3 falla de vez en cuando por red; un reintento a los 10 min basta y el respaldo del día no se pierde.
+    # Lee la base de análisis y escribe `app.db` solo por `auth/`. Cada hora, para que un aviso salga como mucho una hora
+    # después de la captura que lo trajo; el cursor evita repetirlo.
+    keys.INTEGRATIONS: {
+        "description": "Avisos de Slack tras cada captura y resumen del lunes por correo, a las organizaciones que lo configuraron",
+        "steps": (("venv", "integrations.run"),),
+        "schedule": ("*:20",),
+        "timeout_min": 10,
+        "nice": 10,
+        "writes": ("data/app.db", "Slack", "correo"),
+    },
     keys.BACKUP: {
         "description": "Copia consistente de snapshots.db y del crudo al bucket",
         "steps": (("bash", "deploy/backup.sh"),),

@@ -43,7 +43,7 @@ make user-create EMAIL=tu@correo NAME="Tu Nombre" ROLE=admin   # imprime el enla
 make dashboard                                 # API interna del dashboard en :8501
 cd dashboard && pnpm dev                       # frontend en :3000 (pasa /api a :8501)
 make api                                       # API pública en http://localhost:8000/docs
-make marketing-dev                             # sitio público (npm install una vez en marketing/)
+make marketing-dev                             # sitio público en :3001 (pnpm install una vez en marketing/)
 ```
 
 Cada trabajo programado se corre a mano con `make job KEY=llave` (llaves en `jobs/keys.py`). En la Mac,

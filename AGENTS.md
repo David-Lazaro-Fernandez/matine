@@ -25,6 +25,7 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
 | Presentación | `dashboard/` (Next.js estático) + `api/internal.py` y `api/pages/` | `dashboard/`: Node/pnpm solo para el build; API: `.venv` (fastapi, uvicorn) | nada |
 | Acceso | `auth/` | `.venv` (`hashlib.scrypt`; boto3 solo para SES) | `data/app.db` (organizaciones, cuentas, perfil, sesiones, enlaces, auditoría, logo), **nada más** |
 | Programación | `jobs/` | **solo stdlib**, `/usr/bin/python3` | `data/logs/jobs.jsonl`, `data/locks/`; genera `deploy/systemd/` |
+| Avisos | `integrations/` | `.venv` (`analytics/` en solo lectura; `auth/` para config y estado) | nada directo: el estado de envío va por `auth/orgs.py` a `data/app.db` |
 | API pública | `api/` | `.venv` (fastapi, uvicorn) | nada (lee `snapshots.db` con `analytics.connect()`, `mode=ro`) |
 | Sitio público | `marketing/` | Node/Next.js, **proyecto independiente** (su propio `package.json`) | nada (sitio estático, `output: 'export'`) |
 
@@ -321,9 +322,16 @@ un endpoint o añades lógica pura; añade una prueba cuando el caso quepa en me
 make help                                  # los targets son lo que corren los timers
 /usr/bin/python3 -m scraper.run            # snapshot completo de ambas cadenas (~5 min)
 /usr/bin/python3 -m scraper.health         # sale 1 si hay huecos o fallos
-make dashboard                             # API interna en :8501; el frontend con `pnpm dev` en dashboard/
+make dashboard                             # API interna en :8501
+make dashboard-dev                         # frontend del dashboard en :3000
+make marketing-dev                         # landing en :3001
 sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
 ```
+
+**Puertos de desarrollo:** el dashboard va en `localhost:3000` y la landing en `localhost:3001`. Los dos corren
+siempre que trabajas. Si un puerto está ocupado, `make dashboard-dev` o `make marketing-dev` matan el proceso que lo
+ocupa antes de arrancar. `AC_BASE_URL` sin definir apunta a `http://localhost:3000`, así que los enlaces de correo y
+de Slack van al dashboard local. En producción `AC_BASE_URL` va en el `.env` del servidor.
 
 - **Ejecuta el módulo que tocaste**, no solo el que te queda a mano. Un cambio en `normalize.py` o
   `store.py` se verifica con un `scraper.run` real; uno en `analytics/` levantando el dashboard (`make dashboard` y

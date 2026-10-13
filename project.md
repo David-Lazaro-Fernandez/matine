@@ -1558,6 +1558,28 @@ que cada cuenta ve y hace; el dashboard solo lo refleja.
 - **Pendiente:** un plan de prueba con fecha de fin, la clave `distribuidores` cuando su módulo exista, y que staff vea a
   qué organización pertenece cada cuenta en Usuarios.
 
+## Integraciones de los planes esenciales (2026-10-12)
+
+Primera entrega: Slack y el resumen por correo. Google Drive queda para la segunda, porque necesita una cuenta de
+servicio de Google Cloud que aún no existe. Teams, OneDrive, SharePoint y Power BI son Enterprise y no entran aquí.
+
+- **Slack:** la organización pega un webhook de entrada de `https://hooks.slack.com/`. Sin app de Slack ni OAuth. Cada
+  hora, `integrations/run.py` avisa de las funciones canceladas, con cambio de horario o sala y de idioma o formato, de
+  Cinépolis en CDMX. Las altas y las funciones concluidas no avisan. Un cursor (`slack_last_event_id`) evita repetir un
+  aviso; el primer arranque lo fija al último evento y no manda el historial. Los cambios de precio no avisan todavía:
+  los precios no son eventos (`prices` corre a las 06:07).
+- **Resumen por correo:** los lunes, después de las 9 h, los hallazgos de la plaza (`findings`, cinco como máximo) salen
+  por `auth/mail.py` (SES en el servidor) a la lista de la organización. Un envío por semana; la fecha queda en
+  `digest_last_week`, así un envío fallido se reintenta.
+- **Dónde vive:** `organization.integrations` (JSON, `auth/orgs.py`). El admin cambia `slack_webhook` y
+  `digest_recipients`; el trabajo escribe solo el estado. Hoy se configura con
+  `auth.cli org-integrations --org ID --slack-webhook URL --digest-to a@x,b@x`; la pantalla del admin falta.
+- **Trabajo:** `integrations` en `jobs/registry.py`, cada hora en `:20`, paso `venv` (`auth` usa `hashlib.scrypt`, que
+  el Python del sistema no tiene).
+- **Pendiente:** pantalla de configuración en Ajustes, precios en los avisos, Google Drive (cuenta de servicio), y un
+  umbral para los cambios de horario de pocos minutos. Una corrida real encontró 123 cambios en una pasada, la mayoría
+  de 5 a 10 minutos; sin umbral el canal se llena.
+
 ## Consideraciones
 
 - La key es pública pero puede rotar con cada despliegue del sitio. Si la API

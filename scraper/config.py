@@ -221,9 +221,9 @@ APP_DB_PATH = Path(os.environ.get("AC_APP_DB", DATA_DIR / "app.db"))
 # `console` escribe data/logs/mail.log; `ses` envía por Amazon SES.
 MAIL_BACKEND = os.environ.get("AC_MAIL_BACKEND", "console")
 # En SES, identidad verificada.
-MAIL_FROM = os.environ.get("AC_MAIL_FROM", "Absolut Cinema <no-responder@localhost>")
-# Base de los enlaces del correo.
-BASE_URL = os.environ.get("AC_BASE_URL", "http://localhost:8501").rstrip("/")
+MAIL_FROM = os.environ.get("AC_MAIL_FROM", "Matine <no-response@matine.lat>")
+# Base de los enlaces del correo y de Slack. En local es el dashboard en :3000; en producción va en el .env.
+BASE_URL = os.environ.get("AC_BASE_URL", "http://localhost:3000").rstrip("/")
 MAIL_LOG_PATH = LOG_DIR / "mail.log"
 # A quién avisar cuando una cuenta pide un módulo que su organización no contrató. Sin valor, solo queda en `audit`.
 SALES_EMAIL = os.environ.get("AC_SALES_EMAIL") or None

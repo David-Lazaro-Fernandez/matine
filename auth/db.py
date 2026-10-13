@@ -85,6 +85,9 @@ CREATE TABLE IF NOT EXISTS setting (              -- ajustes de toda la instanci
 # ya existe, así que `connect` las agrega con `ALTER TABLE`.
 _ACCOUNT_COLUMNS = {"avatar": "TEXT", "theme": "TEXT NOT NULL DEFAULT 'system'",
                     "org_id": "INTEGER REFERENCES organization"}
+# Columnas de `organization` posteriores a la primera versión (mismo mecanismo que `account`). `integrations` guarda
+# el JSON de `auth/orgs.py` (webhook de Slack, destinatarios del resumen y su estado de envío).
+_ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'"}
 _OLD_ROLE_CHECK = "CHECK (role IN ('admin', 'viewer'))"
 _ROLE_CHECK = "CHECK (role IN ('staff', 'admin', 'analyst', 'viewer'))"
 # Lo que se contrata por separado. "Completo" son todos.
@@ -162,16 +165,17 @@ def _default_org(conn):
 
 
 def _add_columns(conn):
-    present = {column["name"] for column in conn.execute("PRAGMA table_info(account)")}
-    for name, declaration in _ACCOUNT_COLUMNS.items():
-        if name in present:
-            continue
-        try:
-            conn.execute(f"ALTER TABLE account ADD COLUMN {name} {declaration}")
-        # Otro proceso pudo agregar la columna entre la lectura y el ALTER.
-        except sqlite3.OperationalError as e:
-            if "duplicate column" not in str(e):
-                raise
+    for table, columns in (("account", _ACCOUNT_COLUMNS), ("organization", _ORG_COLUMNS)):
+        present = {column["name"] for column in conn.execute(f"PRAGMA table_info({table})")}
+        for name, declaration in columns.items():
+            if name in present:
+                continue
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {declaration}")
+            # Otro proceso pudo agregar la columna entre la lectura y el ALTER.
+            except sqlite3.OperationalError as e:
+                if "duplicate column" not in str(e):
+                    raise
 
 
 @contextmanager

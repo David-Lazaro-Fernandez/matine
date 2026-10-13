@@ -5,6 +5,7 @@ Sin dependencias fuera de la librería estándar, para que el dashboard (Streaml
 futuro API (FastAPI) llamen exactamente lo mismo. Los textos para usuarios viven en labels.py.
 """
 from . import datasets, labels
+from .alerts import ALERT_KINDS, competitor_changes, latest_event_id
 from .cinema_locations import cinema_highlights, cinema_map, cinema_sites
 from .cinema_sales import chain_occupancy, cinema_occupancy, competitor_sites, main_rivals
 from .concessions import (
@@ -76,6 +77,7 @@ from .seats import (
 from .summary import general_summary
 
 __all__ = [
+    "ALERT_KINDS", "competitor_changes", "latest_event_id",
     "board_as_of", "cinemas", "dates_known", "functions_on", "showtime_timeline", "snapshot_times",
     "general_summary",
     "DELIVERY_BUCKETS", "delivery_compare", "delivery_products", "delivery_stores", "delivery_summary",
