@@ -636,6 +636,13 @@ Petición del cliente tras la primera revisión: entender los precios de dulcer�
   (`ValidVoucher`). Introspección deshabilitada en todos.
 - Pase `scraper.sample --concessions` (tabla `concession_price`, un menú completo por cine cada 7 días; corre en `daily.sh`
   y en `prices.service`). Primera pasada 2026-09-09: 74 cines, 10,942 referencias, 340 productos distintos, 92 s.
+- **Tamaños (verificado 2026-10-13).** El producto del menú ya es el tamaño mayor: su `ingredientName` es el nombre
+  ("Palomitas" = Jumbo, "Refresco" = Jumbo, "Nachos" = Grandes, "ICEE®" = Grande, "Agua Embotellada" = 1 L). Los demás
+  tamaños son productos aparte, listados en `settings.modifierList` de tipo `size`, cada uno con nombre y precio propios
+  (palomitas en un VIP: Chicas 85, Medianas 90, Grandes 98, Jumbo 107, Para Llevar 120). `batchProducts(cinema, country,
+  products)` los da, y vive en `fab-struct-concession`, no en `fab-struct-product` (esa URL no lo define). El pase
+  `--concessions` pide, por cine, 2 llamadas extra para los productos compuestos de "Clásicos" y los guarda en
+  `concession_size`. Dulcería y Datos los muestran por tamaño.
 - **Hallazgo:** Cinépolis fija el precio **por complejo**: palomitas base de 86 a 107 (7 precios distintos en 74 cines),
   refresco 79–110, Combo Clásico 222–322, Maxicombo Nachos 342–472; los VIP arriba. `analytics/concessions.py` expone la
   canasta comparable (`BASKET`, nombres exactos de Clásicos/Combos), el precio de un producto por complejo, la canasta

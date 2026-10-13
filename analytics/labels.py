@@ -116,10 +116,9 @@ DULCERIA_TEXT = {
     "size": "Tamaño",
     "room_note": "{product}: de ${min} a ${max} en {cinemas} complejos, {prices} precios distintos; la mediana es "
                  "${median}.",
-    "detail": "Detalle: canasta de Cinépolis por complejo, catálogo a domicilio y tiendas",
+    "detail_room": "Precio de cada tamaño en cada complejo",
+    "detail_delivery": "Catálogo a domicilio por tienda",
     "basket_headers": ["Producto", "Complejos", "Mediana", "Mínimo", "Máximo", "Máx. vs mín.", "Precios distintos"],
-    "summary_headers": ["Plataforma", "Cadena", "Tiendas", "Productos", "% con precio único", "Última lectura"],
-    "chain": "Cadena",
     "leer": "A domicilio se compara la mediana entre tiendas de cada cadena en la misma plataforma (Rappi, DiDi Food), agrupando "
             "productos por tipo porque cada cadena los nombra distinto; es el catálogo para llevar (Mega Palomitas de 230 g, refresco "
             "en lata), no el tablero de sala, y las porciones difieren: nuestro combo básico lleva dos latas y el de Cinépolis un refresco. "
@@ -626,6 +625,7 @@ DATASET_LABEL = {
     "week_showtimes": "Funciones de la semana",
     "ticket_prices": "Precio del boleto",
     "concession_prices": "Dulcería en sala (Cinépolis)",
+    "concession_sizes": "Dulcería en sala por tamaño (Cinépolis)",
     "delivery_prices": "Dulcería a domicilio",
 }
 DATA_TEXT = {
@@ -661,7 +661,7 @@ COLUMN_LABEL.update({
     "experience": "Experiencia", "premium_tier": "Nivel premium", "closed_at": "Cerrada", "closed_kind": "Cierre",
     "general_price": "Precio general", "fee_price": "Cargo por servicio", "sub_category": "Subcategoría",
     "promotion_type": "Promoción", "active": "Activa", "in_stock": "En existencia", "store_slug": "Tienda (clave)",
-    "movie_title": "Película", "sampled_at": "Muestreado",
+    "movie_title": "Película", "sampled_at": "Muestreado", "size_name": "Tamaño",
     "email": "Correo", "name": "Nombre", "role": "Rol", "last_login_at": "Último acceso", "created_at": "Creada",
     "pending_invite": "Invitación pendiente", "has_password": "Con contraseña", "id": "Id",
 })

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query
 from typing_extensions import TypedDict
 
 import analytics
-from analytics.labels import COMPARED, PLATFORM_LABEL
+from analytics.labels import PLATFORM_LABEL
 from scraper import plazas
 
 from .. import session
@@ -25,7 +25,6 @@ router = APIRouter(dependencies=[Depends(session.require_module("dulceria"))])
 class Dulceria(TypedDict):
     plaza: str | None
     platform: str | None
-    chain: str
     product: str | None
     size: str | None
     sizes: list[dict[str, Any]]
@@ -35,20 +34,15 @@ class Dulceria(TypedDict):
     concession_summary: list[dict[str, Any]]
     basket: list[dict[str, Any]]
     product_by_cinema: list[dict[str, Any]]
-    by_cinema: list[dict[str, Any]]
-    delivery_summary: list[dict[str, Any]]
     delivery_compare: list[dict[str, Any]]
-    delivery_products: list[dict[str, Any]]
-    delivery_stores: list[dict[str, Any]]
 
 
 @router.get("/dulceria")
 def dulceria(plaza: Literal[tuple(plazas.PLAZAS)] | None = None,
              platform: Literal[tuple(PLATFORM_LABEL)] | None = None,
-             chain: Literal[COMPARED] = COMPARED[0],
              product: Literal[tuple(analytics.BASKET)] | None = None,
              size: Annotated[str | None, Query(max_length=40)] = None) -> Dulceria:
-    """Dulcería en sala de la zona y a domicilio. `chain` elige la cadena del catálogo y las tiendas a domicilio."""
+    """Dulcería en sala de la zona y a domicilio."""
     w0, w1 = analytics.cinema_week(analytics.today())
 
     def compute(conn):
@@ -59,17 +53,13 @@ def dulceria(plaza: Literal[tuple(plazas.PLAZAS)] | None = None,
         chosen_size = size if size in by_name else next((z["size_name"] for z in sizes if z["is_menu_size"]), None)
         concl = analytics.conclusions(conn, d0=w0, d1=w1, plaza=plaza, sections=("dulceria",))
         return {
-            "plaza": plaza, "platform": platform, "chain": chain, "product": chosen, "size": chosen_size, "sizes": sizes, "first_snapshot": FIRST_SNAPSHOT,
+            "plaza": plaza, "platform": platform, "product": chosen, "size": chosen_size, "sizes": sizes, "first_snapshot": FIRST_SNAPSHOT,
             "conclusion": concl.get("dulceria", ""),
             "findings": [f for f in analytics.findings(conn, d0=w0, d1=w1, top=None, plaza=plaza) if f["topic"] == "dulceria"],
             "concession_summary": analytics.concession_summary(conn, plaza=plaza),
             "basket": basket,
             "product_by_cinema": analytics.concession_product_by_cinema(conn, chosen, plaza=plaza, size=chosen_size) if chosen else [],
-            "by_cinema": analytics.concession_by_cinema(conn, plaza=plaza),
-            "delivery_summary": analytics.delivery_summary(conn),
             "delivery_compare": analytics.delivery_compare(conn, platform=platform),
-            "delivery_products": analytics.delivery_products(conn, chain=chain, platform=platform),
-            "delivery_stores": analytics.delivery_stores(conn, chain=chain, platform=platform),
         }
 
-    return read(("dulceria", w0, plaza, platform, chain, product, size), compute)
+    return read(("dulceria", w0, plaza, platform, product, size), compute)
