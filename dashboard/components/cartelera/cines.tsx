@@ -31,6 +31,10 @@ type Cines = {
 const TOP = 15;
 const NEIGHBORS = 3;
 const ROW = 22;
+// Margen derecho donde se escribe la diferencia de cada duelo.
+const GAP_WIDTH = 70;
+// Nombres de cine, diferencia y un tramo legible del eje.
+const RIVALS_MIN_WIDTH = 560;
 // 110 px por cadena: los cines de Cinemex se juntan entre 1 % y 10 % y necesitan alto para no encimarse.
 const SPREAD_HEIGHT = 220;
 const SPREAD_BIN = 0.6;
@@ -79,45 +83,38 @@ function rivalsSpec(duels: Rival[], axis: string): VisualizationSpec {
   })));
   const y = { field: 'pair', type: 'nominal' as const, sort: order };
   return {
-    hconcat: [
+    width: 'container',
+    height: { step: ROW },
+    encoding: { y: { ...y, title: null, axis: { labelLimit: 260, labelColor: GRAY_DARK, ticks: false, domain: false, labelPadding: 8 } } },
+    padding: { right: GAP_WIDTH },
+    layer: [
       {
-        width: 420,
-        height: { step: ROW },
         data: { values: points },
-        encoding: { y: { ...y, title: null, axis: { labelLimit: 260, labelColor: GRAY_DARK, ticks: false, domain: false, labelPadding: 8 } } },
-        layer: [
-          {
-            mark: { type: 'rule', strokeWidth: 2, color: NEUTRAL },
-            encoding: {
-              x: { aggregate: 'min', field: 'sold_pct', type: 'quantitative', title: axis, axis: { grid: true } },
-              x2: { aggregate: 'max', field: 'sold_pct' },
-            },
-          },
-          {
-            mark: { type: 'circle', size: 90, opacity: 1 },
-            encoding: {
-              x: { field: 'sold_pct', type: 'quantitative' },
-              color: { field: 'chain', type: 'nominal', legend: null, scale: { domain: [...COMPARED], range: COMPARED.map((c) => CHAIN_COLOR[c]) } },
-              tooltip: { field: 'tooltip' },
-            },
-          },
-        ],
+        mark: { type: 'rule', strokeWidth: 2, color: NEUTRAL },
+        encoding: {
+          x: { aggregate: 'min', field: 'sold_pct', type: 'quantitative', title: axis, axis: { grid: true } },
+          x2: { aggregate: 'max', field: 'sold_pct' },
+        },
       },
       {
-        width: 70,
-        height: { step: ROW },
-        data: { values: duels.map((d) => ({ pair: label(d), delta: pp(d.gap_pp), ahead: d.gap_pp > 0 })) },
-        mark: { type: 'text', align: 'left', fontWeight: 'bold' },
+        data: { values: points },
+        mark: { type: 'circle', size: 90, opacity: 1 },
         encoding: {
-          y: { ...y, axis: null },
-          x: { value: 4 },
+          x: { field: 'sold_pct', type: 'quantitative' },
+          color: { field: 'chain', type: 'nominal', legend: null, scale: { domain: [...COMPARED], range: COMPARED.map((c) => CHAIN_COLOR[c]) } },
+          tooltip: { field: 'tooltip' },
+        },
+      },
+      {
+        data: { values: duels.map((d) => ({ pair: label(d), delta: pp(d.gap_pp), ahead: d.gap_pp > 0 })) },
+        mark: { type: 'text', align: 'left', dx: 8, fontWeight: 'bold' },
+        encoding: {
+          x: { value: { expr: 'width' } },
           text: { field: 'delta' },
           color: { condition: { test: 'datum.ahead', value: CHAIN_COLOR[US] }, value: GRAY_DARK },
         },
       },
     ],
-    spacing: 6,
-    resolve: { scale: { y: 'shared' } },
   };
 }
 
@@ -185,7 +182,7 @@ function Rivales({ data }: { data: Cines }) {
           <span className={s.totalLabel}>{T.ahead}</span>
         </div>
       </div>
-      <VegaChart spec={rivalsSpec(data.rivals, T.axis)} height={ROW * data.rivals.length + 50} name="rival_numero_uno" />
+      <VegaChart spec={rivalsSpec(data.rivals, T.axis)} height={ROW * data.rivals.length + 50} minWidth={RIVALS_MIN_WIDTH} name="rival_numero_uno" />
       <Table
         headers={[...T.rival_headers]}
         rows={data.rivals.map((d): Cell[] => [

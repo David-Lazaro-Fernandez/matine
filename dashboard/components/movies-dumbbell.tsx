@@ -16,6 +16,10 @@ type Movie = {
 } & Record<`share_${Chain}` | `shows_${Chain}`, number | null>;
 
 const ROW = 24;
+// Margen derecho donde se escribe la diferencia de cada película.
+const DELTA_WIDTH = 110;
+// Nombres de película, diferencia y un tramo legible del eje.
+const MIN_WIDTH = 640;
 
 export function MoviesDumbbell({ movies, axisTitle }: { movies: Movie[]; axisTitle: string }) {
   const spec = useMemo<VisualizationSpec>(() => {
@@ -26,49 +30,40 @@ export function MoviesDumbbell({ movies, axisTitle }: { movies: Movie[]; axisTit
     );
     const y = { field: 'title', type: 'nominal' as const, sort: order };
     return {
-      hconcat: [
+      width: 'container',
+      height: { step: ROW },
+      encoding: { y: { ...y, title: null, axis: { labelLimit: 300, labelColor: GRAY_DARK, labelFontSize: 12.5, ticks: false, domain: false, labelPadding: 10 } } },
+      padding: { right: DELTA_WIDTH },
+      layer: [
         {
-          width: 620,
-          height: { step: ROW },
           data: { values: points },
+          mark: { type: 'rule', strokeWidth: 2, color: NEUTRAL },
           encoding: {
-            y: { ...y, title: null, axis: { labelLimit: 300, labelColor: GRAY_DARK, labelFontSize: 12.5, ticks: false, domain: false, labelPadding: 10 } },
+            x: { aggregate: 'min', field: 'share', type: 'quantitative', title: axisTitle, axis: { grid: true, tickCount: 6 } },
+            x2: { aggregate: 'max', field: 'share' },
           },
-          layer: [
-            {
-              mark: { type: 'rule', strokeWidth: 2, color: NEUTRAL },
-              encoding: {
-                x: { aggregate: 'min', field: 'share', type: 'quantitative', title: axisTitle, axis: { grid: true, tickCount: 6 } },
-                x2: { aggregate: 'max', field: 'share' },
-              },
-            },
-            {
-              mark: { type: 'circle', size: 120, opacity: 1 },
-              encoding: {
-                x: { field: 'share', type: 'quantitative' },
-                color: { field: 'chain', type: 'nominal', legend: null, scale: { domain: [...COMPARED], range: COMPARED.map((c) => CHAIN_COLOR[c]) } },
-                tooltip: { field: 'tooltip' },
-              },
-            },
-          ],
         },
         {
-          width: 110,
-          height: { step: ROW },
-          data: { values: movies },
-          mark: { type: 'text', align: 'left', fontSize: 12.5, fontWeight: 'bold' },
+          data: { values: points },
+          mark: { type: 'circle', size: 120, opacity: 1 },
           encoding: {
-            y: { ...y, axis: null },
-            x: { value: 4 },
+            x: { field: 'share', type: 'quantitative' },
+            color: { field: 'chain', type: 'nominal', legend: null, scale: { domain: [...COMPARED], range: COMPARED.map((c) => CHAIN_COLOR[c]) } },
+            tooltip: { field: 'tooltip' },
+          },
+        },
+        {
+          data: { values: movies },
+          mark: { type: 'text', align: 'left', dx: 8, fontSize: 12.5, fontWeight: 'bold' },
+          encoding: {
+            x: { value: { expr: 'width' } },
             text: { field: 'delta' },
             color: { condition: { test: `datum.winner === '${US}'`, value: CHAIN_COLOR[US] }, value: GRAY_DARK },
           },
         },
       ],
-      spacing: 6,
-      resolve: { scale: { y: 'shared' } },
     };
   }, [movies, axisTitle]);
 
-  return <VegaChart spec={spec} height={ROW * movies.length + 50} />;
+  return <VegaChart spec={spec} height={ROW * movies.length + 50} minWidth={MIN_WIDTH} />;
 }

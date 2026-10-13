@@ -33,7 +33,8 @@ function specRows(spec: unknown): Datum[] {
   return [];
 }
 
-export function VegaChart({ spec, height, name = DOWNLOAD_TEXT.chart }: { spec: VisualizationSpec; height: number; name?: string }) {
+// `minWidth` es el ancho debajo del cual la gráfica deja de apretarse y se desplaza dentro de su caja.
+export function VegaChart({ spec, height, minWidth, name = DOWNLOAD_TEXT.chart }: { spec: VisualizationSpec; height: number; minWidth?: number; name?: string }) {
   const s = useStyles();
   const ref = useRef<HTMLDivElement>(null);
   const embedded = useRef<Embedded | null>(null);
@@ -72,7 +73,7 @@ export function VegaChart({ spec, height, name = DOWNLOAD_TEXT.chart }: { spec: 
       {/* Vega pone `display: inline-block` en su caja, así que el desplazamiento va en una caja de afuera. */}
       <div style={{ overflowX: 'auto' }}>
         {/* El ancho completo deja que un spec con `width: 'container'` llene la tarjeta; uno de ancho fijo no cambia. */}
-        <div ref={ref} style={{ width: '100%', minHeight: ready ? height : 0 }} />
+        <div ref={ref} style={{ width: '100%', minWidth, minHeight: ready ? height : 0 }} />
       </div>
       {ready && canDownload && (
         <div className={s.actions}>
