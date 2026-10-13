@@ -1468,6 +1468,17 @@ respaldo. Pruebas: validación de cifras y adaptador con respuestas grabadas, si
   `#FFBE06` / `#FF804A` / `#A2ACBA` (hoy naranja ≈ 83 %, amarillo ≈ 53 % vendido con pocas muestras); comportamiento
   semanal del competidor (cancelaciones, movimientos, hora de publicación); decaimiento por título (≈2026-09-24) y
   tendencia de 4 semanas (≈2026-10-05).
+- **Decaimiento por título y cadena (pendiente, definido el 2026-10-13).** Los Hallazgos deben contar cada caso en tres
+  tiempos: qué pasó (dimos más pantallas de las debidas a un título), qué está pasando (la semana post-estreno) y qué va
+  a pasar (las ventas caen en una proporción). Esa proporción no se escribe a mano: se mide con nuestra propia historia.
+  Qué falta:
+  - Guardar, por título, cadena y semana de cine desde su estreno, las funciones y el % vendido, para Cinemex, Cinépolis
+    y las demás cadenas capturadas, no solo para la nuestra. Con eso se mide la caída de la semana 1 a la 2 y cómo rinde
+    el título en cada cadena.
+  - Calcularlo en `analytics/` con la llave `title_key`, con umbral de estrenos comparables. Con pocas semanas de
+    captura (desde el 2026-09-07) la muestra es chica.
+  - Mientras no cruce el umbral, el renglón "qué va a pasar" de Programación no se muestra y la tarjeta declara qué lo
+    desbloquea (`AGENTS.md` §2 y §6). Preventa ya mira hacia adelante sin extrapolar.
 - Emparejar cines por distancia (zonas de choque) y alcaldía + población INEGI para el panel geográfico.
 - Integración con el cliente: aforo oficial, taquilla por función, preventa y su tablero de dulcería.
 - **Modelo de tipificación de zonas y consumo por complejo** (esquema de David, 2026-09-08, fuera del repo): arquetipo
