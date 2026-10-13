@@ -155,7 +155,7 @@ def _times(ratio):
     return f"{ratio:.0f}×" if ratio >= 3 else f"{ratio:.1f}×"
 
 
-def _short(title, n=32):
+def _short(title, n=_LABEL_TITLE):
     """Recorta a la mitad para que dos títulos que empiezan igual se distingan: 'BTS WORLD TOUR … SÃO PAULO'."""
     t = " ".join(title.split())
     if len(t) <= n:
@@ -274,7 +274,7 @@ def _slot_finding(conn, d0, d1, hours=None, plaza=None):
     label = (f"Programamos más {when}: {_pct1(share[US][key])} de nuestras funciones contra {_pct1(share[THEM][key])} de {THEM_NAME}"
              if g > 0 else
              f"{THEM_NAME} programa más {when}: {_pct1(share[THEM][key])} de sus funciones contra {_pct1(share[US][key])} de las nuestras")
-    action = (f"Valora si la venta {when} justifica esa oferta." if g > 0 else f"Valora si nos falta oferta {when}.")
+    action = None if g > 0 else f"Valora si nos falta oferta {when}."
     return _card("franjas", label,
                  _metric("De nuestras funciones", share[US][key], "pct", US), abs(g) / SLOT_MIN_PP,
                  compare=_metric(f"De las de {THEM_NAME}", share[THEM][key], "pct", THEM),
@@ -294,7 +294,7 @@ def _format_finding(conn, d0, d1, kp, hours=None, plaza=None):
     name = FORMAT_LABEL[b]
     label = (f"Damos más pantalla a {name}: {_pct1(fu)} de nuestras funciones contra {_pct1(ft)} de {THEM_NAME}" if g > 0
              else f"{THEM_NAME} da más pantalla a {name}: {_pct1(ft)} de sus funciones contra {_pct1(fu)} de las nuestras")
-    action = (f"Valora si la venta de {name} sostiene esa apuesta." if g > 0 else f"Valora si nos falta oferta de {name}.")
+    action = None if g > 0 else f"Valora si nos falta oferta de {name}."
     return _card("formato", label,
                  _metric("De nuestras funciones", mx.get(("format", US, b), 0), "pct", US),
                  _STRUCTURAL_WEIGHT * abs(g) / FORMAT_MIN_PP,
