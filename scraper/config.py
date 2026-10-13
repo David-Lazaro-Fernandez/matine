@@ -213,6 +213,8 @@ SNAPSHOT_STALE_HOURS = 2
 # --- Respuestas precalculadas del dashboard (api/precalc.py) ---
 # Caché en disco que se puede borrar: la escribe solo `api.precalc`, al final de los trabajos `snapshot` y `seats`.
 PRECALC_DB_PATH = Path(os.environ.get("AC_PRECALC_DB", DATA_DIR / "precalc.db"))
+# En desarrollo `AC_PRECALC=0` apaga las respuestas precalculadas: así un cambio en `analytics/` se ve sin esperar el trabajo.
+PRECALC_ENABLED = os.environ.get("AC_PRECALC", "1") != "0"
 
 # --- Acceso al dashboard (auth/) ---
 # Cuentas, sesiones, enlaces y auditoría en su propia base SQLite: la escribe solo auth/ (dashboard y auth.cli), nunca

@@ -36,6 +36,13 @@ def test_read_computes_when_the_precalculated_answer_is_old(monkeypatch, tmp_pat
     assert pages.read(KEY, lambda conn: {"findings": []}) == {"findings": []}
 
 
+def test_read_computes_when_precalc_is_turned_off(monkeypatch, tmp_path):
+    _setup(monkeypatch, tmp_path)
+    monkeypatch.setattr(pages.config, "PRECALC_ENABLED", False)
+    precalc.store({KEY: {"findings": [{"title": "guardado"}]}}, datetime.now(timezone.utc).isoformat())
+    assert pages.read(KEY, lambda conn: {"findings": []}) == {"findings": []}
+
+
 def test_recording_ignores_the_caches_and_keeps_each_answer(monkeypatch, tmp_path):
     _setup(monkeypatch, tmp_path)
     precalc.store({KEY: {"findings": [{"title": "guardado"}]}}, datetime.now(timezone.utc).isoformat())

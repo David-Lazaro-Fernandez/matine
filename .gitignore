@@ -1,4 +1,7 @@
 data/
+# En un worktree, `wt new` los enlaza a los de la carpeta principal.
+/data
+/.venv
 __pycache__/
 *.pyc
 .venv/

@@ -34,6 +34,10 @@ new() {
   dir=$(dir_for "$feature")
   [ ! -e "$dir" ] || die "ya existe $dir"
   git -C "$ROOT" worktree add -b "$feature" "$dir" main
+  # Datos y entorno de la carpeta principal, para correr `make dashboard` y `make dashboard-dev` aquí mismo.
+  ln -s "$ROOT/data" "$dir/data"
+  ln -s "$ROOT/.venv" "$dir/.venv"
+  (cd "$dir/dashboard" && pnpm install --frozen-lockfile --silent) || echo "wt: pnpm install falló; corre pnpm install en $dir/dashboard"
   echo "Listo: $dir (rama $feature)"
 }
 

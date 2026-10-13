@@ -57,7 +57,7 @@ def precalc_key(key):
 
 def _precalculated(key):
     path = config.PRECALC_DB_PATH
-    if not path.exists():
+    if not config.PRECALC_ENABLED or not path.exists():
         return None
     oldest = (datetime.now(timezone.utc) - PRECALC_MAX_AGE).isoformat(timespec="seconds")
     try:
