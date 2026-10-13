@@ -47,7 +47,7 @@ RED_RAMP = [RED_DARK, RED, "#EC6B82", "#F08FA0"]
 # Texto sobre los dos tonos claros de `RED_RAMP`.
 RED_RAMP_TEXT = "#4D0F1E"
 # Cinépolis (tinta) ↔ centro ↔ Cinemex (rojo).
-DIVERGING = [INK, INDEP, "#EFEFEF", "#F6B7C2", RED]
+DIVERGING = [INK, INDEP, "#EFEFEF", "#F08FA0", RED]
 # Ámbar: estado con problema, solo en la página de operaciones (el rojo es Cinemex).
 WARN = "#B45309"
 # Verde apagado: estado sano, solo en la página de operaciones.

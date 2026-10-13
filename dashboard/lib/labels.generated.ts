@@ -78,7 +78,7 @@ export const DIVERGING = [
   "#191A1E",
   "#8C8E95",
   "#EFEFEF",
-  "#F6B7C2",
+  "#F08FA0",
   "#E31837"
 ] as const;
 

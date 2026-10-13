@@ -59,7 +59,7 @@ Hay dos familias que no se mezclan:
 - **La Cineteca en gris medio.** No compite con ninguna de las dos cadenas.
 - **Rampa ordinal** (cubetas ordenadas de formato) a partir del rojo: `#9E0F26`, `#E31837`, `#EC6B82`, `#F08FA0`.
   El texto sobre los dos tonos claros es `#4D0F1E` (`RED_RAMP_TEXT`).
-- **Divergente** (mapa de calor de Δ pp): lado Cinemex en rojo (`#F6B7C2` → `#E31837`), lado Cinépolis en tinta
+- **Divergente** (mapa de calor de Δ pp): lado Cinemex en rojo (`#F08FA0` → `#E31837`), lado Cinépolis en tinta
   (`#8C8E95` → `#191A1E`), centro `#EFEFEF`. Texto blanco cuando la celda es oscura o saturada.
 - Para un color de datos nuevo: agrégalo a `analytics/labels.py` y documéntalo aquí antes de usarlo. Para la interfaz,
   usa un token de Fluent; si ninguno sirve, se discute antes.
