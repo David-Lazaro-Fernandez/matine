@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Ciclo de worktrees por feature. `wt new` crea rama y carpeta. `wt done` borra ambas
+# solo si no hay cambios sin commit y la rama ya entró a main.
+#   wt new <feature>    crea ../absolut-cinema-<feature> desde main
+#   wt done <feature>   borra el worktree y la rama
+#   wt list             muestra cada worktree con su estado
+set -euo pipefail
+
+# La primera entrada de `worktree list` es la carpeta principal, aunque se ejecute desde otro worktree.
+ROOT=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+
+die() {
+  echo "wt: $*" >&2
+  exit 1
+}
+
+dir_for() {
+  echo "$(dirname "$ROOT")/absolut-cinema-$1"
+}
+
+# Una rama entró a main si su merge es local, o si su PR se mergeó con squash.
+integrated() {
+  local feature=$1 dir=$2
+  git -C "$ROOT" merge-base --is-ancestor "$feature" main 2>/dev/null && return 0
+  local merged
+  merged=$(cd "$dir" && gh pr list --head "$feature" --state merged --json number --jq 'length' 2>/dev/null || echo 0)
+  [ "$merged" -gt 0 ]
+}
+
+new() {
+  local feature=${1:?Uso: wt new <feature>}
+  local dir
+  dir=$(dir_for "$feature")
+  [ ! -e "$dir" ] || die "ya existe $dir"
+  git -C "$ROOT" worktree add -b "$feature" "$dir" main
+  echo "Listo: $dir (rama $feature)"
+}
+
+done_wt() {
+  local feature=${1:?Uso: wt done <feature>}
+  local dir
+  dir=$(dir_for "$feature")
+  [ "$feature" != main ] || die "main no se borra"
+  [ -d "$dir" ] || die "no existe $dir"
+  [ -z "$(git -C "$dir" status --porcelain)" ] || die "$feature tiene cambios sin commit"
+  integrated "$feature" "$dir" || die "$feature no ha entrado a main (merge o PR pendiente)"
+
+  git -C "$ROOT" worktree remove "$dir"
+  # Con squash el commit de la rama no es ancestro de main, por eso `-d` fallaría.
+  # La condición de `integrated` ya se verificó, así que se fuerza.
+  if git -C "$ROOT" merge-base --is-ancestor "$feature" main 2>/dev/null; then
+    git -C "$ROOT" branch -d "$feature"
+  else
+    git -C "$ROOT" branch -D "$feature"
+  fi
+  echo "Borrado: $dir y rama $feature"
+}
+
+list() {
+  git -C "$ROOT" worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt; do
+    [ "$wt" != "$ROOT" ] || continue
+    local branch dirty state
+    branch=$(git -C "$wt" symbolic-ref --short HEAD 2>/dev/null || echo detached)
+    dirty=$(git -C "$wt" status --porcelain | wc -l | tr -d ' ')
+    if git -C "$ROOT" merge-base --is-ancestor "$branch" main 2>/dev/null; then
+      state="en main"
+    else
+      state="pendiente"
+    fi
+    echo "$branch | sin commit: $dirty | $state | $wt"
+  done
+}
+
+case "${1:-}" in
+  new) shift; new "$@" ;;
+  done) shift; done_wt "$@" ;;
+  list) list ;;
+  *) die "uso: wt new <feature> | wt done <feature> | wt list" ;;
+esac
