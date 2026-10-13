@@ -159,9 +159,9 @@ def test_digest_html_escapes_findings_and_keeps_text_part(monkeypatch):
     subject, text, html = digest.compose(None, datetime(2026, 10, 12, 10, 0, tzinfo=MX), "cdmx")
     assert "<b>cobra</b>" not in html and "&lt;b&gt;cobra&lt;/b&gt;" in html and "Valora &amp; revisa" in html
     assert text.splitlines() == ["- Cinépolis <b>cobra</b> 52 % más", "  Valora & revisa",
-                                 "  Ver más: http://localhost:8501/?plaza=cdmx&d0=2026-10-12&d1=2026-10-14",
+                                 "  Ver más: http://localhost:3000/?plaza=cdmx&d0=2026-10-12&d1=2026-10-14",
                                  "- Título sin sugerencia", "  Muestra: 3 días",
-                                 "  Ver más: http://localhost:8501/?plaza=cdmx&d0=2026-10-12&d1=2026-10-14"]
+                                 "  Ver más: http://localhost:3000/?plaza=cdmx&d0=2026-10-12&d1=2026-10-14"]
     assert html.startswith("<!doctype html>") and 'role="presentation"' in html
 
 

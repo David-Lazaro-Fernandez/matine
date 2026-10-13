@@ -8,7 +8,12 @@ VENV ?= .venv/bin
 .PHONY: help job units units-check labels tick snapshot seats occupancy post-start health prices concessions delivery capacity capacity-cinemex presale \
         calibrate-cinemex dashboard api backup launchd-load launchd-unload \
         user-create user-list user-reset user-deactivate user-activate user-role org-create org-modules org-list auth-prune deploy restart check lint test test-live test-ui fixtures hooks \
-        marketing-dev marketing-build export-places
+        marketing-dev dashboard-dev marketing-build export-places
+
+# Mata lo que escucha en el puerto antes de levantar un servidor de desarrollo. Solo LISTEN, para no cortar navegadores.
+define free-port
+	@pids=$$(lsof -ti tcp:$(1) -sTCP:LISTEN); if [ -n "$$pids" ]; then echo "liberando :$(1) (pid $$pids)"; kill $$pids; sleep 1; fi
+endef
 
 help:               ## lista los targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -69,11 +74,16 @@ dashboard:          ## API interna del dashboard en local (:8501); el frontend v
 api:                ## API pública en local (http://localhost:8000/docs); requiere requirements.txt en el venv
 	$(VENV)/uvicorn api.main:app --port 8000 --reload
 
-marketing-dev:      ## landing page pública en local (Next.js, marketing/); requiere `npm install` una vez ahí
-	cd marketing && npm run dev
+dashboard-dev:      ## frontend del dashboard en local en :3000 (Next.js, dashboard/); libera el puerto antes
+	$(call free-port,3000)
+	cd dashboard && pnpm run dev
+
+marketing-dev:      ## landing page pública en local en :3001 (Next.js, marketing/); requiere `pnpm install` una vez ahí
+	$(call free-port,3001)
+	cd marketing && pnpm run dev
 
 marketing-build: ## exporta la landing page pública como sitio estático a marketing/out
-	cd marketing && npm run build
+	cd marketing && pnpm run build
 
 export-places:      ## índice de lugares de CDMX, Guadalajara y Monterrey (OpenStreetMap) para /a-donde-ir/; se versiona
 	$(PY) scripts/export_places.py
@@ -127,8 +137,9 @@ lint:               ## ruff, que scraper/ y analytics/ importan con el Python de
 	$(VENV)/ruff check .
 	$(PY) -m compileall -q scraper analytics jobs
 	$(PY) -c "import analytics, scraper.run, scraper.sample, scraper.health, scraper.delivery, jobs.run, jobs.units"
-	@! grep -n '"resolved": "' marketing/package-lock.json | grep -v '"resolved": "https://registry.npmjs.org/' \
-		|| { echo "package-lock.json apunta a un registro privado: sed -i '' 's#https://[^/]*/npm/#https://registry.npmjs.org/#' marketing/package-lock.json"; exit 1; }
+	@test ! -e marketing/package-lock.json || { echo "marketing/package-lock.json no debe existir: el proyecto usa pnpm"; exit 1; }
+	@! grep -n 'tarball: ' marketing/pnpm-lock.yaml | grep -v 'tarball: https://registry.npmjs.org/' \
+		|| { echo "marketing/pnpm-lock.yaml apunta a un registro privado: borra el lockfile y corre \`pnpm install\` en marketing/ (marketing/.npmrc fija npmjs)"; exit 1; }
 	@! grep -n 'tarball: ' dashboard/pnpm-lock.yaml | grep -v 'tarball: https://registry.npmjs.org/' \
 		|| { echo "dashboard/pnpm-lock.yaml apunta a un registro privado: borra el lockfile y corre \`pnpm install\` en dashboard/ (dashboard/.npmrc fija npmjs)"; exit 1; }
 

@@ -4,7 +4,7 @@
   "private": true,
   "description": "Landing page pública de Matiné. Sitio estático, independiente del resto del repo (ver marketing/README.md).",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start"
   },
