@@ -23,6 +23,7 @@ import {
   Pregunta,
   Seccion,
   Table,
+  SkeletonBlock,
   SkeletonCapas,
 } from '@/components/common';
 import { DeliveryCompareBars, type DeliveryCompareRow } from '@/components/dulceria/delivery-compare-bars';
@@ -58,6 +59,8 @@ type Dulceria = {
   platform: Platform | null;
   chain: Chain;
   product: string | null;
+  size: string | null;
+  sizes: { size_name: string; cinemas: number; median_price: number; min_price: number; max_price: number; distinct_prices: number; is_menu_size: number }[];
   first_snapshot: string;
   conclusion: string;
   findings: Finding[];
@@ -122,12 +125,14 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
   const chainParam = params.get('cadena');
   const chain = COMPARED.includes(chainParam as Chain) ? (chainParam as Chain) : COMPARED[0];
   const product = params.get('producto');
+  const size = params.get('tamano');
   const [data, setData] = React.useState<Dulceria | null>(null);
+  const [loaded, setLoaded] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  const request = `/dulceria${query({ plaza, platform, chain: chain === COMPARED[0] ? null : chain, product })}`;
+  const request = `/dulceria${query({ plaza, platform, chain: chain === COMPARED[0] ? null : chain, product, size })}`;
   React.useEffect(() => {
-    api<Dulceria>(request).then((body) => { setData(body); setError(null); }, (e: Error) => setError(e.message));
+    api<Dulceria>(request).then((body) => { setData(body); setLoaded(request); setError(null); }, (e: Error) => setError(e.message));
   }, [request]);
 
 
@@ -165,6 +170,7 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
   const room = (d: Dulceria) => {
     const row = d.basket.find((b) => b.product_name === d.product);
     if (!row) return null;
+    const sized = d.sizes.find((z) => z.size_name === d.size);
     return (
       <>
         <p className={s.chartTitle}>{fill(T.room_title, { chain: CHAIN_LABEL.cinepolis })}</p>
@@ -172,15 +178,25 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
           label={T.product}
           value={row.product_name}
           options={d.basket.map((b) => [b.product_name, b.product_name])}
-          onChange={(value) => setParams({ producto: value })}
+          onChange={(value) => setParams({ producto: value, tamano: null })}
         />
-        {d.product_by_cinema.length > 0 && (
+        {d.sizes.length > 1 && d.size && (
+          <FilterMenu
+            label={T.size}
+            value={d.size}
+            options={d.sizes.map((z) => [z.size_name, z.size_name])}
+            onChange={(value) => setParams({ tamano: value })}
+          />
+        )}
+        {loaded !== request ? <SkeletonBlock height={330} /> : d.product_by_cinema.length > 0 && (
           <>
-            <ProductPriceByCinema rows={d.product_by_cinema} basket={row} />
+            <ProductPriceByCinema rows={d.product_by_cinema} />
             <p className={s.nota}>
               {fill(T.room_note, {
-                product: row.product_name, min: n(row.min_price), max: n(row.max_price),
-                cinemas: Math.trunc(row.cinemas), prices: Math.trunc(row.distinct_prices), median: n(row.median_price),
+                product: sized ? `${row.product_name} ${sized.size_name}` : row.product_name,
+                min: n(sized?.min_price ?? row.min_price), max: n(sized?.max_price ?? row.max_price),
+                cinemas: Math.trunc(sized?.cinemas ?? row.cinemas), prices: Math.trunc(sized?.distinct_prices ?? row.distinct_prices),
+                median: n(sized?.median_price ?? row.median_price),
               })}
             </p>
           </>

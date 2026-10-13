@@ -14,6 +14,7 @@ from .concessions import (
     concession_by_cinema,
     concession_categories,
     concession_product_by_cinema,
+    concession_sizes,
     concession_summary,
 )
 from .db import connect
@@ -81,7 +82,7 @@ __all__ = [
     "board_as_of", "cinemas", "dates_known", "functions_on", "showtime_timeline", "snapshot_times",
     "general_summary",
     "DELIVERY_BUCKETS", "delivery_compare", "delivery_products", "delivery_stores", "delivery_summary",
-    "BASKET", "concession_basket", "concession_by_cinema", "concession_categories", "concession_product_by_cinema", "concession_summary",
+    "BASKET", "concession_basket", "concession_by_cinema", "concession_categories", "concession_product_by_cinema", "concession_sizes", "concession_summary",
     "capacity_by_cinema", "capacity_summary", "effective_ticket_price", "estimated_occupancy", "occupancy_by_cinema", "occupancy_by_title", "occupancy_recent", "occupancy_summary",
     "occupancy_total", "offered_by_title", "offered_seats", "price_summary", "prices", "semaphore_calibration",
     "capture_status", "cinema_week", "concentration", "conclusions", "connect", "coverage", "events_by_kind", "findings", "headlines",

@@ -254,6 +254,7 @@ export const CONCESSION_CHART_TEXT = {
   "median": "Mediana",
   "delta_pct": "Δ Cinépolis vs Cinemex %",
   "cinema": "Complejo",
+  "cinemas_axis": "Complejos",
   "price": "Precio",
   "cinema_type": "Tipo",
   "vip_cinema": "{name} VIP"
@@ -280,7 +281,8 @@ export const DULCERIA_TEXT = {
   ],
   "room_title": "En sala: {chain} fija el precio por complejo",
   "product": "Producto",
-  "room_note": "{product}: de ${min} a ${max} en {cinemas} complejos, {prices} precios distintos; la línea punteada es la mediana (${median}).",
+  "size": "Tamaño",
+  "room_note": "{product}: de ${min} a ${max} en {cinemas} complejos, {prices} precios distintos; la mediana es ${median}.",
   "detail": "Detalle: canasta de Cinépolis por complejo, catálogo a domicilio y tiendas",
   "basket_headers": [
     "Producto",
@@ -300,7 +302,7 @@ export const DULCERIA_TEXT = {
     "Última lectura"
   ],
   "chain": "Cadena",
-  "leer": "A domicilio se compara la mediana entre tiendas de cada cadena en la misma plataforma (Rappi, DiDi Food), agrupando productos por tipo porque cada cadena los nombra distinto; es el catálogo para llevar (Mega Palomitas de 230 g, refresco en lata), no el tablero de sala, y las porciones difieren: nuestro combo básico lleva dos latas y el de Cinépolis un refresco. En sala solo existe el menú en línea de Cinépolis, por complejo; palomitas y refresco van por tamaño y se muestra el tamaño base. Cinemex tiene apagada la venta de dulcería en línea, así que nuestro tablero de sala llega con tus datos. Uber Eats no se lee porque sus términos prohíben la extracción.",
+  "leer": "A domicilio se compara la mediana entre tiendas de cada cadena en la misma plataforma (Rappi, DiDi Food), agrupando productos por tipo porque cada cadena los nombra distinto; es el catálogo para llevar (Mega Palomitas de 230 g, refresco en lata), no el tablero de sala, y las porciones difieren: nuestro combo básico lleva dos latas y el de Cinépolis un refresco. En sala solo existe el menú en línea de Cinépolis, por complejo; palomitas y refresco van por tamaño y se elige cuál ver; sin elegir, el que trae el menú. Cinemex tiene apagada la venta de dulcería en línea, así que nuestro tablero de sala llega con tus datos. Uber Eats no se lee porque sus términos prohíben la extracción.",
   "back": "Volver a la cartelera",
   "footer": "Fuentes: menú de dulcería en línea de Cinépolis por complejo; catálogo de dulcería a domicilio de ambas cadenas en Rappi y DiDi Food, renovado cada semana. Cinemex tiene apagada la venta de dulcería en línea. Historia desde el {date}."
 } as const;
