@@ -149,3 +149,28 @@ def test_stake_orders_a_small_title_below_a_whole_chain_gap():
     title = findings._card("demanda", "", None, 10.0, stake=4.0)
     chain = findings._card("ocupacion", "", None, 2.75)
     assert (round(title["strength"], 2), chain["strength"]) == (2.0, 2.75)
+
+
+def test_slot_finding_is_skipped_for_a_single_partial_day():
+    today = queries.today()
+    assert findings._slot_finding(None, today, today) is None
+
+
+def test_short_keeps_the_end_of_a_long_title_so_cities_stay_apart():
+    title = "BTS WORLD TOUR 'ARIRANG' IN SÃO PAULO: LIVE VIEWING"
+    short = findings._short(title)
+    assert len(short) <= findings._LABEL_TITLE + 3 and "SÃO PAULO" in short
+
+
+def test_chain_occupancy_by_day_leaves_out_today():
+    cinema_sales = importlib.import_module("analytics.cinema_sales")
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("""CREATE TABLE occupancy_sample (chain, cinema_id, datetime_local, minutes_to_start, seats, sold)""")
+    today = queries.now_local().date()
+    days = [(today - timedelta(days=n)).isoformat() for n in (0, 1, 2)]
+    conn.executemany("INSERT INTO occupancy_sample VALUES (?, 'a', ?, -30, ?, ?)",
+                     [(c, f"{d}T18:00:00", 100, sold) for d in days for c, sold in (("cinemex", 10), ("cinepolis", 20))])
+    out = cinema_sales.chain_occupancy_by_day(conn)
+    assert [(r["date"], r["chain"], r["sold_pct"]) for r in out] == [
+        (days[2], "cinemex", 10.0), (days[2], "cinepolis", 20.0), (days[1], "cinemex", 10.0), (days[1], "cinepolis", 20.0)]

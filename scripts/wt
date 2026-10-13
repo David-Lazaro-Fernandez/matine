@@ -2,6 +2,7 @@
 # Ciclo de worktrees por feature. `wt new` crea rama y carpeta. `wt done` borra ambas
 # solo si no hay cambios sin commit y la rama ya entró a main.
 #   wt new <feature>    crea ../absolut-cinema-<feature> desde main
+#   wt integrate <feature>  merge de la rama a main, en la carpeta principal
 #   wt done <feature>   borra el worktree y la rama
 #   wt list             muestra cada worktree con su estado
 set -euo pipefail
@@ -33,7 +34,31 @@ new() {
   dir=$(dir_for "$feature")
   [ ! -e "$dir" ] || die "ya existe $dir"
   git -C "$ROOT" worktree add -b "$feature" "$dir" main
+  # Datos y entorno de la carpeta principal, para correr `make dashboard` y `make dashboard-dev` aquí mismo.
+  ln -s "$ROOT/data" "$dir/data"
+  ln -s "$ROOT/.venv" "$dir/.venv"
+  (cd "$dir/dashboard" && pnpm install --frozen-lockfile --silent) || echo "wt: pnpm install falló; corre pnpm install en $dir/dashboard"
   echo "Listo: $dir (rama $feature)"
+}
+
+# La carpeta principal debe ser un checkout de main, limpio y sin ser un repo "bare". Si no, un merge deja los archivos
+# atrasados respecto a `main` y el índice muestra el inverso del último commit.
+main_folder_problem() {
+  [ "$(git -C "$ROOT" config --bool core.bare)" != true ] || { echo "core.bare es true; corrige con: git config core.bare false"; return; }
+  [ "$(git -C "$ROOT" symbolic-ref --short HEAD 2>/dev/null)" = main ] || { echo "la carpeta principal no está en main"; return; }
+  [ -z "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ] || echo "la carpeta principal tiene cambios sin commit"
+}
+
+integrate() {
+  local feature=${1:?Uso: wt integrate <feature>}
+  local dir problem
+  dir=$(dir_for "$feature")
+  [ -d "$dir" ] || die "no existe $dir"
+  [ -z "$(git -C "$dir" status --porcelain)" ] || die "$feature tiene cambios sin commit"
+  problem=$(main_folder_problem)
+  [ -z "$problem" ] || die "$problem"
+  git -C "$ROOT" merge "$feature"
+  echo "Listo: $feature está en main. Siguiente: wt done $feature"
 }
 
 done_wt() {
@@ -57,6 +82,9 @@ done_wt() {
 }
 
 list() {
+  local problem
+  problem=$(main_folder_problem)
+  [ -z "$problem" ] || echo "AVISO: $problem"
   git -C "$ROOT" worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt; do
     [ "$wt" != "$ROOT" ] || continue
     local branch dirty state
@@ -73,7 +101,8 @@ list() {
 
 case "${1:-}" in
   new) shift; new "$@" ;;
+  integrate) shift; integrate "$@" ;;
   done) shift; done_wt "$@" ;;
   list) list ;;
-  *) die "uso: wt new <feature> | wt done <feature> | wt list" ;;
+  *) die "uso: wt new <feature> | wt integrate <feature> | wt done <feature> | wt list" ;;
 esac

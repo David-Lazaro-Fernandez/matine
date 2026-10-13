@@ -176,6 +176,8 @@ const useStyles = makeStyles({
   divergenteDerecho: { justifyContent: 'flex-start', borderLeft: `1px solid ${tokens.colorNeutralStroke1}` },
   donas: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: tokens.spacingHorizontalXXL },
   dona: { margin: 0, width: '132px', textAlign: 'center' },
+  lineaDia: { fontSize: '9px', fill: tokens.colorNeutralForeground3 },
+  lineaValor: { fontSize: '10px', fontWeight: tokens.fontWeightSemibold, fill: tokens.colorNeutralForeground1, fontVariantNumeric: 'tabular-nums' },
   donaCifra: { fontSize: '15px', fontWeight: tokens.fontWeightSemibold, fill: tokens.colorNeutralForeground1, fontVariantNumeric: 'tabular-nums' },
   donaNombre: { fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground2 },
   apilada: { display: 'flex', flex: '1 1 0', gap: '2px', height: '16px', minWidth: 0 },
@@ -383,7 +385,7 @@ export function Leyenda({ items, square = false }: { items: readonly (readonly [
 type FindingUnit = keyof typeof FINDING_UNIT;
 type FindingMetric = { label: string; value: number; unit: FindingUnit; chain: string | null };
 type FindingChart = {
-  kind: 'bars' | 'meter' | 'donut' | 'stack' | 'dumbbell' | 'diverging';
+  kind: 'bars' | 'meter' | 'line' | 'donut' | 'stack' | 'dumbbell' | 'diverging';
   unit: FindingUnit;
   rows: { label: string; values: Record<string, number>; highlight: boolean }[];
 };
@@ -433,6 +435,7 @@ function FindingGraphic({ chart }: { chart: FindingChart }) {
   if (chart.kind === 'donut') return <FindingDonuts chart={chart} />;
   if (chart.kind === 'stack') return <FindingStack chart={chart} />;
   if (chart.kind === 'dumbbell') return <FindingDumbbell chart={chart} />;
+  if (chart.kind === 'line') return <FindingLines chart={chart} />;
   return <FindingBars chart={chart} />;
 }
 
@@ -561,6 +564,53 @@ function FindingStack({ chart }: { chart: FindingChart }) {
   );
 }
 
+// Una línea por cadena a lo largo de las filas (los días). Las cifras de la fila resaltada van sobre sus puntos y el
+// resto se lee al pasar el cursor.
+const LINE_WIDTH = 300;
+const LINE_HEIGHT = 110;
+const LINE_PAD = { left: 8, right: 8, top: 16, bottom: 20 };
+
+function FindingLines({ chart }: { chart: FindingChart }) {
+  const s = useStyles();
+  const dataColor = useDataColor();
+  const chains = chartChains(chart);
+  const top = Math.max(...chart.rows.flatMap((r) => Object.values(r.values)), 1);
+  const x = (i: number) => LINE_PAD.left + (i * (LINE_WIDTH - LINE_PAD.left - LINE_PAD.right)) / Math.max(chart.rows.length - 1, 1);
+  const y = (v: number) => LINE_HEIGHT - LINE_PAD.bottom - (v / top) * (LINE_HEIGHT - LINE_PAD.top - LINE_PAD.bottom);
+  const marked = chart.rows.findIndex((r) => r.highlight);
+  return (
+    <div className={s.barras}>
+      <ChainLegend chains={chains} />
+      <svg viewBox={`0 0 ${LINE_WIDTH} ${LINE_HEIGHT}`} role="img"
+           aria-label={chains.map((c) => `${chainName(c)}: ${chart.rows.map((r) => `${r.label} ${findingValue(r.values[c], chart.unit)}`).join(', ')}`).join('. ')}>
+        {chart.rows.map((r, i) => (
+          <text key={r.label} x={x(i)} y={LINE_HEIGHT - 4} textAnchor="middle" className={s.lineaDia}>{r.label}</text>
+        ))}
+        {marked >= 0 && <line x1={x(marked)} x2={x(marked)} y1={LINE_PAD.top} y2={LINE_HEIGHT - LINE_PAD.bottom} stroke={dataColor(LINE)} strokeWidth="1" />}
+        {chains.map((c) => {
+          const color = dataColor(chainColor(c) ?? LINE);
+          const points = chart.rows.flatMap((r, i) => (c in r.values ? [[x(i), y(r.values[c])] as const] : []));
+          return (
+            <g key={c}>
+              <polyline points={points.map(([px, py]) => `${px},${py}`).join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+              {chart.rows.map((r, i) => c in r.values && (
+                <circle key={r.label} cx={x(i)} cy={y(r.values[c])} r={r.highlight ? 4 : 3} fill={color}>
+                  <title>{`${chainName(c)}, ${r.label}: ${findingValue(r.values[c], chart.unit)}`}</title>
+                </circle>
+              ))}
+              {marked >= 0 && c in chart.rows[marked].values && (
+                <text x={x(marked)} y={y(chart.rows[marked].values[c]) - 7} textAnchor="middle" className={s.lineaValor}>
+                  {findingValue(chart.rows[marked].values[c], chart.unit)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 // Pesas: un punto por cadena en cada fila sobre una escala común, unidos por una línea. La distancia es la brecha.
 function FindingDumbbell({ chart }: { chart: FindingChart }) {
   const s = useStyles();
@@ -602,6 +652,7 @@ function FindingDumbbell({ chart }: { chart: FindingChart }) {
 // La tarjeta como gráfica de Vega-Lite para el PNG: título con la cifra y barras por cadena con la fila resaltada.
 function findingSpec(f: Finding): VisualizationSpec {
   const chart = f.chart!;
+  const line = chart.kind === 'line';
   const chains = chartChains(chart);
   const summary = [f.metric, f.compare, f.delta].filter(Boolean).map((m) => `${m!.label}: ${findingValue(m!.value, m!.unit)}`);
   return {
@@ -613,16 +664,19 @@ function findingSpec(f: Finding): VisualizationSpec {
         label: r.label, chain: CHAIN_LABEL[chain as keyof typeof CHAIN_LABEL] ?? chain, value, highlight: r.highlight,
       }))),
     },
-    mark: { type: 'bar', cornerRadiusEnd: 2 },
+    mark: line ? { type: 'line', point: true, strokeWidth: 2 } : { type: 'bar', cornerRadiusEnd: 2 },
     encoding: {
-      y: { field: 'label', type: 'nominal', sort: null, title: null },
-      yOffset: { field: 'chain', sort: null },
-      x: { field: 'value', type: 'quantitative', title: fill(FINDING_UNIT[chart.unit], { value: '' }).trim() || null },
+      ...(line
+        ? { x: { field: 'label', type: 'ordinal', sort: null, title: null, axis: { labelAngle: 0 } },
+            y: { field: 'value', type: 'quantitative', title: fill(FINDING_UNIT[chart.unit], { value: '' }).trim() || null } }
+        : { y: { field: 'label', type: 'nominal', sort: null, title: null },
+            yOffset: { field: 'chain', sort: null },
+            x: { field: 'value', type: 'quantitative', title: fill(FINDING_UNIT[chart.unit], { value: '' }).trim() || null } }),
       color: {
         field: 'chain', sort: null, legend: chains.length > 1 ? { title: null, orient: 'top' } : null,
         scale: { domain: chains.map((c) => CHAIN_LABEL[c as keyof typeof CHAIN_LABEL] ?? c), range: chains.map((c) => chainColor(c) ?? LINE) },
       },
-      opacity: { condition: { test: 'datum.highlight', value: 1 }, value: 0.3 },
+      ...(line ? {} : { opacity: { condition: { test: 'datum.highlight', value: 1 }, value: 0.3 } }),
     },
   };
 }

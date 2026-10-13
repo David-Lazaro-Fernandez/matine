@@ -15,6 +15,7 @@ from .cinema_locations import site_id
 from .db import rows
 from .labels import COMPARED, THEM, US
 from .plaza import plaza_cinema_where
+from .queries import now_local
 from .recommender import distance_km
 
 # La ventana: los últimos días contra los mismos días anteriores.
@@ -81,6 +82,21 @@ def chain_occupancy(conn, days=DAYS, plaza=None, chains=COMPARED):
                     "seats": total["seats"], "sold": total["sold"], "sold_pct": _pct(total["sold"], total["seats"]),
                     "sold_pct_prev": _pct(total["sold_prev"], total["seats_prev"])})
     return out
+
+
+def chain_occupancy_by_day(conn, days=DAYS, plaza=None, chains=COMPARED):
+    """El % vendido de cada cadena en cada uno de los últimos `days` días completos (sin hoy, que va a medias), por la
+    fecha de la función. Por fila: `chain`, `date`, `shows`, `sold_pct`. Orden: fecha y cadena."""
+    where, params = plaza_cinema_where(plaza, "o.", chains=chains)
+    today = now_local().date()
+    first, last = (today - timedelta(days=days)).isoformat(), (today - timedelta(days=1)).isoformat()
+    return rows(conn, f"""
+        SELECT o.chain, date(o.datetime_local) AS date, COUNT(*) AS shows, ROUND(100.0 * SUM(o.sold) / SUM(o.seats), 1) AS sold_pct
+        FROM occupancy_sample o
+        WHERE o.minutes_to_start < 0 AND o.seats > 0 AND o.sold IS NOT NULL
+          AND date(o.datetime_local) BETWEEN ? AND ?{where}
+        GROUP BY o.chain, date(o.datetime_local)
+        ORDER BY date, o.chain""", [first, last, *params])
 
 
 def _sites(cinemas, min_shows):

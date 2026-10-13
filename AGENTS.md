@@ -374,8 +374,11 @@ de Slack van al dashboard local. En producción `AC_BASE_URL` va en el `.env` de
 - **La carpeta principal del repo siempre está en `main`, limpia.** Ahí solo se integran ramas. Cada función se trabaja
   en su propio worktree y en su propia rama: `git worktree add -b mi-funcion ../absolut-cinema-mi-funcion main`, o
   desde la rama de la que dependa. Dos agentes nunca escriben en la misma carpeta. Así varios agentes trabajan en
-  paralelo y cada rama entra a `main` con su merge, sin pisar el trabajo de otro. El worktree se borra al integrar su
-  rama (`git worktree remove`).
+  paralelo y cada rama entra a `main` con su merge, sin pisar el trabajo de otro. El ciclo es `scripts/wt new`, `wt integrate`
+  y `wt done`. La carpeta principal es un checkout normal (`core.bare` en `false`): `wt integrate` falla si no lo es o si tiene
+  cambios, y `wt list` lo avisa. Nunca muevas `main` con `branch -f` ni `reset --hard`. `wt new` enlaza `data/` y `.venv` de la carpeta principal e instala
+  `node_modules`: en el worktree corren `make dashboard` y `make dashboard-dev`. `make dashboard` apaga `precalc.db`
+  (`AC_PRECALC=0`), así un cambio en `analytics/` se ve de inmediato.
 - **Un cambio pequeño se integra solo.** Un cambio de pocas líneas y sin decisión abierta, como una constante, un texto
   o un dato de configuración, no espera a que se pida el commit. Se hace en su worktree, se prueba con la compuerta que
   le toca (`make check` o `pnpm run build`), se hace merge a `main` y se borran el worktree y la rama. Si la prueba
