@@ -12,6 +12,7 @@ import {
   Filter20Regular, Location20Regular,
 } from '@fluentui/react-icons';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useIconOnly } from '@/components/acciones';
 import { api } from '@/lib/api';
 import { PILOT_TIMEZONE, addDays, cinemaWeek, date_es, fill, fold } from '@/lib/format';
 import { FILTER_TEXT, NATIONAL_LABEL, PERIOD_TEXT, PLAZA_LABEL, ZONE_TEXT } from '@/lib/labels.generated';
@@ -231,13 +232,15 @@ function ChoiceMenu({ label, icon, text, note, options, checked, multiple = fals
   multiple?: boolean; tab?: boolean; onChange: (values: string[]) => void;
 }) {
   const s = useStyles();
+  const iconOnly = useIconOnly();
   const Item = multiple ? MenuItemCheckbox : MenuItemRadio;
   return (
     <Menu checkedValues={{ [label]: checked }} onCheckedValueChange={(_, data) => onChange(data.checkedItems)}>
       <MenuTrigger disableButtonEnhancement>
-        <Button appearance="subtle" className={mergeClasses(s.filterButton, tab && s.tab)} aria-label={`${label}: ${text}`} title={text}
+        <Button appearance="subtle" className={mergeClasses(s.filterButton, tab && s.tab, icon && iconOnly.button)}
+                aria-label={`${label}: ${text}`} title={text}
                 icon={icon ?? <ChevronDown20Regular />} iconPosition={icon ? 'before' : 'after'}>
-          <span className={s.filterText}>{text}</span>
+          <span className={mergeClasses(s.filterText, icon && iconOnly.text)}>{text}</span>
         </Button>
       </MenuTrigger>
       <MenuPopover>

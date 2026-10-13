@@ -4,6 +4,7 @@
 // Con `paired`, cada título lleva una barra por cadena, una debajo de la otra.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { fill, fixed, signed, thousands } from '@/lib/format';
 import {
@@ -17,6 +18,9 @@ export type PresaleRow = {
 };
 
 const TITLE_MAX = 42;
+// Ancho de la etiqueta de título y ancho total de la gráfica, en píxeles. Las barras quedan con el resto.
+const PRESALE_LABEL_WIDTH = 200;
+const PRESALE_WIDTH = 480;
 const PERCENT_TICKS = [0, 25, 50, 75, 100];
 
 type Chain = (typeof COMPARED)[number];
@@ -34,7 +38,7 @@ function releaseEs(iso: string | null): string {
   return `${part('weekday')} ${part('day')} de ${part('month')}`;
 }
 
-export function PresaleBars({ rows, paired }: { rows: PresaleRow[]; paired: boolean }) {
+export function PresaleBars({ rows, paired, contenedor }: { rows: PresaleRow[]; paired: boolean; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     const values = rows.map((r) => {
       const sold = fill(TEXT.percent, { value: fixed(r.sold_pct, 0) });
@@ -57,7 +61,7 @@ export function PresaleBars({ rows, paired }: { rows: PresaleRow[]; paired: bool
     const encoding = {
       y: {
         field: 'Título', type: 'nominal' as const, sort: order, title: null,
-        axis: { labelLimit: 320, labelColor: GRAY_DARK, ticks: false, domain: false },
+        axis: { labelLimit: PRESALE_LABEL_WIDTH, labelColor: GRAY_DARK, ticks: false, domain: false },
       },
       color: {
         field: 'Cadena', type: 'nominal' as const, legend: null,
@@ -77,7 +81,8 @@ export function PresaleBars({ rows, paired }: { rows: PresaleRow[]; paired: bool
     };
     return {
       data: { values },
-      width: 'container',
+      // Ancho fijo: en celular la caja de `VegaChart` se desplaza, como el rival de Cines, y no aplasta las barras.
+      width: PRESALE_WIDTH,
       height: Math.max(90, (paired ? 34 : 26) * order.length),
       layer: [
         {
@@ -99,5 +104,5 @@ export function PresaleBars({ rows, paired }: { rows: PresaleRow[]; paired: bool
   }, [rows, paired]);
 
   const titles = new Set(rows.map((r) => r.title)).size;
-  return <VegaChart spec={spec} height={Math.max(90, (paired ? 34 : 26) * titles) + 40} />;
+  return <VegaChart spec={spec} height={Math.max(90, (paired ? 34 : 26) * titles) + 40} contenedor={contenedor} />;
 }

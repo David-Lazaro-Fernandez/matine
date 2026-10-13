@@ -3,6 +3,7 @@
 // Barras de los títulos con más funciones de la cadena independiente, en % de su propia programación.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { COLUMN_LABEL, GRAY_DARK, INDEP } from '@/lib/labels.generated';
 
@@ -11,7 +12,7 @@ type Title = { title_norm: string; title: string; shows: number; cinemas: number
 
 const ROW = 22;
 
-export function IndepTitlesBars({ titles }: { titles: Title[] }) {
+export function IndepTitlesBars({ titles, contenedor }: { titles: Title[]; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => ({
     data: { values: titles },
     width: 'container',
@@ -29,5 +30,5 @@ export function IndepTitlesBars({ titles }: { titles: Title[] }) {
     },
   }), [titles]);
 
-  return <VegaChart spec={spec} height={ROW * titles.length + 40} />;
+  return <VegaChart spec={spec} height={ROW * titles.length + 40} contenedor={contenedor} />;
 }

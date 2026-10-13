@@ -3,6 +3,7 @@
 // Barras en sala: el precio de un producto de Cinépolis en cada complejo, de mayor a menor, con la mediana punteada.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { CHAIN_COLOR, CINEMA_TYPE_LABEL, CONCESSION_CHART_TEXT as T, GRAY, GRAY_DARK, NEUTRAL } from '@/lib/labels.generated';
 
@@ -14,7 +15,7 @@ export type BasketRow = { median_price: number };
 
 const ROW = 9;
 
-export function ProductPriceByCinema({ rows, basket }: { rows: ProductByCinemaRow[]; basket: BasketRow }) {
+export function ProductPriceByCinema({ rows, basket, contenedor }: { rows: ProductByCinemaRow[]; basket: BasketRow; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     const bars = rows.map((r) => ({
       cinema: r.cinema_type === 'vip' ? T.vip_cinema.replace('{name}', r.cinema_name) : r.cinema_name,
@@ -55,5 +56,5 @@ export function ProductPriceByCinema({ rows, basket }: { rows: ProductByCinemaRo
     };
   }, [rows, basket]);
 
-  return <VegaChart spec={spec} height={ROW * rows.length + 70} />;
+  return <VegaChart spec={spec} height={ROW * rows.length + 70} contenedor={contenedor} />;
 }

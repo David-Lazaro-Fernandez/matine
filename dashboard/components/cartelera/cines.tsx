@@ -137,8 +137,8 @@ function Ranking({ data }: { data: Cines }) {
           </div>
         ))}
       </div>
-      <VegaChart spec={spreadSpec(data.cinemas, T.axis)} height={SPREAD_HEIGHT + 40} name="venta_por_cine" />
-      <Leerla>{fill(T.leer_ranking, { days: data.days, min: data.min_shows })}</Leerla>
+      <VegaChart spec={spreadSpec(data.cinemas, T.axis)} height={SPREAD_HEIGHT + 40} name="venta_por_cine"
+                 contenedor={{ ayuda: <Leerla>{fill(T.leer_ranking, { days: data.days, min: data.min_shows })}</Leerla> }} />
     </Seccion>
   );
 }
@@ -185,7 +185,8 @@ function Rivales({ data }: { data: Cines }) {
           <span className={s.totalLabel}>{T.ahead}</span>
         </div>
       </div>
-      <VegaChart spec={rivalsSpec(data.rivals, T.axis)} height={ROW * data.rivals.length + 50} name="rival_numero_uno" />
+      <VegaChart spec={rivalsSpec(data.rivals, T.axis)} height={ROW * data.rivals.length + 50} name="rival_numero_uno"
+                 contenedor={{ ayuda: <Leerla>{fill(T.leer_rivals, { km: fixed(data.max_km, 0) })}</Leerla> }} />
       <Table
         headers={[...T.rival_headers]}
         rows={data.rivals.map((d): Cell[] => [
@@ -195,7 +196,6 @@ function Rivales({ data }: { data: Cines }) {
         numCols={[1, 3, 4, 5, 6]}
         wideCols={[0, 2]}
       />
-      <Leerla>{fill(T.leer_rivals, { km: fixed(data.max_km, 0) })}</Leerla>
     </Seccion>
   );
 }
