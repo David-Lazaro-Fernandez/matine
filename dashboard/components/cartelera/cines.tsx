@@ -10,7 +10,7 @@ import { type Cell, Leerla, Pregunta, Seccion, SkeletonSeccion, Table, useApi } 
 import { VegaChart } from '@/components/vega-chart';
 import { query } from '@/lib/api';
 import { fill, fixed, n, pp } from '@/lib/format';
-import { CHAIN_COLOR, CHAIN_LABEL, CINES_TEXT as T, COMPARED, GRAY_DARK, NEUTRAL, US } from '@/lib/labels.generated';
+import { CHAIN_COLOR, CHAIN_LABEL, CINES_TEXT as T, COMPARED, GRAY_DARK, NEUTRAL, PAPER, US } from '@/lib/labels.generated';
 
 type Chain = (typeof COMPARED)[number];
 type ChainTotal = { chain: Chain; cinemas: number; shows: number; sold_pct: number; sold_pct_prev: number | null };
@@ -59,7 +59,7 @@ function spreadSpec(cinemas: Cinema[], axis: string): VisualizationSpec {
     width: 'container',
     height: SPREAD_HEIGHT,
     data: { values },
-    mark: { type: 'circle', size: 45, opacity: 0.7 },
+    mark: { type: 'circle', size: 64, opacity: 0.85, stroke: PAPER, strokeWidth: 2 },
     encoding: {
       y: { field: 'chain_label', type: 'nominal', title: null, sort: COMPARED.map((c) => CHAIN_LABEL[c]), axis: { labelColor: GRAY_DARK, ticks: false, domain: false } },
       x: { field: 'sold_pct', type: 'quantitative', title: axis, axis: { grid: true } },

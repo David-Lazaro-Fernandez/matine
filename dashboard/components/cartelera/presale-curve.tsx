@@ -21,7 +21,7 @@ export function PresaleCurve({ curves }: { curves: Partial<Record<Chain, CurveRo
       data: { values },
       width: 'container',
       height: HEIGHT,
-      mark: { type: 'line', point: { size: 40 } },
+      mark: { type: 'line', point: { size: 64 } },
       encoding: {
         x: { field: 'days_to_start', type: 'quantitative', title: TEXT.curve_x, scale: { reverse: true } },
         y: {

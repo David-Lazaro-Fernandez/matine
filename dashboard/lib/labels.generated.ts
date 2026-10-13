@@ -68,11 +68,11 @@ export const GRID = "#ECEDEF" as const;
 export const RED_RAMP = [
   "#9E0F26",
   "#E31837",
-  "#F08497",
-  "#F7CDD5"
+  "#EC6B82",
+  "#F08FA0"
 ] as const;
 
-export const RED_RAMP_TEXT = "#7A2233" as const;
+export const RED_RAMP_TEXT = "#4D0F1E" as const;
 
 export const DIVERGING = [
   "#191A1E",

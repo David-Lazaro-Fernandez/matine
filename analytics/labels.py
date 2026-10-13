@@ -43,9 +43,9 @@ NEUTRAL = "#C9CBD0"
 # Rejilla de gráficas.
 GRID = "#ECEDEF"
 # Ordinal de un solo tono para cubetas ordenadas.
-RED_RAMP = [RED_DARK, RED, "#F08497", "#F7CDD5"]
+RED_RAMP = [RED_DARK, RED, "#EC6B82", "#F08FA0"]
 # Texto sobre los dos tonos claros de `RED_RAMP`.
-RED_RAMP_TEXT = "#7A2233"
+RED_RAMP_TEXT = "#4D0F1E"
 # Cinépolis (tinta) ↔ centro ↔ Cinemex (rojo).
 DIVERGING = [INK, INDEP, "#EFEFEF", "#F6B7C2", RED]
 # Ámbar: estado con problema, solo en la página de operaciones (el rojo es Cinemex).
