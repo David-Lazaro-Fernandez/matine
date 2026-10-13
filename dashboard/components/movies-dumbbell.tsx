@@ -4,6 +4,7 @@
 // escrita a la derecha.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { CHAIN_COLOR, COMPARED, GRAY_DARK, NEUTRAL, US } from '@/lib/labels.generated';
 
@@ -17,7 +18,7 @@ type Movie = {
 
 const ROW = 24;
 
-export function MoviesDumbbell({ movies, axisTitle }: { movies: Movie[]; axisTitle: string }) {
+export function MoviesDumbbell({ movies, axisTitle, contenedor }: { movies: Movie[]; axisTitle: string; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     const order = movies.map((m) => m.title);
     // Un punto por película y cadena que la proyecta: una exclusiva queda con un solo punto.
@@ -70,5 +71,5 @@ export function MoviesDumbbell({ movies, axisTitle }: { movies: Movie[]; axisTit
     };
   }, [movies, axisTitle]);
 
-  return <VegaChart spec={spec} height={ROW * movies.length + 50} />;
+  return <VegaChart spec={spec} height={ROW * movies.length + 50} contenedor={contenedor} />;
 }

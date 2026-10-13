@@ -211,9 +211,8 @@ function Contenido({ data }: { data: Independientes }) {
         <Pregunta texto={T.q_programa} conclusion={c.programa} nota={T.programa_note} />
         <Leyenda items={indepLegend} />
         <p className={s.chartTitle}>{T.programa_chart}</p>
-        <IndepTitlesBars titles={data.titles} />
+        <IndepTitlesBars titles={data.titles} contenedor={{ ayuda: <Leerla>{T.leer_programa}</Leerla> }} />
         <Table {...table(data.venues, ['cinema_name', 'shows', 'titles', 'days', 'share_shows'])} />
-        <Leerla>{T.leer_programa}</Leerla>
       </Seccion>
 
       <Seccion slug="indep-ocupacion">
@@ -224,7 +223,7 @@ function Contenido({ data }: { data: Independientes }) {
               <>
                 <Leyenda items={indepLegend} />
                 <p className={s.chartTitle}>{T.ocupacion_chart}</p>
-                <IndepOccupancyHeatmap cells={data.occupancy} />
+                <IndepOccupancyHeatmap cells={data.occupancy} contenedor={{ ayuda: <Leerla>{T.leer_ocupacion}</Leerla> }} />
                 {data.occupancy_titles.length > 0 && (
                   <>
                     <p className={s.chartTitle}>{T.ocupacion_titles}</p>
@@ -233,14 +232,13 @@ function Contenido({ data }: { data: Independientes }) {
                 )}
               </>
             )}
-        <Leerla>{T.leer_ocupacion}</Leerla>
       </Seccion>
 
       <Seccion slug="indep-solape">
         <Pregunta texto={T.q_solape} conclusion={c.solape} />
         <Leyenda items={[[T.status.shared, CHAIN_COLOR.cinemex], [T.status.indep_only, INDEP]]} />
         <p className={s.chartTitle}>{T.solape_chart}</p>
-        <IndepOverlapBars titles={data.overlap_top} />
+        <IndepOverlapBars titles={data.overlap_top} contenedor={{ ayuda: <Leerla>{T.leer_solape}</Leerla> }} />
         {only.length > 0 && (
           <>
             <p className={s.chartTitle}>{T.solape_only}</p>
@@ -249,15 +247,13 @@ function Contenido({ data }: { data: Independientes }) {
             </div>
           </>
         )}
-        <Leerla>{T.leer_solape}</Leerla>
       </Seccion>
 
       <Seccion slug="indep-franjas">
         <Pregunta texto={T.q_franjas} conclusion={c.franjas} />
         <Leyenda items={chainsHere.map((ch) => [CHAIN_LABEL[ch], CHAIN_COLOR[ch]] as const)} />
         <p className={s.chartTitle}>{T.franjas_chart}</p>
-        <IndepSlotsBars slots={data.slots} />
-        <Leerla>{T.leer_franjas}</Leerla>
+        <IndepSlotsBars slots={data.slots} contenedor={{ ayuda: <Leerla>{T.leer_franjas}</Leerla> }} />
       </Seccion>
 
       <Apendice title={T.app_board} resumen={fill(T.app_board_summary, { titles: n(data.board.length), shows: n(sum(data.board, 'shows')) })}>

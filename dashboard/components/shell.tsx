@@ -174,6 +174,7 @@ const useStyles = makeStyles({
     [MOBILE]: {
       display: 'flex',
       justifyContent: 'space-around',
+      gap: 0,
       position: 'fixed',
       left: 0,
       right: 0,
@@ -193,7 +194,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     alignItems: 'center',
     rowGap: '2px',
-    padding: '6px 2px',
+    padding: '6px 0',
     // Fluent reserva el ancho del nombre en negritas. Aquí cada módulo ya tiene un ancho fijo.
     '& .fui-Tab__content--reserved-space': { display: 'none' },
     '& .fui-Tab__content': {
@@ -201,7 +202,7 @@ const useStyles = makeStyles({
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
-      fontSize: tokens.fontSizeBase100,
+      fontSize: '10px',
     },
   },
 });

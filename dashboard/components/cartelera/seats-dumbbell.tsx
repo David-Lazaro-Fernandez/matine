@@ -4,6 +4,7 @@
 // cuadro su parte de las butacas ofertadas. Recibe las filas de `analytics.offered_by_title`.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { CHAIN_COLOR, CHAIN_LABEL, COLUMN_LABEL, GRAY_DARK, NEUTRAL, SEATS_CHART_TEXT } from '@/lib/labels.generated';
 
@@ -21,7 +22,7 @@ export type OfferedByTitle = {
 const ROW = 24;
 const MEASURES = ['share_shows', 'share_seats'] as const;
 
-export function SeatsDumbbell({ rows, chain }: { rows: OfferedByTitle[]; chain: Chain }) {
+export function SeatsDumbbell({ rows, chain, contenedor }: { rows: OfferedByTitle[]; chain: Chain; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     const order = rows.map((r) => r.title.trim());
     const points = rows.flatMap((r) =>
@@ -70,5 +71,5 @@ export function SeatsDumbbell({ rows, chain }: { rows: OfferedByTitle[]; chain: 
     };
   }, [rows, chain]);
 
-  return <VegaChart spec={spec} height={ROW * rows.length + 70} />;
+  return <VegaChart spec={spec} height={ROW * rows.length + 70} contenedor={contenedor} />;
 }

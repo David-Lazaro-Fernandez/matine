@@ -3,6 +3,7 @@
 // Heatmap día×franja: la diferencia en pp entre la parte de parrilla de Cinemex y la de Cinépolis en cada celda.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { DIVERGING, INK, PAPER } from '@/lib/labels.generated';
 
@@ -10,7 +11,9 @@ type Cell = { day: string; slot_label: string; gap_pp: number; label: string; to
 
 const ROW = 46;
 
-export function DaySlotHeatmap({ cells, days, slots, limit }: { cells: Cell[]; days: string[]; slots: string[]; limit: number }) {
+export function DaySlotHeatmap({ cells, days, slots, limit, contenedor }: {
+  cells: Cell[]; days: string[]; slots: string[]; limit: number; contenedor?: ContenedorGrafica;
+}) {
   const spec = useMemo<VisualizationSpec>(() => {
     const presentDays = days.filter((d) => cells.some((c) => c.day === d));
     const presentSlots = slots.filter((s) => cells.some((c) => c.slot_label === s));
@@ -50,5 +53,5 @@ export function DaySlotHeatmap({ cells, days, slots, limit }: { cells: Cell[]; d
     };
   }, [cells, days, slots, limit]);
 
-  return <VegaChart spec={spec} height={ROW * days.length + 40} />;
+  return <VegaChart spec={spec} height={ROW * days.length + 40} contenedor={contenedor} />;
 }

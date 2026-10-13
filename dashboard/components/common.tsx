@@ -12,6 +12,12 @@ import {
   Badge,
   Body1,
   Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   DataGrid,
   DataGridBody,
   DataGridCell,
@@ -33,16 +39,18 @@ import {
   createMotionComponent,
   motionTokens,
 } from '@fluentui/react-components';
-import { ArrowDownload16Regular } from '@fluentui/react-icons';
+import { Database20Regular, Image20Regular, Open20Regular, QuestionCircle20Regular, Table20Regular } from '@fluentui/react-icons';
 import { useRouter } from 'next/navigation';
 import type { VisualizationSpec } from 'vega-embed';
 import { useDataColor } from '@/app/providers';
+import { Acciones, type Boton, type Enlace } from '@/components/acciones';
 import { ApiError, api } from '@/lib/api';
 import { downloadCsv, downloadSpecPng } from '@/lib/download';
 import { useCanDownload } from '@/lib/session';
 import { fill, fixed, n, signed } from '@/lib/format';
 import {
-  AUTH_TEXT, CHAIN_COLOR, CHAIN_LABEL, DOWNLOAD_TEXT, FINDING_TEXT, FINDING_THEME_LABEL, FINDING_UNIT, LAYER_TEXT, LINE, RED, RED_SOFT, WARN,
+  AUTH_TEXT, CHAIN_COLOR, CHAIN_LABEL, DOWNLOAD_TEXT, FINDING_TEXT, FINDING_THEME_LABEL, FINDING_UNIT, LAYER_TEXT, LINE, RED, RED_SOFT,
+  TABLE_NOTE_TEXT, WARN,
 } from '@/lib/labels.generated';
 
 const useStyles = makeStyles({
@@ -95,8 +103,6 @@ const useStyles = makeStyles({
     borderLeft: `3px solid ${tokens.colorNeutralStroke1}`,
   },
   nota: { fontStyle: 'italic', fontWeight: tokens.fontWeightRegular, color: tokens.colorNeutralForeground3 },
-  leerla: { fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground2, maxWidth: '720px' },
-  leerlaHeader: { fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
   apendice: {
     backgroundColor: tokens.colorNeutralBackground1,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -196,7 +202,6 @@ const useStyles = makeStyles({
     boxShadow: `0 0 0 2px ${tokens.colorNeutralBackground1}`,
   },
   barraValor: { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: tokens.colorNeutralForeground2 },
-  hallazgoAcciones: { '@media print': { display: 'none' }, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalM },
   hallazgoPie: {
     gridColumn: '1 / -1',
     display: 'flex',
@@ -238,6 +243,20 @@ const useStyles = makeStyles({
   },
   num: { justifyContent: 'flex-end', textAlign: 'right' },
   wideCol: { flexGrow: 3 },
+  notaTabla: { display: 'flex', justifyContent: 'flex-end', margin: `0 0 ${tokens.spacingVerticalS}` },
+  graficaContenedor: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS, minWidth: 0 },
+  // Controles a la izquierda y el "?" a la derecha, en la misma fila.
+  filaControles: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' },
+  controles: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalM, minWidth: 0 },
+  notaEjemplo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+    minWidth: 0,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+  },
+  notaEjemploTitulo: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, margin: 0 },
   accessPage: {
     display: 'flex',
     justifyContent: 'center',
@@ -330,17 +349,9 @@ export function Pregunta({ texto, conclusion, nota }: { texto: string; conclusio
   );
 }
 
-// "Cómo leerla", cerrado por defecto, al final de la sección.
+// "Cómo leerla": un "?" al final de la sección que abre su explicación en una ventana.
 export function Leerla({ children }: { children: React.ReactNode }) {
-  const s = useStyles();
-  return (
-    <Accordion collapsible>
-      <AccordionItem value="leerla">
-        <AccordionHeader size="small" className={s.leerlaHeader}>{LAYER_TEXT.read_it}</AccordionHeader>
-        <AccordionPanel className={s.leerla}>{children}</AccordionPanel>
-      </AccordionItem>
-    </Accordion>
-  );
+  return <Ayuda titulo={LAYER_TEXT.read_it} label={LAYER_TEXT.read_it}>{children}</Ayuda>;
 }
 
 // Con `true`, los apéndices de adentro empiezan abiertos: es la pantalla de ese tema.
@@ -466,7 +477,8 @@ function FindingBars({ chart }: { chart: FindingChart }) {
                   style={{ width: `${(100 * Math.abs(v)) / top}%`, backgroundColor: fillColor, opacity: meter && !row.highlight ? 0.4 : 1 }}
                 />
               );
-              const value = <span className={s.barraValor}>{findingValue(v, chart.unit)}</span>;
+              // El ritmo de preventa se lee como porcentaje en la barra; la frase completa va en la cifra de arriba.
+              const value = <span className={s.barraValor}>{findingValue(v, chart.unit === 'pace' ? 'pct' : chart.unit)}</span>;
               if (diverging) {
                 return (
                   <div key={c} className={s.divergente}>
@@ -701,6 +713,14 @@ export function Hallazgo({ f, href, dataHref, compact = false, showAction = true
   const s = useStyles();
   const canDownload = useCanDownload();
   const dataColor = useDataColor();
+  const botones: Boton[] = [
+    ...(canDownload && f.chart && f.chart.rows.length > 0 ? [{ label: DOWNLOAD_TEXT.png, icon: <Image20Regular />, onClick: () => downloadSpecPng(findingSpec(f), f.topic) }] : []),
+    ...(canDownload ? [{ label: DOWNLOAD_TEXT.csv, icon: <Table20Regular />, onClick: () => downloadFinding(f) }] : []),
+  ];
+  const enlaces: Enlace[] = [
+    ...(dataHref ? [{ label: DOWNLOAD_TEXT.data, icon: <Database20Regular />, href: dataHref }] : []),
+    ...(href ? [{ label: LAYER_TEXT.evidence, icon: <Open20Regular />, href }] : []),
+  ];
   const metricColor = (chain: string | null) => chain ? dataColor(chainColor(chain) ?? LINE) : undefined;
   return (
     <Entrada>
@@ -727,18 +747,7 @@ export function Hallazgo({ f, href, dataHref, compact = false, showAction = true
         </div>
         <div className={s.hallazgoPie}>
           <span>{f.context}</span>
-          <span className={s.hallazgoAcciones}>
-            {canDownload && f.chart && f.chart.rows.length > 0 && (
-              <Button appearance="subtle" size="small" icon={<ArrowDownload16Regular />} onClick={() => downloadSpecPng(findingSpec(f), f.topic)}>
-                {DOWNLOAD_TEXT.png}
-              </Button>
-            )}
-            {canDownload && (
-              <Button appearance="subtle" size="small" icon={<ArrowDownload16Regular />} onClick={() => downloadFinding(f)}>{DOWNLOAD_TEXT.csv}</Button>
-            )}
-            {dataHref && <AppLink href={dataHref}>{DOWNLOAD_TEXT.data}</AppLink>}
-            {href && <AppLink href={href}>{LAYER_TEXT.evidence}</AppLink>}
-          </span>
+          <Acciones botones={botones} enlaces={enlaces} />
         </div>
       </div>
     </Entrada>
@@ -802,6 +811,67 @@ export function Table({ headers, rows, numCols = [], wideCols = [] }: { headers:
   );
 }
 
+// Botón "?" que abre una ventana con `children`. `label` es su nombre para lector de pantalla y su tooltip.
+export function Ayuda({ titulo, label, children }: { titulo: string; label: string; children: React.ReactNode }) {
+  const s = useStyles();
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className={s.notaTabla}>
+      <Button appearance="subtle" size="small" icon={<QuestionCircle20Regular />} aria-label={label} title={label} onClick={() => setOpen(true)} />
+      <Dialog open={open} onOpenChange={(_, d) => setOpen(d.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{titulo}</DialogTitle>
+            <DialogContent className={s.notaEjemplo}>{children}</DialogContent>
+            <DialogActions>
+              <Button appearance="primary" onClick={() => setOpen(false)}>{TABLE_NOTE_TEXT.close}</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+    </div>
+  );
+}
+
+// Lo que una gráfica pone alrededor: el "?", sus controles y sus enlaces. `VegaChart` y los wrappers lo reciben así.
+export type ContenedorGrafica = { ayuda?: React.ReactNode; controles?: React.ReactNode; enlaces?: Enlace[] };
+
+// Contenedor de una gráfica. Debajo de ella van tres filas, siempre en este orden: el "?" (`ayuda`), los controles que
+// cambian la gráfica (`controles`) y los botones y enlaces (`botones`, `enlaces`).
+export function Grafica({ children, ayuda, controles, botones, enlaces }: {
+  children: React.ReactNode; ayuda?: React.ReactNode; controles?: React.ReactNode; botones?: Boton[]; enlaces?: Enlace[];
+}) {
+  const s = useStyles();
+  return (
+    <div className={s.graficaContenedor}>
+      {children}
+      {(controles || ayuda) && (
+        <div className={s.filaControles}>
+          <div className={s.controles}>{controles}</div>
+          {ayuda}
+        </div>
+      )}
+      <Acciones botones={botones} enlaces={enlaces} />
+    </div>
+  );
+}
+
+// Nota al pie de una tabla: su texto y, como ejemplo, la primera fila de la misma tabla.
+export function NotaTabla({ title, texto, ejemplo }: { title: string; texto: React.ReactNode; ejemplo?: React.ReactNode }) {
+  const s = useStyles();
+  return (
+    <Ayuda titulo={title} label={TABLE_NOTE_TEXT.open}>
+      <p>{texto}</p>
+      {ejemplo && (
+        <>
+          <p className={s.notaEjemploTitulo}>{TABLE_NOTE_TEXT.example}</p>
+          {ejemplo}
+        </>
+      )}
+    </Ayuda>
+  );
+}
+
 // Tarjeta de las pantallas de acceso: el nombre del producto, el título, el texto de entrada y el formulario.
 export function AccessCard({ title, lead, children }: { title?: string; lead?: string; children: React.ReactNode }) {
   const s = useStyles();
@@ -820,9 +890,15 @@ export function AccessCard({ title, lead, children }: { title?: string; lead?: s
 }
 
 // Enlace de Fluent que navega dentro de la aplicación, sin recargar la página.
-export function AppLink({ href, children }: { href: string; children: React.ReactNode }) {
+export function AppLink({ href, children, className, ariaLabel, title }: {
+  href: string; children: React.ReactNode; className?: string; ariaLabel?: string; title?: string;
+}) {
   const router = useRouter();
-  return <Link href={href} onClick={(e) => { e.preventDefault(); router.push(href); }}>{children}</Link>;
+  return (
+    <Link href={href} className={className} aria-label={ariaLabel} title={title} onClick={(e) => { e.preventDefault(); router.push(href); }}>
+      {children}
+    </Link>
+  );
 }
 
 // Esqueletos de carga: la misma forma que el componente que llega después, para que la página no salte.

@@ -13,6 +13,7 @@ import { useSearchParams } from 'next/navigation';
 import {
   Apendice,
   type Cell,
+  Grafica,
   Leerla,
   Leyenda,
   PageFooter,
@@ -280,7 +281,9 @@ export default function Page() {
         <Seccion slug="mapa-mapa">
           <Pregunta texto={T.map} conclusion={T.map_desc} />
           <Leyenda items={shownChains.map((c) => [CHAIN_LABEL[c], CHAIN_COLOR[c]] as const)} />
-          <CinemaMap points={mapPoints} center={center} zoom={zoomFor(mapPoints, plaza, validIds.length > 0)} onPick={setPickedSite} />
+          <Grafica ayuda={<Leerla>{T.leer}</Leerla>}>
+            <CinemaMap points={mapPoints} center={center} zoom={zoomFor(mapPoints, plaza, validIds.length > 0)} onPick={setPickedSite} />
+          </Grafica>
           <p className={s.detail}>{T.detail}</p>
           {site ? (
             <Table
@@ -291,7 +294,6 @@ export default function Page() {
           ) : (
             <p className={s.hint}>{T.detail_hint}</p>
           )}
-          <Leerla>{T.leer}</Leerla>
         </Seccion>
 
         <Apendice title={T.table} resumen={`${n(data.cinemas.length)} ${COLUMN_LABEL.cinemas.toLowerCase()}`}>
