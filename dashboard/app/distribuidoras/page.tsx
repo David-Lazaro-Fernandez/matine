@@ -92,8 +92,7 @@ export default function Page() {
       <Seccion slug="brecha">
         <Pregunta texto={T.q_gaps} conclusion={data.conclusions.brecha} nota={data.conclusions.sin_conciliar} />
         <Leyenda items={COMPARED.map((c) => [CHAIN_LABEL[c], CHAIN_COLOR[c]] as const)} />
-        <MoviesDumbbell movies={gapRows(data.gaps)} axisTitle={T.gap_axis} />
-        <Leerla>{T.leer_gaps}</Leerla>
+        <MoviesDumbbell movies={gapRows(data.gaps)} axisTitle={T.gap_axis} contenedor={{ ayuda: <Leerla>{T.leer_gaps}</Leerla> }} />
       </Seccion>
       <Seccion slug="distribuidoras">
         <Pregunta texto={T.question} />

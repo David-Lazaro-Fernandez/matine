@@ -10,7 +10,7 @@ import { type Cell, Leerla, Pregunta, Seccion, SkeletonSeccion, Table, useApi } 
 import { VegaChart } from '@/components/vega-chart';
 import { query } from '@/lib/api';
 import { fill, fixed, n, pp } from '@/lib/format';
-import { CHAIN_COLOR, CHAIN_LABEL, CINES_TEXT as T, COMPARED, GRAY_DARK, NEUTRAL, PAPER, US } from '@/lib/labels.generated';
+import { CHAIN_COLOR, CHAIN_LABEL, CINES_TEXT as T, COMPARED, GRAY_DARK, NEUTRAL, US } from '@/lib/labels.generated';
 
 type Chain = (typeof COMPARED)[number];
 type ChainTotal = { chain: Chain; cinemas: number; shows: number; sold_pct: number; sold_pct_prev: number | null };
@@ -31,10 +31,6 @@ type Cines = {
 const TOP = 15;
 const NEIGHBORS = 3;
 const ROW = 22;
-// Margen derecho donde se escribe la diferencia de cada duelo.
-const GAP_WIDTH = 70;
-// Nombres de cine, diferencia y un tramo legible del eje.
-const RIVALS_MIN_WIDTH = 560;
 // 110 px por cadena: los cines de Cinemex se juntan entre 1 % y 10 % y necesitan alto para no encimarse.
 const SPREAD_HEIGHT = 220;
 const SPREAD_BIN = 0.6;
@@ -63,7 +59,7 @@ function spreadSpec(cinemas: Cinema[], axis: string): VisualizationSpec {
     width: 'container',
     height: SPREAD_HEIGHT,
     data: { values },
-    mark: { type: 'circle', size: 64, opacity: 0.85, stroke: PAPER, strokeWidth: 2 },
+    mark: { type: 'circle', size: 45, opacity: 0.7 },
     encoding: {
       y: { field: 'chain_label', type: 'nominal', title: null, sort: COMPARED.map((c) => CHAIN_LABEL[c]), axis: { labelColor: GRAY_DARK, ticks: false, domain: false } },
       x: { field: 'sold_pct', type: 'quantitative', title: axis, axis: { grid: true } },
@@ -83,38 +79,45 @@ function rivalsSpec(duels: Rival[], axis: string): VisualizationSpec {
   })));
   const y = { field: 'pair', type: 'nominal' as const, sort: order };
   return {
-    width: 'container',
-    height: { step: ROW },
-    encoding: { y: { ...y, title: null, axis: { labelLimit: 260, labelColor: GRAY_DARK, ticks: false, domain: false, labelPadding: 8 } } },
-    padding: { right: GAP_WIDTH },
-    layer: [
+    hconcat: [
       {
+        width: 420,
+        height: { step: ROW },
         data: { values: points },
-        mark: { type: 'rule', strokeWidth: 2, color: NEUTRAL },
-        encoding: {
-          x: { aggregate: 'min', field: 'sold_pct', type: 'quantitative', title: axis, axis: { grid: true } },
-          x2: { aggregate: 'max', field: 'sold_pct' },
-        },
+        encoding: { y: { ...y, title: null, axis: { labelLimit: 260, labelColor: GRAY_DARK, ticks: false, domain: false, labelPadding: 8 } } },
+        layer: [
+          {
+            mark: { type: 'rule', strokeWidth: 2, color: NEUTRAL },
+            encoding: {
+              x: { aggregate: 'min', field: 'sold_pct', type: 'quantitative', title: axis, axis: { grid: true } },
+              x2: { aggregate: 'max', field: 'sold_pct' },
+            },
+          },
+          {
+            mark: { type: 'circle', size: 90, opacity: 1 },
+            encoding: {
+              x: { field: 'sold_pct', type: 'quantitative' },
+              color: { field: 'chain', type: 'nominal', legend: null, scale: { domain: [...COMPARED], range: COMPARED.map((c) => CHAIN_COLOR[c]) } },
+              tooltip: { field: 'tooltip' },
+            },
+          },
+        ],
       },
       {
-        data: { values: points },
-        mark: { type: 'circle', size: 90, opacity: 1 },
-        encoding: {
-          x: { field: 'sold_pct', type: 'quantitative' },
-          color: { field: 'chain', type: 'nominal', legend: null, scale: { domain: [...COMPARED], range: COMPARED.map((c) => CHAIN_COLOR[c]) } },
-          tooltip: { field: 'tooltip' },
-        },
-      },
-      {
+        width: 70,
+        height: { step: ROW },
         data: { values: duels.map((d) => ({ pair: label(d), delta: pp(d.gap_pp), ahead: d.gap_pp > 0 })) },
-        mark: { type: 'text', align: 'left', dx: 8, fontWeight: 'bold' },
+        mark: { type: 'text', align: 'left', fontWeight: 'bold' },
         encoding: {
-          x: { value: { expr: 'width' } },
+          y: { ...y, axis: null },
+          x: { value: 4 },
           text: { field: 'delta' },
           color: { condition: { test: 'datum.ahead', value: CHAIN_COLOR[US] }, value: GRAY_DARK },
         },
       },
     ],
+    spacing: 6,
+    resolve: { scale: { y: 'shared' } },
   };
 }
 
@@ -134,8 +137,8 @@ function Ranking({ data }: { data: Cines }) {
           </div>
         ))}
       </div>
-      <VegaChart spec={spreadSpec(data.cinemas, T.axis)} height={SPREAD_HEIGHT + 40} name="venta_por_cine" />
-      <Leerla>{fill(T.leer_ranking, { days: data.days, min: data.min_shows })}</Leerla>
+      <VegaChart spec={spreadSpec(data.cinemas, T.axis)} height={SPREAD_HEIGHT + 40} name="venta_por_cine"
+                 contenedor={{ ayuda: <Leerla>{fill(T.leer_ranking, { days: data.days, min: data.min_shows })}</Leerla> }} />
     </Seccion>
   );
 }
@@ -182,17 +185,17 @@ function Rivales({ data }: { data: Cines }) {
           <span className={s.totalLabel}>{T.ahead}</span>
         </div>
       </div>
-      <VegaChart spec={rivalsSpec(data.rivals, T.axis)} height={ROW * data.rivals.length + 50} minWidth={RIVALS_MIN_WIDTH} name="rival_numero_uno" />
+      <VegaChart spec={rivalsSpec(data.rivals, T.axis)} height={ROW * data.rivals.length + 50} name="rival_numero_uno"
+                 contenedor={{ ayuda: <Leerla>{fill(T.leer_rivals, { km: fixed(data.max_km, 0) })}</Leerla> }} />
       <Table
         headers={[...T.rival_headers]}
         rows={data.rivals.map((d): Cell[] => [
-          d[US].cinemas.join(' + '), d.gap_pp > 0 ? [percent(d[US].sold_pct), 'cmx'] : percent(d[US].sold_pct), d.cinepolis.cinemas.join(' + '), d.gap_pp < 0 ? [percent(d.cinepolis.sold_pct), 'cnp'] : percent(d.cinepolis.sold_pct),
+          d[US].cinemas.join(' + '), [percent(d[US].sold_pct), 'cmx'], d.cinepolis.cinemas.join(' + '), [percent(d.cinepolis.sold_pct), 'cnp'],
           pp(d.gap_pp), fill(T.km, { km: fixed(d.km, 1) }), String(d.rivals),
         ])}
         numCols={[1, 3, 4, 5, 6]}
         wideCols={[0, 2]}
       />
-      <Leerla>{fill(T.leer_rivals, { km: fixed(data.max_km, 0) })}</Leerla>
     </Seccion>
   );
 }

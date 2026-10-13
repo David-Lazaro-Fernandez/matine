@@ -3,6 +3,7 @@
 // Barras a domicilio: el precio mediano de cada cadena por tipo de producto, una barra por cadena dentro de cada fila.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { CHAIN_COLOR, CHAIN_LABEL, COMPARED, CONCESSION_CHART_TEXT as T, GRAY_DARK, PAPER } from '@/lib/labels.generated';
 
@@ -13,7 +14,7 @@ export type DeliveryCompareRow = { label: string; delta_pct: number | null } & R
 const ROW = 30;
 const CHAIN_DOMAIN = COMPARED.map((c) => CHAIN_LABEL[c]);
 
-export function DeliveryCompareBars({ rows }: { rows: DeliveryCompareRow[] }) {
+export function DeliveryCompareBars({ rows, contenedor }: { rows: DeliveryCompareRow[]; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     // Una barra por cubeta y cadena con precio: una cubeta que solo vende una cadena queda con una barra.
     const bars = rows.flatMap((r) =>
@@ -55,5 +56,5 @@ export function DeliveryCompareBars({ rows }: { rows: DeliveryCompareRow[] }) {
     };
   }, [rows]);
 
-  return <VegaChart spec={spec} height={ROW * rows.length + 40} />;
+  return <VegaChart spec={spec} height={ROW * rows.length + 40} contenedor={contenedor} />;
 }

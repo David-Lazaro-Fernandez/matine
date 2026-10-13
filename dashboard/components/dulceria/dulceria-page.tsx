@@ -149,7 +149,7 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
       />
       {!d.delivery_compare.length ? info(T.delivery_empty) : (
         <>
-          <DeliveryCompareBars rows={d.delivery_compare} />
+          <DeliveryCompareBars rows={d.delivery_compare} contenedor={{ ayuda: <Leerla>{T.leer}</Leerla> }} />
           <Table
             headers={[...T.compare_headers]}
             rows={d.delivery_compare.map((r): Cell[] => [
@@ -190,7 +190,7 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
         )}
         {loaded !== request ? <SkeletonBlock height={330} /> : d.product_by_cinema.length > 0 && (
           <>
-            <ProductPriceByCinema rows={d.product_by_cinema} />
+            <ProductPriceByCinema rows={d.product_by_cinema} contenedor={{ ayuda: <Leerla>{T.leer}</Leerla> }} />
             <p className={s.nota}>
               {fill(T.room_note, {
                 product: sized ? `${row.product_name} ${sized.size_name}` : row.product_name,
@@ -271,7 +271,6 @@ export function DulceriaPage({ view }: { view: DulceriaView }) {
               {detail(data)}
             </>
           )}
-          <Leerla>{T.leer}</Leerla>
         </Seccion>
 
         <AppLink href="/">{T.back}</AppLink>

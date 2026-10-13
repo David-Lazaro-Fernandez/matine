@@ -1471,6 +1471,12 @@ export const LAYER_TEXT = {
   "evidence": "Ver más"
 } as const;
 
+export const TABLE_NOTE_TEXT = {
+  "open": "Cómo leer esta tabla",
+  "example": "Ejemplo: primera fila",
+  "close": "Cerrar"
+} as const;
+
 export const CINES_TEXT = {
   "q_ranking": "Venta por cine",
   "q_competitors": "Los Cinépolis más fuertes",

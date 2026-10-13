@@ -33,12 +33,14 @@ import {
   PageHeader,
   Pregunta,
   Seccion,
+  NotaTabla,
   Table,
   SkeletonApendice,
   SkeletonCapas,
   SkeletonHallazgo,
   SkeletonSeccion,
   SkeletonTable,
+  Grafica,
   errorText,
   useApi,
   type Loaded,
@@ -49,6 +51,7 @@ import { type CurveRow, PresaleCurve } from '@/components/cartelera/presale-curv
 import { type OfferedByTitle, SeatsDumbbell } from '@/components/cartelera/seats-dumbbell';
 import { DaySlotHeatmap } from '@/components/day-slot-heatmap';
 import { FilterChecks, FilterMenu, PeriodSelector, PlazaSelector, usePeriod, usePlaza, useSetParams } from '@/components/filters';
+import { GraficaGrupo } from '@/components/vega-chart';
 import { MoviesDumbbell } from '@/components/movies-dumbbell';
 import { ApiError, api, query } from '@/lib/api';
 import { date_es, fill, fixed, localTime, n, pp, range_es, signed, thousands, time_12 } from '@/lib/format';
@@ -298,6 +301,8 @@ function pretty(col: string, v: Value): string {
   if (col in RELABEL) return RELABEL[col][text] ?? text;
   return text;
 }
+
+const BOARD_COLUMNS = ['datetime_local', 'screen', 'movie_title', 'language', 'format', 'availability', 'vs_now', 'changes'];
 
 function DetailTable({ rows, columns }: { rows: Row[]; columns?: string[] }) {
   const cols = columns ?? Object.keys(rows[0] ?? {});
@@ -580,9 +585,10 @@ function Peliculas({ data, sec }: { data: Cartelera; sec: PeliculasData }) {
     <Seccion slug="peliculas">
       <Pregunta texto={T.q_peliculas} conclusion={sec.conclusions.peliculas} nota={showAll ? null : sec.conclusions.peliculas_note} />
       <Leyenda items={COMPARED.map((c) => [CHAIN_LABEL[c], CHAIN_COLOR[c]] as const)} />
-      <MoviesDumbbell movies={movies} axisTitle={T.peliculas_axis} />
-      <Switch checked={showAll} onChange={(_, d) => setShowAll(d.checked)} label={fill(T.peliculas_all, { n: data.total_movies })} />
-      <Leerla>{fill(T.leer_peliculas, { total: data.total_movies })}</Leerla>
+      <MoviesDumbbell movies={movies} axisTitle={T.peliculas_axis} contenedor={{
+        ayuda: <Leerla>{fill(T.leer_peliculas, { total: data.total_movies })}</Leerla>,
+        controles: <Switch checked={showAll} onChange={(_, d) => setShowAll(d.checked)} label={fill(T.peliculas_all, { n: data.total_movies })} />,
+      }} />
     </Seccion>
   );
 }
@@ -609,8 +615,9 @@ function Horarios({ data, sec }: { data: Cartelera; sec: HorariosData }) {
   return (
     <Seccion slug="horarios">
       <Pregunta texto={T.q_horarios} conclusion={sec.conclusions.franjas} />
-      {cells.length ? <DaySlotHeatmap cells={cells} days={days} slots={slots} limit={limit} /> : <Info text={T.empty_period} />}
-      <Leerla>{T.leer_horarios}</Leerla>
+      {cells.length
+        ? <DaySlotHeatmap cells={cells} days={days} slots={slots} limit={limit} contenedor={{ ayuda: <Leerla>{T.leer_horarios}</Leerla> }} />
+        : <Info text={T.empty_period} />}
     </Seccion>
   );
 }
@@ -621,7 +628,8 @@ function Formatos({ sec }: { sec: FormatosData }) {
   return (
     <Seccion slug="formatos">
       <Pregunta texto={T.q_formatos} conclusion={sec.conclusions.formatos} />
-      {sec.mix.length > 0 && (
+      <GraficaGrupo nombre="formatos" ayuda={<Leerla>{T.leer_formatos}</Leerla>}>
+        {sec.mix.length > 0 && (
         <div className={s.columns}>
           <div className={s.column}>
             <Leyenda square items={FORMAT_BUCKETS.map((b, i) => [FORMAT_LABEL[b], RED_RAMP[i]] as const)} />
@@ -632,8 +640,8 @@ function Formatos({ sec }: { sec: FormatosData }) {
             <MixBars rows={sec.mix} dimension="language" />
           </div>
         </div>
-      )}
-      <Leerla>{T.leer_formatos}</Leerla>
+        )}
+      </GraficaGrupo>
     </Seccion>
   );
 }
@@ -656,6 +664,11 @@ function Preventa({ data, sec }: { data: Cartelera; sec: PreventaData }) {
   const both = sec.presale_by_chain.filter((r) => r.status === 'ambas');
   const single = sec.presale_by_chain.filter((r) => r.status !== 'ambas');
   const readings = COMPARED.reduce((total, c) => total + (curves[c]?.length ?? 0), 0);
+  const pickCurve = (
+    <FilterMenu label={T.curve_pick} value={String(pick)}
+                options={sec.presale_compare.map((p, i) => [String(i), p.title])}
+                onChange={(value) => setPick(Number(value))} />
+  );
   return (
     <Seccion slug="preventa">
       <Pregunta texto={T.q_preventa} conclusion={sec.conclusions.preventa} />
@@ -674,13 +687,13 @@ function Preventa({ data, sec }: { data: Cartelera; sec: PreventaData }) {
               <PresaleBars rows={single} paired={false} />
             </>
           )}
-          <FilterMenu label={T.curve_pick} value={String(pick)}
-                      options={sec.presale_compare.map((p, i) => [String(i), p.title])}
-                      onChange={(value) => setPick(Number(value))} />
-          {readings > 1 ? <PresaleCurve curves={curves} /> : <p className={s.caption}>{T.curve_pending}</p>}
+          {readings > 1
+            ? <PresaleCurve curves={curves} contenedor={{ ayuda: <Leerla>{T.leer_preventa}</Leerla>, controles: pickCurve }} />
+            : <Grafica ayuda={<Leerla>{T.leer_preventa}</Leerla>} controles={pickCurve}>
+                <p className={s.caption}>{T.curve_pending}</p>
+              </Grafica>}
         </>
       )}
-      <Leerla>{T.leer_preventa}</Leerla>
     </Seccion>
   );
 }
@@ -688,7 +701,6 @@ function Preventa({ data, sec }: { data: Cartelera; sec: PreventaData }) {
 // --- Apéndices ---
 
 function Indicadores({ data, ap }: { data: Cartelera; ap: IndicadoresData }) {
-  const s = useStyles();
   const [us, them] = COMPARED.map((c) => data.kpis.find((k) => k.chain === c)!);
   const [cm, cp] = COMPARED.map((c) => ap.offered_seats.find((r) => r.chain === c));
   const [cx, cn] = COMPARED.map((c) => ap.concentration.find((r) => r.chain === c));
@@ -720,10 +732,12 @@ function Indicadores({ data, ap }: { data: Cartelera; ap: IndicadoresData }) {
       [K.titles_per_cinema, n(cx.titles_per_cinema, 1), n(cn.titles_per_cinema, 1), ''],
     );
   }
+  const cells = rows.map((r): Cell[] => [r[0], [r[1], 'cmx'], [r[2], 'cnp'], r[3]]);
   return (
     <Apendice title={T.kpis_title} resumen={resumen}>
-      <Table headers={[...T.kpis_headers]} rows={rows.map((r): Cell[] => [r[0], [r[1], 'cmx'], [r[2], 'cnp'], r[3]])} numCols={[1, 2, 3]} />
-      <p className={s.nota}>{T.kpis_note}</p>
+      <Table headers={[...T.kpis_headers]} rows={cells} numCols={[1, 2, 3]} wideCols={[0]} />
+      <NotaTabla title={T.kpis_title} texto={T.kpis_note}
+                 ejemplo={<Table headers={[...T.kpis_headers]} rows={cells.slice(0, 1)} numCols={[1, 2, 3]} wideCols={[0]} />} />
     </Apendice>
   );
 }
@@ -749,20 +763,21 @@ function Cambios({ data, ap }: { data: Cartelera; ap: CambiosData }) {
     us_moved: thousands(g('cinemex', 'moved')), them_moved: thousands(g('cinepolis', 'moved')),
   }) : T.cambios_none;
   const columns = Object.keys(events[0] ?? {}).filter((c) => c !== 'show_id' && c !== 'date');
+  const cambiosRows = COMPARED.map((c): Cell[] => [chainCell(c), ...CARTELERA_KINDS.map((k) => thousands(g(c, k)))]);
   return (
     <Apendice title={T.cambios_title} resumen={resumen}>
-      {ev && (
-        <Table
-          headers={[...T.cambios_headers]}
-          rows={COMPARED.map((c): Cell[] => [chainCell(c), ...CARTELERA_KINDS.map((k) => thousands(g(c, k)))])}
-          numCols={[1, 2, 3, 4]}
-        />
-      )}
-      <p className={s.nota}>
-        {T.cambios_note_lead}{' '}
-        {CARTELERA_KINDS.map((k) => <React.Fragment key={k}><b>{KIND_LABEL[k]}.</b> {KIND_HELP[k]} </React.Fragment>)}
-        {T.cambios_note_tail}
-      </p>
+      {ev && <Table headers={[...T.cambios_headers]} rows={cambiosRows} numCols={[1, 2, 3, 4]} />}
+      <NotaTabla
+        title={T.cambios_title}
+        texto={
+          <>
+            {T.cambios_note_lead}{' '}
+            {CARTELERA_KINDS.map((k) => <React.Fragment key={k}><b>{KIND_LABEL[k]}.</b> {KIND_HELP[k]} </React.Fragment>)}
+            {T.cambios_note_tail}
+          </>
+        }
+        ejemplo={ev && <Table headers={[...T.cambios_headers]} rows={cambiosRows.slice(0, 1)} numCols={[1, 2, 3, 4]} />}
+      />
       <FilterChecks label={T.cambios_log} values={kinds} options={CARTELERA_KINDS.map((k) => [k, KIND_LABEL[k]])}
                     onChange={(values) => setKinds(CARTELERA_KINDS.filter((k) => values.includes(k)))} />
       {events.length ? <div className={s.scroll}><DetailTable rows={events} columns={columns} /></div> : <Info text={T.cambios_empty} />}
@@ -771,7 +786,6 @@ function Cambios({ data, ap }: { data: Cartelera; ap: CambiosData }) {
 }
 
 function Precios({ ap }: { ap: PreciosData }) {
-  const s = useStyles();
   if (!ap.prices.length) return null;
   const price = (c: Chain, b: string, d: string) =>
     ap.prices.find((r) => r.chain === c && r.format_bucket === b && r.day_type === d)?.median_price;
@@ -795,7 +809,8 @@ function Precios({ ap }: { ap: PreciosData }) {
   return (
     <Apendice title={T.precios_title} resumen={bits.join(' · ')}>
       <Table headers={[...T.precios_headers]} rows={rows} numCols={[2, 3, 4]} />
-      <p className={s.nota}>{fill(T.precios_note, { cinemas })}</p>
+      <NotaTabla title={T.precios_title} texto={fill(T.precios_note, { cinemas })}
+                 ejemplo={rows.length > 0 && <Table headers={[...T.precios_headers]} rows={rows.slice(0, 1)} numCols={[2, 3, 4]} />} />
       <DetailTable rows={ap.prices} columns={['chain', 'format_bucket', 'day_type', 'samples', 'cinemas', 'median_price', 'min_price', 'max_price']} />
     </Apendice>
   );
@@ -809,16 +824,14 @@ function Butacas({ ap }: { ap: ButacasData }) {
     chain: CHAIN_LABEL[r.chain], screens: Math.trunc(r.screens), seats: thousands(r.seats), avg: Math.trunc(r.avg_seats),
   })).join(' · ');
   const byTitle = ap.offered_by_title[chain] ?? [];
+  const capacityRows = ap.capacity_summary.map((r): Cell[] => [
+    chainCell(r.chain), n(r.cinemas), n(r.screens), n(r.seats), n(r.avg_seats), n(r.min_seats), n(r.max_seats), n(r.small),
+  ]);
   return (
     <Apendice title={T.butacas_title} resumen={resumen}>
-      <Table
-        headers={[...T.butacas_headers]}
-        rows={ap.capacity_summary.map((r): Cell[] => [
-          chainCell(r.chain), n(r.cinemas), n(r.screens), n(r.seats), n(r.avg_seats), n(r.min_seats), n(r.max_seats), n(r.small),
-        ])}
-        numCols={[1, 2, 3, 4, 5, 6, 7]}
-      />
-      <p className={s.nota}>{T.butacas_note}</p>
+      <Table headers={[...T.butacas_headers]} rows={capacityRows} numCols={[1, 2, 3, 4, 5, 6, 7]} />
+      <NotaTabla title={T.butacas_title} texto={T.butacas_note}
+                 ejemplo={<Table headers={[...T.butacas_headers]} rows={capacityRows.slice(0, 1)} numCols={[1, 2, 3, 4, 5, 6, 7]} />} />
       <FilterMenu label={T.chain} value={chain} options={COMPARED.map((c) => [c, CHAIN_LABEL[c]])}
                   onChange={(value) => setChain(value as Chain)} />
       <div className={s.columns}>
@@ -925,9 +938,9 @@ function Historial({ plaza }: { plaza: string | null }) {
               {!board.length ? <Info text={T.board_empty} /> : (
                 <>
                   <div className={s.scroll}>
-                    <DetailTable rows={board} columns={['datetime_local', 'screen', 'movie_title', 'language', 'format', 'availability', 'vs_now', 'changes']} />
+                    <DetailTable rows={board} columns={BOARD_COLUMNS} />
                   </div>
-                  <p className={s.nota}>{T.board_note}</p>
+                  <NotaTabla title={T.board_title} texto={T.board_note} ejemplo={<DetailTable rows={board.slice(0, 1)} columns={BOARD_COLUMNS} />} />
                 </>
               )}
             </>

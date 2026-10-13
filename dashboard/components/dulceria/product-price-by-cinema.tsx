@@ -4,15 +4,17 @@
 // Con decenas de complejos casi iguales, una barra por complejo no deja ver el patrón.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { CHAIN_COLOR, CINEMA_TYPE_LABEL, CONCESSION_CHART_TEXT as T, GRAY_DARK, NEUTRAL, PAPER } from '@/lib/labels.generated';
 
 type CinemaType = keyof typeof CINEMA_TYPE_LABEL;
 // Una fila de `analytics.concession_product_by_cinema`.
 export type ProductByCinemaRow = { cinema_name: string; price: number; cinema_type: string };
+
 const HEIGHT = 260;
 
-export function ProductPriceByCinema({ rows }: { rows: ProductByCinemaRow[] }) {
+export function ProductPriceByCinema({ rows, contenedor }: { rows: ProductByCinemaRow[]; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     const cinemas = rows.map((r) => ({ price: r.price, type: CINEMA_TYPE_LABEL[r.cinema_type as CinemaType] }));
     const prices = [...new Set(cinemas.map((c) => c.price))].sort((a, b) => a - b);
@@ -45,5 +47,5 @@ export function ProductPriceByCinema({ rows }: { rows: ProductByCinemaRow[] }) {
     };
   }, [rows]);
 
-  return <VegaChart spec={spec} height={HEIGHT + 70} />;
+  return <VegaChart spec={spec} height={HEIGHT + 70} contenedor={contenedor} />;
 }

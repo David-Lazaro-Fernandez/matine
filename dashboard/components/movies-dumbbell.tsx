@@ -4,6 +4,7 @@
 // escrita a la derecha.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { CHAIN_COLOR, COMPARED, GRAY_DARK, NEUTRAL, US } from '@/lib/labels.generated';
 
@@ -16,12 +17,8 @@ type Movie = {
 } & Record<`share_${Chain}` | `shows_${Chain}`, number | null>;
 
 const ROW = 24;
-// Margen derecho donde se escribe la diferencia de cada película.
-const DELTA_WIDTH = 110;
-// Nombres de película, diferencia y un tramo legible del eje.
-const MIN_WIDTH = 640;
 
-export function MoviesDumbbell({ movies, axisTitle }: { movies: Movie[]; axisTitle: string }) {
+export function MoviesDumbbell({ movies, axisTitle, contenedor }: { movies: Movie[]; axisTitle: string; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => {
     const order = movies.map((m) => m.title);
     // Un punto por película y cadena que la proyecta: una exclusiva queda con un solo punto.
@@ -30,40 +27,49 @@ export function MoviesDumbbell({ movies, axisTitle }: { movies: Movie[]; axisTit
     );
     const y = { field: 'title', type: 'nominal' as const, sort: order };
     return {
-      width: 'container',
-      height: { step: ROW },
-      encoding: { y: { ...y, title: null, axis: { labelLimit: 300, labelColor: GRAY_DARK, labelFontSize: 12.5, ticks: false, domain: false, labelPadding: 10 } } },
-      padding: { right: DELTA_WIDTH },
-      layer: [
+      hconcat: [
         {
+          width: 620,
+          height: { step: ROW },
           data: { values: points },
-          mark: { type: 'rule', strokeWidth: 2, color: NEUTRAL },
           encoding: {
-            x: { aggregate: 'min', field: 'share', type: 'quantitative', title: axisTitle, axis: { grid: true, tickCount: 6 } },
-            x2: { aggregate: 'max', field: 'share' },
+            y: { ...y, title: null, axis: { labelLimit: 300, labelColor: GRAY_DARK, labelFontSize: 12.5, ticks: false, domain: false, labelPadding: 10 } },
           },
+          layer: [
+            {
+              mark: { type: 'rule', strokeWidth: 2, color: NEUTRAL },
+              encoding: {
+                x: { aggregate: 'min', field: 'share', type: 'quantitative', title: axisTitle, axis: { grid: true, tickCount: 6 } },
+                x2: { aggregate: 'max', field: 'share' },
+              },
+            },
+            {
+              mark: { type: 'circle', size: 120, opacity: 1 },
+              encoding: {
+                x: { field: 'share', type: 'quantitative' },
+                color: { field: 'chain', type: 'nominal', legend: null, scale: { domain: [...COMPARED], range: COMPARED.map((c) => CHAIN_COLOR[c]) } },
+                tooltip: { field: 'tooltip' },
+              },
+            },
+          ],
         },
         {
-          data: { values: points },
-          mark: { type: 'circle', size: 120, opacity: 1 },
-          encoding: {
-            x: { field: 'share', type: 'quantitative' },
-            color: { field: 'chain', type: 'nominal', legend: null, scale: { domain: [...COMPARED], range: COMPARED.map((c) => CHAIN_COLOR[c]) } },
-            tooltip: { field: 'tooltip' },
-          },
-        },
-        {
+          width: 110,
+          height: { step: ROW },
           data: { values: movies },
-          mark: { type: 'text', align: 'left', dx: 8, fontSize: 12.5, fontWeight: 'bold' },
+          mark: { type: 'text', align: 'left', fontSize: 12.5, fontWeight: 'bold' },
           encoding: {
-            x: { value: { expr: 'width' } },
+            y: { ...y, axis: null },
+            x: { value: 4 },
             text: { field: 'delta' },
             color: { condition: { test: `datum.winner === '${US}'`, value: CHAIN_COLOR[US] }, value: GRAY_DARK },
           },
         },
       ],
+      spacing: 6,
+      resolve: { scale: { y: 'shared' } },
     };
   }, [movies, axisTitle]);
 
-  return <VegaChart spec={spec} height={ROW * movies.length + 50} minWidth={MIN_WIDTH} />;
+  return <VegaChart spec={spec} height={ROW * movies.length + 50} contenedor={contenedor} />;
 }

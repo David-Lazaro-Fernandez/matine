@@ -3,6 +3,7 @@
 // Heatmap sede×franja del % de butacas vendidas tras el inicio en la cadena independiente.
 import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
+import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
 import { COLUMN_LABEL, GRAY, INK, NEUTRAL, PAPER, SLOTS, SLOT_SHORT } from '@/lib/labels.generated';
 
@@ -13,7 +14,7 @@ const ROW = 40;
 // Sobre la mitad más oscura de la escala el número va en blanco.
 const DARK_FROM = 50;
 
-export function IndepOccupancyHeatmap({ cells }: { cells: Cell[] }) {
+export function IndepOccupancyHeatmap({ cells, contenedor }: { cells: Cell[]; contenedor?: ContenedorGrafica }) {
   const spec = useMemo<VisualizationSpec>(() => ({
     data: { values: cells.map((c) => ({ ...c, slot_label: SLOT_SHORT[c.slot] })) },
     width: 'container',
@@ -46,5 +47,5 @@ export function IndepOccupancyHeatmap({ cells }: { cells: Cell[] }) {
   }), [cells]);
 
   const cinemas = new Set(cells.map((c) => c.cinema_id)).size;
-  return <VegaChart spec={spec} height={ROW * cinemas + 60} />;
+  return <VegaChart spec={spec} height={ROW * cinemas + 60} contenedor={contenedor} />;
 }
