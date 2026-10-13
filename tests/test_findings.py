@@ -83,16 +83,13 @@ def test_findings_keeps_the_strongest(monkeypatch):
     monkeypatch.setattr(findings, "_price_finding", lambda *a, **k: None)
     monkeypatch.setattr(findings, "_presale_finding", lambda *a, **k: None)
     monkeypatch.setattr(findings, "_presale_gap_finding", lambda *a, **k: None)
-    monkeypatch.setattr(findings, "_presale_exclusive_finding", lambda *a, **k: None)
     monkeypatch.setattr(findings, "_title_finding", rule("titulo", 2.0))
     monkeypatch.setattr(findings, "_concentration_finding", lambda *a, **k: None)
     monkeypatch.setattr(findings, "_concession_finding", rule("dulceria", 5.0))
     monkeypatch.setattr(findings, "_slot_finding", rule("franjas", 3.0))
     monkeypatch.setattr(findings, "_format_finding", rule("formato", 1.1))
-    monkeypatch.setattr(findings, "_exclusive_finding", rule("exclusivas", 2.0))
-    out = findings.findings(None, DAY, DAY, top=4)
-    # Empate: orden de evaluación.
-    assert [f["topic"] for f in out] == ["dulceria", "franjas", "titulo", "exclusivas"]
+    out = findings.findings(None, DAY, DAY, top=3)
+    assert [f["topic"] for f in out] == ["dulceria", "franjas", "titulo"]
     assert all("as_of" in f for f in out)
 
 

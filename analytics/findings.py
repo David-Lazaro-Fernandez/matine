@@ -80,8 +80,6 @@ TITLE_MIN_SHARE = 2.0
 TOP3_MIN_PP = 3.0
 SLOT_MIN_PP = 1.0
 FORMAT_MIN_PP = 5.0
-EXCLUSIVE_MIN_TITLES = 3
-EXCLUSIVE_MIN_SHOWS = 20
 # Brecha mediana de precio en la canasta comparable de dulcería a domicilio.
 CONCESSION_MIN_PCT = 10.0
 # Cambio de share de un título en lo que falta de la semana.
@@ -104,8 +102,6 @@ PRESALE_MIN_RATIO = 2.0
 PRESALE_MIN_SHOWS = 10
 # Brecha de % del aforo vendido en un mismo título entre cadenas.
 PRESALE_GAP_MIN_PP = 10.0
-# % del aforo vendido de una preventa exclusiva de Cinépolis que ya merece atención.
-PRESALE_EXCLUSIVE_MIN_PCT = 40.0
 # Cines muestreados por cadena para citar una combinación de formato y tipo de día.
 PRICE_MIN_CINEMAS = 5
 # Brecha del % de butacas vendidas entre cadenas, medido en el plano después del inicio.
@@ -123,8 +119,8 @@ DEMAND_SAMPLE_DAYS = 7
 CONCESSION_MAX_AGE_DAYS = 3
 # La pantalla de evidencia de cada tema, que es también su filtro en la portada.
 _THEME = {"titulo": "programacion", "concentracion": "programacion", "franjas": "programacion", "formato": "programacion",
-          "exclusivas": "programacion", "movimientos": "programacion", "demanda": "programacion",
-          "preventa": "preventa", "preventa_brecha": "preventa", "preventa_exclusiva": "preventa", "precio": "precios",
+          "movimientos": "programacion", "demanda": "programacion",
+          "preventa": "preventa", "preventa_brecha": "preventa", "precio": "precios",
           "ocupacion": "cines", "rival": "cines", "dulceria": "dulceria", "independientes": "independientes"}
 # El formato es una diferencia de sala, no de semana: solo desplaza a otro hallazgo si la brecha es muy grande.
 _STRUCTURAL_WEIGHT = 0.5
@@ -349,23 +345,6 @@ def _concession_finding(conn, plaza=None):
                  as_of=as_of, action=action)
 
 
-def _exclusive_finding(movies):
-    only_them = [m for m in movies if not m["shows_cinemex"] and m["shows_cinepolis"] >= EXCLUSIVE_MIN_SHOWS]
-    only_us = [m for m in movies if not m["shows_cinepolis"] and m["shows_cinemex"] >= EXCLUSIVE_MIN_SHOWS]
-    if len(only_them) < EXCLUSIVE_MIN_TITLES:
-        return None
-    ours = f"nosotros, {len(only_us)} que no tiene" if only_us else "nosotros, ninguno que no tenga"
-    label = f"{THEM_NAME} exhibe {len(only_them)} títulos que no tenemos; {ours}"
-    return _card("exclusivas", label,
-                 _metric(f"Títulos que solo exhibe {THEM_NAME}", len(only_them), "count", THEM),
-                 len(only_them) / EXCLUSIVE_MIN_TITLES,
-                 compare=_metric("Títulos que solo exhibimos nosotros", len(only_us), "count", US),
-                 chart=_chart("pct", [(_short(m["title"], 40), {THEM: m["share_cinepolis"]}, i == 0) for i, m in enumerate(only_them[:5])]),
-                 context=f"% de la parrilla de {THEM_NAME}",
-                 stake=sum(m["share_cinepolis"] for m in only_them),
-                 action=f"Valora si alguno de los títulos que solo exhibe {THEM_NAME} cabe en nuestra cartelera.")
-
-
 def _moves_finding(conn, d0, d1, movies, hours=None, plaza=None):
     """El título al que una cadena le cambió más la parrilla de lo que falta de la semana; primero Cinépolis."""
     moves = programming_moves(conn, d0, d1, hours=hours, plaza=plaza)
@@ -439,8 +418,9 @@ def _demand_finding(conn, movies, plaza=None):
         m = by_title.get(o["title_norm"])
         if not m or o["demand_index"] is None:
             continue
+        # Sin parrilla propia no hay acción que sugerir: el título puede ser exclusivo de Cinépolis.
         hot = (o["demand_index"] >= 1 + DEMAND_MIN_DEV and m["share_cinepolis"] >= DEMAND_MIN_SHARE
-               and m["share_cinemex"] <= m["share_cinepolis"])
+               and 0 < m["share_cinemex"] <= m["share_cinepolis"])
         cold = (o["demand_index"] <= 1 - DEMAND_MIN_DEV and m["share_cinemex"] >= TITLE_MIN_SHARE
                 and m["share_cinemex"] > m["share_cinepolis"])
         score = abs(o["demand_index"] - 1) / DEMAND_MIN_DEV
@@ -451,12 +431,10 @@ def _demand_finding(conn, movies, plaza=None):
     score, o, m = best
     title = _short(o["title"], _LABEL_TITLE)
     if o["demand_index"] > 1:
-        ours = "No la tenemos." if not m["share_cinemex"] else (
-            f"Le damos {_pct1(m['share_cinemex'])} de la parrilla; {THEM_NAME}, {_pct1(m['share_cinepolis'])}.")
         label = (f"{title} vende {_times(o['demand_index'])} lo esperado en {THEM_NAME} "
-                 f"({_pct1(o['sold_pct'])} contra {_pct1(o['expected_pct'])}). {ours}")
-        action = (f"Valora abrirle funciones a {_short(o['title'])}." if not m["share_cinemex"]
-                  else f"Valora darle más funciones a {_short(o['title'])}.")
+                 f"({_pct1(o['sold_pct'])} contra {_pct1(o['expected_pct'])}). "
+                 f"Le damos {_pct1(m['share_cinemex'])} de la parrilla; {THEM_NAME}, {_pct1(m['share_cinepolis'])}.")
+        action = f"Valora darle más funciones a {_short(o['title'])}."
     else:
         label = (f"{title} vende menos de lo esperado en {THEM_NAME} ({_pct1(o['sold_pct'])} contra "
                  f"{_pct1(o['expected_pct'])}) y le damos {_pct1(m['share_cinemex'])} de la parrilla")
@@ -531,30 +509,6 @@ def _presale_gap_finding(compare):
                  action=action)
 
 
-def _presale_exclusive_finding(compare):
-    """Preventas de Cinépolis de títulos que no exhibimos y que ya venden buena parte de su aforo."""
-    theirs = [r for r in compare
-              if r["status"] == "exclusiva_cinepolis" and r["shows_cinepolis"] >= PRESALE_MIN_SHOWS]
-    hot = sorted((r for r in theirs if r["sold_pct_cinepolis"] >= PRESALE_EXCLUSIVE_MIN_PCT),
-                 key=lambda r: (-r["sold_pct_cinepolis"], r["title"]))
-    if not hot:
-        return None
-    first = hot[0]
-    release = f" · estreno el {date_es(first['release_date'], with_year=False)}" if first["release_date"] else ""
-    ours = [r for r in compare if (r["shows_cinemex"] or 0) >= PRESALE_MIN_SHOWS and r["sold_pct_cinemex"] is not None]
-    best_ours = max(ours, key=lambda r: (r["sold_pct_cinemex"], r["title"]), default=None)
-    label = f"{_short(first['title'], _LABEL_TITLE)}, solo en {THEM_NAME}, ya vendió {_pct1(first['sold_pct_cinepolis'])} de su aforo"
-    return _card("preventa_exclusiva", label,
-                 _metric("Aforo vendido", first["sold_pct_cinepolis"], "pct", THEM),
-                 first["sold_pct_cinepolis"] / PRESALE_EXCLUSIVE_MIN_PCT,
-                 compare=(_metric(f"Nuestra preventa más vendida, {_short(best_ours['title'], 28)}", best_ours["sold_pct_cinemex"], "pct", US)
-                          if best_ours else None),
-                 chart=_chart("pct", [(_short(r["title"], 40), {THEM: r["sold_pct_cinepolis"]}, r is first) for r in hot[:5]], "meter"),
-                 context=f"{first['shows_cinepolis']} funciones suyas{release} · {len(theirs)} preventas solo de {THEM_NAME}",
-                 stake=100.0 * first["shows_cinepolis"] / _presale_shows(compare, THEM),
-                 action=f"Valora pedir {_short(first['title'])} a su distribuidora.")
-
-
 def _independent_finding(conn, d0, d1, hours=None, plaza=None):
     """Un título que llena la Cineteca y que no exhibimos en CDMX. Solo con zona CDMX o nacional (la Cineteca solo tiene
     sedes en CDMX) y solo si la lectura de sus planos está confirmada (`independents.OCCUPANCY_CONFIRMED`)."""
@@ -626,8 +580,8 @@ def findings(conn, d0=None, d1=None, top=3, hours=None, plaza=None):
     """Los `top` hallazgos más fuertes (`strength` = brecha / umbral); `top=None` los devuelve todos. Cada regla solo entra si
     cruza su umbral y, si depende de un muestreo, si el dato está vigente: movimientos del competidor, demanda por
     título (ocupación de Cinépolis), nuestra preventa que se despega, brecha de preventa en un
-    mismo título, preventa exclusiva de Cinépolis que ya vende, título por butacas, concentración, dulcería, precio del boleto, franjas, formato,
-    exclusivas y títulos que llenan la Cineteca sin funciones nuestras; un empate conserva ese orden. Precio y formato pesan la mitad: cambian poco de semana a semana. `plaza` acota la
+    mismo título, título por butacas, concentración, dulcería, precio del boleto, franjas, formato
+    y títulos que llenan la Cineteca sin funciones nuestras; un empate conserva ese orden. Los títulos exclusivos de la competencia no entran: no sabemos si la distribuidora nos los da. Precio y formato pesan la mitad: cambian poco de semana a semana. `plaza` acota la
     cartelera; la dulcería a domicilio no depende de la plaza (Rappi y DiDi se leen en CDMX)."""
     d0 = d0 or today()
     d1 = d1 or d0
@@ -643,14 +597,12 @@ def findings(conn, d0=None, d1=None, top=3, hours=None, plaza=None):
                lambda: _demand_finding(conn, movies, plaza=plaza),
                lambda: _presale_finding(conn, plaza=plaza),
                lambda: _presale_gap_finding(compare),
-               lambda: _presale_exclusive_finding(compare),
                lambda: _title_finding(conn, d0, d1, hours=hours, plaza=plaza),
                lambda: _concentration_finding(conn, d0, d1, movies, hours=hours, plaza=plaza),
                lambda: _concession_finding(conn, plaza=plaza),
                lambda: _price_finding(conn, d0, d1, hours=hours, plaza=plaza),
                lambda: _slot_finding(conn, d0, d1, hours=hours, plaza=plaza),
                lambda: _format_finding(conn, d0, d1, kp, hours=hours, plaza=plaza),
-               lambda: _exclusive_finding(movies),
                lambda: _independent_finding(conn, d0, d1, hours=hours, plaza=plaza)):
         f = fn()
         if f:
