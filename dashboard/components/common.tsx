@@ -110,7 +110,7 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalXS,
   },
   apendiceHeader: { fontWeight: tokens.fontWeightSemibold },
-  resumen: { color: tokens.colorNeutralForeground3, fontWeight: tokens.fontWeightRegular },
+  resumen: { color: tokens.colorNeutralForeground2, fontWeight: tokens.fontWeightRegular, margin: `0 0 ${tokens.spacingVerticalS}` },
   leyenda: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -365,11 +365,11 @@ export function Apendice({ title, resumen, children }: { title: string; resumen?
     <Entrada>
       <Accordion collapsible defaultOpenItems={open ? ['apendice'] : []} className={s.apendice}>
         <AccordionItem value="apendice">
-          <AccordionHeader expandIconPosition="end" className={s.apendiceHeader}>
-            {title}
-            {resumen && <span className={s.resumen}>&nbsp;· {resumen}</span>}
-          </AccordionHeader>
-          <AccordionPanel>{children}</AccordionPanel>
+          <AccordionHeader expandIconPosition="end" className={s.apendiceHeader}>{title}</AccordionHeader>
+          <AccordionPanel>
+            {resumen && <p className={s.resumen}>{resumen}</p>}
+            {children}
+          </AccordionPanel>
         </AccordionItem>
       </Accordion>
     </Entrada>
