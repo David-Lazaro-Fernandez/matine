@@ -837,7 +837,12 @@ para la lógica pura (`tests/`, pytest en el venv, `requirements-dev.txt`).
   casi toda visita pide: cada plaza y nacional, semana en curso, día completo. Lo guarda en `data/precalc.db`, y
   `api.pages.read` lo sirve hasta 2 h. Decisión de David: se acepta hasta una hora de retraso en el corte de "hoy"
   (`from_now`), porque los directivos consultan resultados semanales; el encabezado muestra la hora del cálculo
-  ("Cifras al"). Otro filtro se calcula en vivo.
+  ("Cifras al"). Otro filtro se calcula en vivo. Desde el 2026-10-13 también guarda Cines, Historial, Dulcería, Mapa e
+  Independientes con la zona por defecto (en vivo tardaban 0.3 a 4.5 s; medido en una Mac de 14 CPU).
+- **Estadísticas del planificador (2026-10-13).** `snapshots.db` nunca había corrido `ANALYZE`: sin `sqlite_stat1`, el
+  historial de un cine usaba `idx_event_show` (solo por cadena) en lugar de `idx_event_board`, 0.68 s contra 0.01 s por
+  consulta. `scraper.run` llama a `store.analyze` al terminar (`PRAGMA analysis_limit=1000` y `ANALYZE`, ~9 s en la base
+  de 2.5 GB), antes de `api.precalc`.
 - **Servidor: EC2 en la cuenta de AWS de Cinemex** (decisión de David, 2026-09-09; queda descartado el
   droplet de DigitalOcean). Instancia `t4g.medium` (ARM Graviton2, 2 vCPU, 4 GB) con 30 GB de EBS gp3,
   ~29–32 USD al mes con el respaldo en S3. **Cinépolis no acepta la IP de AWS** (su WAF de Cloudflare bloquea el ASN,
