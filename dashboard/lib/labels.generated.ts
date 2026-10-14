@@ -1037,6 +1037,7 @@ export const AGENT_TEXT = {
   "module_denied": "El asistente no está en el plan de tu organización.",
   "unknown_table": "La tabla {table} no existe.",
   "seats_only": "Solo hay butacas medidas en estas plazas: {plazas}. No puedo responder sobre venta en otras.",
+  "unknown_plaza": "La plaza {plaza} no existe. Las plazas son: {plazas}, o todo el país.",
   "chain_not_compared": "Solo comparo Cinemex y Cinépolis.",
   "title_not_found": "No encuentro {title} en cartelera.",
   "no_provider": "Tu organización aún no tiene un proveedor de IA configurado.",

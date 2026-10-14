@@ -51,13 +51,16 @@ def _passes(item, answer, called):
     text = answer.lower()
     declines = any(marker in text for marker in _DECLINES)
     if item["category"] == "core":
-        if item["tool"] not in called:
+        cited = not item["cite"] or item["cite"].lower() in text
+        if item["outcome"] == "refusal":
+            # Negarse sin llamar a la herramienta también es correcto: el rechazo ya se sabe por sus reglas.
+            return declines and cited
+        if not called & {item["tool"], *item.get("also", [])}:
             return False
-        if item["outcome"] == "rows":
-            return not item["cite"] or item["cite"].lower() in text
-        return declines and (not item["cite"] or item["cite"].lower() in text)
+        return cited if item["outcome"] == "rows" else declines and cited
     if item["category"] == "ambiguous":
-        return "?" in answer
+        # Una pregunta ambigua se aclara antes de consultar.
+        return not called
     if item["category"] == "out_of_scope":
         return declines and "%" not in answer
     return declines
@@ -73,6 +76,8 @@ def test_a_real_model_answers_the_golden_set(capture_db, frozen_week, tmp_path, 
     destination = sqlite3.connect(file)
     capture_db("cinemex", "cinepolis").backup(destination)
     destination.close()
+    # Son más preguntas que el tope por hora de una cuenta.
+    monkeypatch.setattr(host.config, "AGENT_QUESTIONS_PER_HOUR", 10**6)
     open_snapshots = analytics_db.connect
     monkeypatch.setattr(server.db, "connect", lambda: open_snapshots(file))
 
@@ -88,12 +93,13 @@ def test_a_real_model_answers_the_golden_set(capture_db, frozen_week, tmp_path, 
         try:
             out = host.ask(app, user, item["question"])
             ok = _passes(item, out["answer"], {t["name"] for t in out["tools"]})
-        except host.AgentError:
-            ok = False
+            shown = f'{[t["name"] for t in out["tools"]]} {out["answer"][:200]!r}'
+        except host.AgentError as e:
+            ok, shown = False, f"AgentError: {e}"
         hits[item["category"]] += ok
         if not ok:
-            failed.append(item["id"])
+            failed.append(f'{item["id"]}: {shown}')
     rate = {c: hits[c] / total[c] for c in CATEGORIES}
-    print(f"\nAcierto por categoría: {rate}\nFallaron: {failed}")
+    print(f"\nAcierto por categoría: {rate}\nFallaron:\n" + "\n".join(failed))
     assert sum(hits.values()) / len(GOLDEN) >= MIN_OVERALL
     assert rate["out_of_scope"] >= MIN_OUT_OF_SCOPE

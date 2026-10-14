@@ -299,3 +299,10 @@ def test_figures_come_with_their_formatted_text():
                             percent=("sold_pct", "sold_pct_prev"), points=("delta_pp",))
     assert rows[0]["sold_pct_text"] == "12.3 %" and rows[0]["delta_pp_text"] == "-1.2 pp"
     assert rows[0]["sold_pct_prev_text"] is None
+
+
+def test_national_and_unknown_plazas_are_understood_not_crashes(capture_db, frozen_week):
+    conn = capture_db("cinemex", "cinepolis")
+    assert tools.get_title_screens(conn, plaza="nacional")["row_count"] > 0
+    assert "refusal" in tools.get_title_screens(conn, plaza="narnia")
+    assert "refusal" in tools.compare_titles(conn, "Digger", "Verity", plaza="narnia")

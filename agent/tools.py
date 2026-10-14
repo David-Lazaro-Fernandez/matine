@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from analytics import cinema_sales, datasets, delivery, labels, queries, seats
-from scraper import config, normalize
+from scraper import config, normalize, plazas
 
 ROW_LIMIT = 50
 _ROLES_THAT_ASK = {"staff", "admin", "analyst"}
@@ -101,6 +101,15 @@ def _days_back(days):
     return (end - timedelta(days=days - 1)).isoformat(), end.isoformat()
 
 
+def _known_plaza(plaza):
+    """La plaza como la entiende `analytics/` (`"nacional"` y None son todo el país) o None si no existe."""
+    return None if plaza in (None, "nacional") else plaza
+
+
+def _unknown_plaza(plaza):
+    return _known_plaza(plaza) is not None and plaza not in plazas.PLAZAS
+
+
 def _week_titles(conn, plaza):
     d0, d1 = queries.cinema_week(queries.today())
     return d0, d1, queries.movies_by_chain(conn, d0, d1, limit=10**6, plaza=plaza)
@@ -109,6 +118,9 @@ def _week_titles(conn, plaza):
 def get_title_screens(conn, title=None, plaza="cdmx", limit=10):
     """Películas por su participación en la programación de Cinemex esta semana de cine (jueves a miércoles), con la de
     Cinépolis al lado. Con `title`, solo las que lo contienen. `plaza=None` es nacional."""
+    if _unknown_plaza(plaza):
+        return _refusal(labels.AGENT_TEXT["unknown_plaza"].format(plaza=plaza, plazas=", ".join(plazas.PLAZAS)))
+    plaza = _known_plaza(plaza)
     d0, d1, titles = _week_titles(conn, plaza)
     if title:
         needle = normalize.norm_title(title)
@@ -124,6 +136,9 @@ def get_title_screens(conn, title=None, plaza="cdmx", limit=10):
 def compare_titles(conn, title_a, title_b, plaza="cdmx"):
     """Dos películas lado a lado: funciones y participación en ambas cadenas esta semana de cine y, en plazas con
     butacas medidas, su % vendido y su índice de demanda en Cinemex."""
+    if _unknown_plaza(plaza):
+        return _refusal(labels.AGENT_TEXT["unknown_plaza"].format(plaza=plaza, plazas=", ".join(plazas.PLAZAS)))
+    plaza = _known_plaza(plaza)
     d0, d1, titles = _week_titles(conn, plaza)
     found = []
     for wanted in (title_a, title_b):

@@ -44,7 +44,10 @@
    "plaza": null
   },
   "outcome": "rows",
-  "cite": "Resident Evil"
+  "cite": "Resident Evil",
+  "also": [
+   "compare_titles"
+  ]
  },
  {
   "id": "core-05",

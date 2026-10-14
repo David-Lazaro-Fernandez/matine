@@ -36,7 +36,7 @@ def _check_limits(app, user):
 
 def _tool_specs(listed):
     return [{"type": "function", "function": {"name": t.name, "description": t.description or "",
-                                              "parameters": t.inputSchema}} for t in listed]
+                                              "parameters": t.input_schema}} for t in listed]
 
 
 async def _call_tool(client, call):
