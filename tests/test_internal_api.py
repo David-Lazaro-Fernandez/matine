@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 import analytics  # noqa: E402
 from analytics.labels import AUTH_TEXT  # noqa: E402
-from api import internal, pages, session  # noqa: E402
+from api import internal, pages, precalc, session  # noqa: E402
 from api.pages import recomendador  # noqa: E402
 from auth import db, flows, orgs  # noqa: E402
 from scraper import config  # noqa: E402
@@ -487,3 +487,16 @@ def test_interest_is_audited_and_mailed_to_sales(client, conn, other_org, monkey
                     {"actor_id": other_org["viewer"]["id"], "detail": '{"module": null}'}]
     mailed = config.MAIL_LOG_PATH.read_text()
     assert "para: ventas@example.test | asunto: Otra pidió Dulcería" in mailed and "quiere hablar con Ventas" in mailed
+
+
+def test_precalc_stores_the_keys_the_dashboard_asks_for_on_load(client, staff, recorded):
+    _login(client, "staff@example.test")
+    today = analytics.today()
+    week_end = analytics.cinema_week(today)[1]
+    with pages.recording() as asked:
+        for url in ("/api/cartelera/cines?plaza=cdmx", "/api/cartelera/historia?plaza=cdmx", "/api/dulceria?plaza=cdmx",
+                    "/api/mapa?plaza=cdmx", f"/api/independientes?plaza=cdmx&d0={today}&d1={week_end}"):
+            assert client.get(url).status_code == 200, url
+    with pages.recording() as stored:
+        precalc.compute_extras("cdmx")
+    assert set(stored) == set(asked)

@@ -1,9 +1,9 @@
-"""Precalcula las respuestas de la Cartelera que casi toda visita pide y las guarda en `data/precalc.db`.
+"""Precalcula las respuestas que casi toda visita pide y las guarda en `data/precalc.db`.
 
-Calcula, para cada plaza y para nacional, la semana de cine en curso con el día completo (los filtros por defecto del
-dashboard): el encabezado, los hallazgos, las cinco secciones y los cinco apéndices. Llama a los mismos endpoints, así
-que cada respuesta es idéntica a la que daría la API en ese momento. `api.pages.read` la sirve hasta
-`PRECALC_MAX_AGE`; otro filtro se calcula en vivo.
+Calcula, para cada plaza y para nacional, los filtros por defecto del dashboard: de la Cartelera, el encabezado, los
+hallazgos, las cinco secciones, los cinco apéndices, Cines e Historial, y además Dulcería, Mapa e Independientes. Llama
+a los mismos endpoints, así que cada respuesta es idéntica a la que daría la API en ese momento. `api.pages.read` la
+sirve hasta `PRECALC_MAX_AGE`; otro filtro se calcula en vivo.
 
 Es el último paso de los trabajos `snapshot` y `seats` (`jobs/registry.py`), así queda al día después de cada captura
 y a lo más una hora atrás en el corte de "hoy" (`from_now`). Es el único escritor de `precalc.db`, una caché que se
@@ -20,7 +20,16 @@ from typing import get_args
 from scraper import config, plazas
 
 from . import pages
-from .pages import cartelera
+from .pages import cartelera, dulceria, independientes, mapa
+
+
+def compute_extras(plaza):
+    """Las pantallas fuera de la Cartelera y de sus secciones que se abren con solo la zona."""
+    cartelera.cines(plaza=plaza)
+    cartelera.historia(plaza=plaza)
+    dulceria.dulceria(plaza=plaza)
+    mapa.mapa(plaza=plaza)
+    independientes.independientes(plaza=plaza)
 
 
 def compute():
@@ -33,6 +42,7 @@ def compute():
                 cartelera.seccion(slug, plaza=plaza)
             for slug in get_args(cartelera.Appendix):
                 cartelera.apendice(slug, plaza=plaza)
+            compute_extras(plaza)
     return got
 
 

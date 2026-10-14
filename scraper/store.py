@@ -179,6 +179,16 @@ def connect():
     return conn
 
 
+def analyze(conn):
+    """Guarda en `sqlite_stat1` el tamaño y la selectividad de cada índice, para que el planificador elija bien.
+
+    Ejemplo: sin estas estadísticas, el historial de un cine usa `idx_event_show` en lugar de `idx_event_board`.
+    """
+    conn.execute("PRAGMA analysis_limit=1000")
+    conn.execute("ANALYZE")
+    conn.commit()
+
+
 def begin_snapshot(conn, chain, taken_at):
     cur = conn.execute("INSERT INTO snapshot (chain, taken_at) VALUES (?, ?)", (chain, taken_at))
     conn.commit()
