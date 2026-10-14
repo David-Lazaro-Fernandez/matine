@@ -71,6 +71,9 @@ CINEPOLIS_BILLBOARDS_URL = "https://api-g.cinepolis.com/v2/billboards/graphql"
 CINEPOLIS_TICKET_URL = "https://api-g.cinepolis.com/v1/ticket/graphql"
 # Dulcería: lo consulta el microfrontend foods-menu-mf.cinepolis.com con la misma x-apikey (verificado 2026-09-08).
 CINEPOLIS_CONCESSIONS_URL = "https://api-g.cinepolis.com/v1/fab-struct-concession/graphql"
+# `batchProducts` vive en la misma URL de dulcería (la de fab-struct-product no lo define; verificado 2026-10-13).
+# Los tamaños se piden solo para los productos compuestos de esta categoría, la canasta comparable.
+CINEPOLIS_SIZES_CATEGORY = "Clásicos"
 CINEPOLIS_COUNTRY = "MX"
 # La API rechaza más de 30 cines por llamada (error 105; confirmado 2026-09-11 con 31 y 40).
 CINEPOLIS_BATCH_SIZE = 30

@@ -177,6 +177,8 @@ def main(argv=None):
     chains = args.chain or sorted(SNAPSHOTTERS)
     conn = store.connect()
     ok = run(conn, chains, save_raw=not args.no_raw)
+    # Antes de `api.precalc`, que lee con las estadísticas nuevas.
+    store.analyze(conn)
     conn.close()
     return 0 if ok else 1
 

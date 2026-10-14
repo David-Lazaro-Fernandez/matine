@@ -94,7 +94,7 @@ PLATFORM_LABEL = {"rappi": "Rappi", "didi": "DiDi Food"}
 CINEMA_TYPE_LABEL = {"vip": "VIP", "traditional": "Tradicional"}
 # Ejes y tooltips de las gráficas de dulcería (views/dulceria.py, dashboard/components/dulceria/).
 CONCESSION_CHART_TEXT = {"price_axis": "Pesos", "product": "Producto", "chain": "Cadena", "median": "Mediana",
-                         "delta_pct": "Δ Cinépolis vs Cinemex %", "cinema": "Complejo", "price": "Precio", "cinema_type": "Tipo",
+                         "delta_pct": "Δ Cinépolis vs Cinemex %", "cinema": "Complejo", "cinemas_axis": "Complejos", "price": "Precio", "cinema_type": "Tipo",
                          # Un VIP y un tradicional del mismo centro comercial tienen el mismo nombre.
                          "vip_cinema": "{name} VIP"}
 # Textos de la página de dulcería (views/dulceria.py, dashboard/app/dulceria/).
@@ -113,17 +113,17 @@ DULCERIA_TEXT = {
     "compare_headers": ["Producto comparable", "Cinemex", "Nuestro producto", "Cinépolis", "Su producto", "Δ Cinépolis vs Cinemex"],
     "room_title": "En sala: {chain} fija el precio por complejo",
     "product": "Producto",
-    "room_note": "{product}: de ${min} a ${max} en {cinemas} complejos, {prices} precios distintos; la línea punteada es la "
-                 "mediana (${median}).",
-    "detail": "Detalle: canasta de Cinépolis por complejo, catálogo a domicilio y tiendas",
+    "size": "Tamaño",
+    "room_note": "{product}: de ${min} a ${max} en {cinemas} complejos, {prices} precios distintos; la mediana es "
+                 "${median}.",
+    "detail_room": "Precio de cada tamaño en cada complejo",
+    "detail_delivery": "Catálogo a domicilio por tienda",
     "basket_headers": ["Producto", "Complejos", "Mediana", "Mínimo", "Máximo", "Máx. vs mín.", "Precios distintos"],
-    "summary_headers": ["Plataforma", "Cadena", "Tiendas", "Productos", "% con precio único", "Última lectura"],
-    "chain": "Cadena",
     "leer": "A domicilio se compara la mediana entre tiendas de cada cadena en la misma plataforma (Rappi, DiDi Food), agrupando "
             "productos por tipo porque cada cadena los nombra distinto; es el catálogo para llevar (Mega Palomitas de 230 g, refresco "
             "en lata), no el tablero de sala, y las porciones difieren: nuestro combo básico lleva dos latas y el de Cinépolis un refresco. "
-            "En sala solo existe el menú en línea de Cinépolis, por complejo; palomitas y refresco van por tamaño y se muestra el "
-            "tamaño base. Cinemex tiene apagada la venta de dulcería en línea, así que nuestro tablero de sala llega con tus datos. "
+            "En sala solo existe el menú en línea de Cinépolis, por complejo; palomitas y refresco van por tamaño y se elige cuál ver; "
+            "sin elegir, el que trae el menú. Cinemex tiene apagada la venta de dulcería en línea, así que nuestro tablero de sala llega con tus datos. "
             "Uber Eats no se lee porque sus términos prohíben la extracción.",
     "back": "Volver a la cartelera",
     "footer": "Fuentes: menú de dulcería en línea de Cinépolis por complejo; catálogo de dulcería a domicilio de ambas cadenas en "
@@ -644,6 +644,7 @@ DATASET_LABEL = {
     "week_showtimes": "Funciones de la semana",
     "ticket_prices": "Precio del boleto",
     "concession_prices": "Dulcería en sala (Cinépolis)",
+    "concession_sizes": "Dulcería en sala por tamaño (Cinépolis)",
     "delivery_prices": "Dulcería a domicilio",
 }
 DATA_TEXT = {
@@ -679,7 +680,7 @@ COLUMN_LABEL.update({
     "experience": "Experiencia", "premium_tier": "Nivel premium", "closed_at": "Cerrada", "closed_kind": "Cierre",
     "general_price": "Precio general", "fee_price": "Cargo por servicio", "sub_category": "Subcategoría",
     "promotion_type": "Promoción", "active": "Activa", "in_stock": "En existencia", "store_slug": "Tienda (clave)",
-    "movie_title": "Película", "sampled_at": "Muestreado",
+    "movie_title": "Película", "sampled_at": "Muestreado", "size_name": "Tamaño",
     "email": "Correo", "name": "Nombre", "role": "Rol", "last_login_at": "Último acceso", "created_at": "Creada",
     "pending_invite": "Invitación pendiente", "has_password": "Con contraseña", "id": "Id",
 })
