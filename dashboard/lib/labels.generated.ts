@@ -1008,6 +1008,30 @@ export const DATASET_DESCRIPTION = {
   "delivery_prices": "Precios de dulcería a domicilio (Rappi y DiDi) de ambas cadenas."
 } as const;
 
+export const AGENT_UI = {
+  "placeholder": "Pregunta por la cartelera, la venta o los precios",
+  "send": "Enviar",
+  "thinking": "Consultando los datos…",
+  "useful": "Útil",
+  "not_useful": "No útil",
+  "copy": "Copiar",
+  "copied": "Copiado",
+  "show_detail": "Ver detalle",
+  "hide_detail": "Ocultar detalle",
+  "detail_rows": "{rows} renglones",
+  "new_chat": "Nueva conversación",
+  "error": "No pude responder."
+} as const;
+
+export const AGENT_TOOL_LABEL = {
+  "list_tables": "Revisé las tablas disponibles",
+  "describe_table": "Revisé las columnas de una tabla",
+  "get_cinema_ranking": "Ordené los cines por venta medida",
+  "get_title_screens": "Revisé las funciones por película",
+  "compare_titles": "Comparé dos películas",
+  "get_popcorn_price": "Comparé los precios de dulcería a domicilio"
+} as const;
+
 export const AGENT_TEXT = {
   "role_denied": "Tu rol no puede usar el asistente.",
   "module_denied": "El asistente no está en el plan de tu organización.",
@@ -1606,6 +1630,7 @@ export const PAGE_LABEL = {
   "independientes": "Independientes",
   "distribuidoras": "Distribuidoras",
   "datos": "Datos",
+  "agente": "Asistente",
   "operaciones": "Operaciones",
   "configuracion": "Configuración"
 } as const;
@@ -1647,6 +1672,7 @@ export const NAV_LABEL = {
   "independientes": "Independientes",
   "distribuidoras": "Distribuidoras",
   "datos": "Datos",
+  "agente": "Asistente",
   "operaciones": "Operaciones",
   "configuracion": "Configuración",
   "domicilio": "A domicilio"

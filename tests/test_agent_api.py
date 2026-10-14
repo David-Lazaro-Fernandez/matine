@@ -60,8 +60,8 @@ def test_an_analyst_asks_and_the_answer_is_stored(client, conn):
     assert out.status_code == 200 and out.json()["answer"] == "Respuesta."
     history = client.get(f"/api/agente/conversaciones/{out.json()['conversation_id']}").json()
     assert [m["role"] for m in history] == ["user", "assistant"]
-    assert client.put(f"/api/agente/mensajes/{out.json()['message_id']}/pulgar", json={"useful": True}).status_code == 204
-    assert client.put("/api/agente/mensajes/999/pulgar", json={"useful": True}).status_code == 404
+    assert client.post(f"/api/agente/mensajes/{out.json()['message_id']}/pulgar", json={"useful": True}).status_code == 204
+    assert client.post("/api/agente/mensajes/999/pulgar", json={"useful": True}).status_code == 404
 
 
 def test_a_viewer_and_an_org_without_the_module_get_403(client, conn):

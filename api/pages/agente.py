@@ -83,7 +83,7 @@ def conversation(conversation_id: int, user: User) -> list[Message]:
     return [{"id": m["id"], "role": m["role"], "content": m["content"]} for m in found]
 
 
-@router.put("/mensajes/{message_id}/pulgar", status_code=204)
+@router.post("/mensajes/{message_id}/pulgar", status_code=204)
 def thumb(message_id: int, body: Thumb, user: User):
     if not session.with_conn(lambda conn: conversations.set_feedback(conn, user["id"], message_id, body.useful)):
         raise HTTPException(404)

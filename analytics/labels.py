@@ -657,6 +657,30 @@ DATASET_DESCRIPTION = {
     "concession_sizes": "Tamaños de los productos de dulcería en sala de Cinépolis.",
     "delivery_prices": "Precios de dulcería a domicilio (Rappi y DiDi) de ambas cadenas.",
 }
+# Pantalla del asistente (dashboard/app/(app)/agente/page.tsx).
+AGENT_UI = {
+    "placeholder": "Pregunta por la cartelera, la venta o los precios",
+    "send": "Enviar",
+    "thinking": "Consultando los datos…",
+    "useful": "Útil",
+    "not_useful": "No útil",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "show_detail": "Ver detalle",
+    "hide_detail": "Ocultar detalle",
+    "detail_rows": "{rows} renglones",
+    "new_chat": "Nueva conversación",
+    "error": "No pude responder.",
+}
+# Qué hizo cada herramienta, en el detalle de una respuesta.
+AGENT_TOOL_LABEL = {
+    "list_tables": "Revisé las tablas disponibles",
+    "describe_table": "Revisé las columnas de una tabla",
+    "get_cinema_ranking": "Ordené los cines por venta medida",
+    "get_title_screens": "Revisé las funciones por película",
+    "compare_titles": "Comparé dos películas",
+    "get_popcorn_price": "Comparé los precios de dulcería a domicilio",
+}
 # Respuestas fijas del agente cuando no puede contestar con dato real (agent/tools.py).
 AGENT_TEXT = {
     "role_denied": "Tu rol no puede usar el asistente.",
@@ -1152,6 +1176,7 @@ PAGE_LABEL = {
     "independientes": INDEP_TEXT["nav"],
     "distribuidoras": DISTRIBUTOR_TEXT["nav"],
     "datos": DATA_TEXT["title"],
+    "agente": "Asistente",
     "operaciones": OPS_TEXT["title"],
     "configuracion": AUTH_TEXT["settings_title"],
 }

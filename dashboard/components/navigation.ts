@@ -3,6 +3,9 @@
 import type * as React from 'react';
 import {
   BuildingMultiple20Regular,
+  Chat20Regular,
+  Chat24Filled,
+  Chat24Regular,
   BuildingShop20Regular,
   DataBarVertical20Regular,
   Database20Regular,
@@ -45,6 +48,7 @@ export const MODULES: { key: ModuleKey; icon: Icon; iconSelected: Icon; pages: P
   { key: 'cartelera', icon: MoviesAndTv24Regular, iconSelected: MoviesAndTv24Filled, pages: ['cartelera', 'programacion', 'preventa', 'cines', 'precios', 'distribuidoras', 'mapa', 'independientes', 'historial'] },
   { key: 'dulceria', icon: Food24Regular, iconSelected: Food24Filled, pages: ['dulceria', 'domicilio'] },
   { key: 'datos', icon: Database24Regular, iconSelected: Database24Filled, pages: ['datos'] },
+  { key: 'agente', icon: Chat24Regular, iconSelected: Chat24Filled, pages: ['agente'] },
   { key: 'admin', icon: Settings24Regular, iconSelected: Settings24Filled, pages: ['operaciones'] },
 ];
 // Configuración lleva su propio panel: las secciones de la cuenta y, para un admin, las del espacio de trabajo.
@@ -74,12 +78,15 @@ export const PAGE_ICON: Partial<Record<PageKey, Icon>> = {
   dulceria: BuildingShop20Regular,
   domicilio: VehicleTruckProfile20Regular,
   datos: Database20Regular,
+  agente: Chat20Regular,
   operaciones: HeartPulse20Regular,
   configuracion: Settings20Regular,
 };
 export const HREF: Partial<Record<PageKey, string>> = { cartelera: '/', domicilio: '/dulceria/domicilio/' };
-// Operaciones y Distribuidoras son solo del equipo de la plataforma: Distribuidoras todavía no se vende.
+// Operaciones y Distribuidoras son solo del equipo de la plataforma: Distribuidoras todavía no se vende. El asistente
+// lo usan los analistas y los roles de arriba; un lector no lo ve.
 export function canSee(user: Profile, key: PageKey): boolean {
+  if (key === 'agente') return user.role !== 'viewer';
   if (key === 'operaciones' || key === 'distribuidoras') return user.role === 'staff';
   return true;
 }
