@@ -73,6 +73,46 @@ CREATE TABLE IF NOT EXISTS organization (         -- un cliente: lo que contrat�
   created_at  TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS agent_conversation (   -- una charla de una cuenta con el agente
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id  INTEGER NOT NULL REFERENCES account,
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS agent_conversation_account ON agent_conversation (account_id, created_at);
+
+CREATE TABLE IF NOT EXISTS agent_message (        -- cada pregunta y cada respuesta de una charla
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id  INTEGER NOT NULL REFERENCES agent_conversation,
+  role             TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content          TEXT NOT NULL,
+  created_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS agent_message_conversation ON agent_message (conversation_id, id);
+
+CREATE TABLE IF NOT EXISTS agent_audit (          -- un renglón por pregunta: quién, con qué herramientas y a qué costo
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  at               TEXT NOT NULL,
+  account_id       INTEGER NOT NULL REFERENCES account,
+  org_id           INTEGER REFERENCES organization,
+  role             TEXT NOT NULL,
+  environment      TEXT NOT NULL,
+  conversation_id  INTEGER REFERENCES agent_conversation,
+  provider         TEXT,
+  tools            TEXT NOT NULL DEFAULT '[]',    -- JSON: [{name, arguments, rows, ms}]
+  latency_ms       INTEGER,
+  tokens_in        INTEGER,
+  tokens_out       INTEGER,
+  error            TEXT
+);
+CREATE INDEX IF NOT EXISTS agent_audit_at ON agent_audit (at);
+
+CREATE TABLE IF NOT EXISTS agent_feedback (       -- el pulgar de una respuesta
+  message_id  INTEGER PRIMARY KEY REFERENCES agent_message,
+  account_id  INTEGER NOT NULL REFERENCES account,
+  useful      INTEGER NOT NULL CHECK (useful IN (0, 1)),
+  created_at  TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS setting (              -- ajustes de toda la instancia; el logo vive en `organization`
   key         TEXT PRIMARY KEY,
   value       TEXT,
@@ -92,7 +132,7 @@ _ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'", "seats": "INTEGER"
 _OLD_ROLE_CHECK = "CHECK (role IN ('admin', 'viewer'))"
 _ROLE_CHECK = "CHECK (role IN ('staff', 'admin', 'analyst', 'viewer'))"
 # Lo que se contrata por separado. "Completo" son todos.
-MODULES = ("cartelera", "dulceria", "datos")
+MODULES = ("cartelera", "dulceria", "datos", "agente")
 # La organización de las cuentas anteriores a `organization`: el cliente del piloto, con todos los módulos.
 DEFAULT_ORG_ID = 1
 

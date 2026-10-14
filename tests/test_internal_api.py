@@ -445,9 +445,9 @@ def other_org(conn):
 
 
 def test_profile_says_what_each_role_can_do(client, admin, viewer, staff, other_org):
-    expected = {"admin@example.test": (["cartelera", "dulceria", "datos"], True, True),
-                "viewer@example.test": (["cartelera", "dulceria", "datos"], False, False),
-                "staff@example.test": (["cartelera", "dulceria", "datos"], True, True),
+    expected = {"admin@example.test": (["cartelera", "dulceria", "datos", "agente"], True, True),
+                "viewer@example.test": (["cartelera", "dulceria", "datos", "agente"], False, False),
+                "staff@example.test": (["cartelera", "dulceria", "datos", "agente"], True, True),
                 "viewer@otra.test": (["cartelera"], False, False)}
     for email, (modules, can_manage, can_download) in expected.items():
         _login(client, email)

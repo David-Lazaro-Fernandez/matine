@@ -998,6 +998,25 @@ export const DATASET_LABEL = {
   "delivery_prices": "Dulcería a domicilio"
 } as const;
 
+export const DATASET_DESCRIPTION = {
+  "cinemas": "Cada cine de las dos cadenas con su número de salas y butacas medidas.",
+  "auditoriums": "Cada sala con su aforo medido en el plano de asientos.",
+  "week_showtimes": "Las funciones de la semana de cine, con película, horario, formato y precio.",
+  "ticket_prices": "Precio del boleto por cine, formato y tipo de día.",
+  "concession_prices": "Precios de dulcería en sala de Cinépolis. Cinemex no los publica.",
+  "concession_sizes": "Tamaños de los productos de dulcería en sala de Cinépolis.",
+  "delivery_prices": "Precios de dulcería a domicilio (Rappi y DiDi) de ambas cadenas."
+} as const;
+
+export const AGENT_TEXT = {
+  "role_denied": "Tu rol no puede usar el asistente.",
+  "module_denied": "El asistente no está en el plan de tu organización.",
+  "unknown_table": "La tabla {table} no existe.",
+  "seats_only": "Solo hay butacas medidas en estas plazas: {plazas}. No puedo responder sobre venta en otras.",
+  "chain_not_compared": "Solo comparo Cinemex y Cinépolis.",
+  "title_not_found": "No encuentro {title} en cartelera."
+} as const;
+
 export const DATA_TEXT = {
   "title": "Datos",
   "dataset": "Tabla",
@@ -1586,6 +1605,7 @@ export const MODULE_LABEL = {
   "cartelera": "Cartelera",
   "dulceria": "Dulcería",
   "datos": "Datos",
+  "agente": "Asistente",
   "admin": "Administración"
 } as const;
 
@@ -1596,7 +1616,8 @@ export const UPGRADE_TEXT = {
   "body": {
     "cartelera": "Compara la programación, la preventa, los precios y los cines de Cinemex y Cinépolis, con el mapa y la Cineteca.",
     "dulceria": "Compara los precios de dulcería en sala y a domicilio de Cinemex y Cinépolis.",
-    "datos": "Explora y descarga las tablas completas de la captura. Viene en el plan Completo."
+    "datos": "Explora y descarga las tablas completas de la captura. Viene en el plan Completo.",
+    "agente": "Pregunta en español por la cartelera, la venta y los precios, y recibe la respuesta con su fuente. Viene en el plan Completo."
   },
   "cta": "Quiero conocerlo",
   "sent": "Listo. Ventas te escribirá pronto.",
