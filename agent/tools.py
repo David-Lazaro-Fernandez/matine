@@ -8,8 +8,9 @@ import os
 from datetime import date, timedelta
 from pathlib import Path
 
-from analytics import cinema_sales, datasets, delivery, labels, queries, seats
+from analytics import cinema_sales, datasets, delivery, distributors, labels, queries, seats
 from scraper import config, normalize, plazas
+from scraper import distributors as distributor_map
 
 ROW_LIMIT = 50
 _ROLES_THAT_ASK = {"staff", "admin", "analyst"}
@@ -37,6 +38,12 @@ def require_access(user):
         raise AccessDenied(labels.AGENT_TEXT["role_denied"])
     if user["role"] != "staff" and "agente" not in user["modules"]:
         raise AccessDenied(labels.AGENT_TEXT["module_denied"])
+
+
+def require_module(user, module):
+    """Deja pasar a la cuenta cuya organización tiene `module` (staff las tiene todas). Si no, levanta `AccessDenied`."""
+    if module not in user["modules"]:
+        raise AccessDenied(labels.AGENT_TEXT["tool_module_denied"].format(module=labels.MODULE_LABEL[module]))
 
 
 def _percent(value):
@@ -156,8 +163,50 @@ def compare_titles(conn, title_a, title_b, plaza="cdmx"):
     return _result(shown, plaza=plaza, window={"from": d0, "to": d1}, window_text=labels.range_es(d0, d1))
 
 
-def get_popcorn_price(conn, platform=None):
-    """Precio de dulcería de Cinemex contra Cinépolis por tipo de producto, a domicilio (Rappi y DiDi). Es la única
-    fuente con las dos cadenas: Cinemex no publica su menú en sala."""
-    compared = delivery.delivery_compare(conn, platform=platform)
-    return _result(compared, source="precio a domicilio, mediana por tienda", platform=platform)
+def get_popcorn_price(conn, platform=None, bucket=None):
+    """Precio de dulcería de Cinemex contra Cinépolis por tipo de producto (combos, palomitas, refrescos, dulces…), a
+    domicilio (Rappi y DiDi). Es la única fuente con las dos cadenas: Cinemex no publica su menú en sala.
+    `bucket` acota a un tipo de `delivery.DELIVERY_BUCKETS`, como `refresco`."""
+    if platform is not None and platform not in labels.PLATFORM_LABEL:
+        return _refusal(labels.AGENT_TEXT["unknown_platform"].format(platform=platform, platforms=", ".join(labels.PLATFORM_LABEL)))
+    buckets = {key: label for key, label, _ in delivery.DELIVERY_BUCKETS}
+    if bucket is not None and bucket not in buckets:
+        return _refusal(labels.AGENT_TEXT["unknown_bucket"].format(bucket=bucket, buckets=", ".join(buckets)))
+    compared = [r for r in delivery.delivery_compare(conn, platform=platform) if bucket in (None, r["bucket"])]
+    shown = [{**r, **{f"{k}_text": _money(r.get(k)) for k in _PRICE_FIELDS},
+              "delta_pct_text": None if r["delta_pct"] is None else f"{r['delta_pct']:+.0f} %"} for r in compared]
+    return _result(shown, source="precio a domicilio, mediana por tienda", platform=platform, bucket=bucket)
+
+
+_PRICE_FIELDS = tuple(f"{chain}_{stat}" for chain in labels.COMPARED for stat in ("median", "min", "max"))
+
+
+def _money(value):
+    return None if value is None else f"${value:,.0f}"
+
+
+def get_distributor_screens(conn, plaza="cdmx", chain="cinemex", limit=10):
+    """Distribuidoras (proveedores de películas) de Cinemex y Cinépolis esta semana de cine: salas, cines, funciones y
+    % de la programación de cada cadena, con la brecha en puntos. Ordenadas por funciones de `chain`. Es agregado:
+    no baja a cine ni a película. Deja fuera las funciones sin distribuidora conciliada y dice cuántas."""
+    if _unknown_plaza(plaza):
+        return _refusal(labels.AGENT_TEXT["unknown_plaza"].format(plaza=plaza, plazas=", ".join(plazas.PLAZAS)))
+    if chain not in labels.COMPARED:
+        return _refusal(labels.AGENT_TEXT["chain_not_compared"])
+    plaza = _known_plaza(plaza)
+    d0, d1 = queries.cinema_week(queries.today())
+    reach = distributors.distributor_reach(conn, d0, d1, plaza=plaza)
+    kept = [r for r in reach if r["kind"] != distributor_map.KIND_UNRECONCILED]
+    by_name = {}
+    for r in kept:
+        row = by_name.setdefault(r["distributor"], {"distributor": r["distributor"], "kind": r["kind"]})
+        row.update({f"{k}_{r['chain']}": r[k] for k in ("screens", "cinemas", "shows", "share_shows")})
+    rows = [{**{f"{k}_{c}": 0 for c in labels.COMPARED for k in ("screens", "cinemas", "shows")},
+             **{f"share_shows_{c}": 0.0 for c in labels.COMPARED}, **r} for r in by_name.values()]
+    for r in rows:
+        r["gap_pp"] = round(r[f"share_shows_{labels.US}"] - r[f"share_shows_{labels.THEM}"], 1)
+    rows.sort(key=lambda r: (-r[f"shows_{chain}"], r["distributor"]))
+    shown = _with_text(rows[:limit], percent=tuple(f"share_shows_{c}" for c in labels.COMPARED), points=("gap_pp",))
+    return _result(shown, plaza=plaza, window={"from": d0, "to": d1}, window_text=labels.range_es(d0, d1),
+                   measure="participación en funciones", chain=chain,
+                   unreconciled_shows=sum(r["shows"] for r in reach if r["kind"] == distributor_map.KIND_UNRECONCILED))

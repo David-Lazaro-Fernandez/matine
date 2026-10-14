@@ -115,8 +115,8 @@ def test_conversations_audit_and_feedback_belong_to_their_account(app):
     assert app.execute("SELECT count(*) AS n FROM agent_audit").fetchone()["n"] == 1
 
 
-EXPECTED_TOOLS = {"list_tables", "describe_table", "get_cinema_ranking", "get_title_screens", "compare_titles",
-                  "get_popcorn_price"}
+CORE_TOOLS = {"list_tables", "describe_table", "get_cinema_ranking", "get_title_screens", "compare_titles"}
+EXPECTED_TOOLS = CORE_TOOLS | {"get_popcorn_price", "get_distributor_screens"}
 
 
 def _ask(user, name, arguments):
@@ -135,9 +135,35 @@ def _ask(user, name, arguments):
 
 
 def test_server_lists_exactly_the_expected_read_only_tools(app):
-    listed, _ = _ask(_user(app, "analyst", ["agente"]), "list_tables", {})
+    listed, _ = _ask(_user(app, "analyst", ["agente", "dulceria", "distribuidores"]), "list_tables", {})
     assert {t.name for t in listed} == EXPECTED_TOOLS
     assert all(t.annotations.readOnlyHint and not t.annotations.destructiveHint for t in listed)
+
+
+@pytest.mark.parametrize("modules, extra", [
+    (["agente"], set()), (["agente", "dulceria"], {"get_popcorn_price"}),
+    (["agente", "distribuidores"], {"get_distributor_screens"}),
+])
+def test_dulceria_and_distributor_tools_need_their_module(app, modules, extra):
+    listed, _ = _ask(_user(app, "analyst", modules), "list_tables", {})
+    assert {t.name for t in listed} == CORE_TOOLS | extra
+
+
+def test_popcorn_price_filters_by_bucket_and_refuses_unknown_values(capture_db):
+    conn = capture_db("cinemex", "cinepolis")
+    assert "refusal" in tools.get_popcorn_price(conn, bucket="zzz")
+    assert "refusal" in tools.get_popcorn_price(conn, platform="zzz")
+    assert all(r["bucket"] == "refresco" for r in tools.get_popcorn_price(conn, bucket="refresco")["rows"])
+
+
+def test_distributor_screens_pivot_both_chains_and_stay_aggregate(capture_db, frozen_week):
+    out = tools.get_distributor_screens(capture_db("cinemex", "cinepolis"), plaza=None)
+    assert out["window"] == {"from": "2026-09-24", "to": "2026-09-30"} and out["row_count"] > 0
+    row = out["rows"][0]
+    assert {"screens_cinemex", "screens_cinepolis", "share_shows_cinemex_text", "gap_pp_text"} <= set(row)
+    assert not {"cinema_id", "title"} & set(row)
+    assert out["rows"] == sorted(out["rows"], key=lambda r: (-r["shows_cinemex"], r["distributor"]))
+    assert "refusal" in tools.get_distributor_screens(capture_db("cinemex"), chain="cineteca")
 
 
 def test_server_answers_through_the_in_memory_client(app):
@@ -226,7 +252,7 @@ def _ready(app, monkeypatch, chat, user=None):
     from agent import host, providers
 
     monkeypatch.setitem(providers.CHAT, "deepseek", chat)
-    user = user or _user(app, "analyst", ["agente"])
+    user = user or _user(app, "analyst", ["agente", "dulceria", "distribuidores"])
     orgs.set_agent_provider(app, user["org_id"], "deepseek", "sk-prueba")
     return host, user
 

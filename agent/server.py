@@ -16,7 +16,7 @@ from . import tools
 _READ_ONLY = {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False}
 INSTRUCTIONS = (
     "Eres el asistente de datos de Cinemex. Respondes en español, en primera persona de Cinemex, solo con lo que "
-    "devuelven tus herramientas: cartelera, venta medida y precios de dulcería frente a Cinépolis. Cita solo cifras "
+    "devuelven tus herramientas: cartelera, venta medida, precios de dulcería y distribuidoras frente a Cinépolis. Cita solo cifras "
     "que devuelva una herramienta, con su ventana y su plaza, y usa los campos terminados en `_text` tal cual. "
     "Si una herramienta devuelve `refusal`, di ese motivo y no inventes la cifra. "
     "Si piden algo ajeno a esos datos (clima, bolsa, poemas, traducciones, datos personales, otras empresas), di que "
@@ -65,10 +65,25 @@ def build(user):
         `plaza`: `cdmx`, `gdl`, `mty` o `nacional` (o null) para todo el país."""
         return run(tools.compare_titles, title_a, title_b, plaza=plaza)
 
-    @server.tool(annotations=_READ_ONLY)
-    def get_popcorn_price(platform: str | None = None) -> dict:
-        """Precio de dulcería a domicilio de Cinemex contra Cinépolis por tipo de producto."""
-        return run(tools.get_popcorn_price, platform=platform)
+    def run_in_module(module, fn, *args, **kwargs):
+        tools.require_module(user, module)
+        return run(fn, *args, **kwargs)
+
+    if "dulceria" in user["modules"]:
+        @server.tool(annotations=_READ_ONLY)
+        def get_popcorn_price(platform: str | None = None, bucket: str | None = None) -> dict:
+            """Precio de dulcería a domicilio de Cinemex contra Cinépolis por tipo de producto. `bucket` acota a un tipo:
+            `combo_hotdog`, `combo_nachos`, `combo_basico`, `palomitas`, `hotdog`, `nachos`, `refresco`, `dulces`,
+            `helado`. `platform`: `rappi` o `didi`."""
+            return run_in_module("dulceria", tools.get_popcorn_price, platform=platform, bucket=bucket)
+
+    if "distribuidores" in user["modules"]:
+        @server.tool(annotations=_READ_ONLY)
+        def get_distributor_screens(plaza: str | None = "cdmx", chain: str = "cinemex", limit: int = 10) -> dict:
+            """Distribuidoras (proveedores de películas) por salas, cines, funciones y % de programación en Cinemex y
+            Cinépolis esta semana de cine. `chain` ordena por las funciones de esa cadena. `plaza`: `cdmx`, `gdl`, `mty`
+            o `nacional` (o null) para todo el país. No baja a cine ni a película."""
+            return run_in_module("distribuidores", tools.get_distributor_screens, plaza=plaza, chain=chain, limit=limit)
 
     @server.resource("schema://tables")
     def tables() -> str:

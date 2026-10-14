@@ -680,6 +680,7 @@ AGENT_TOOL_LABEL = {
     "get_title_screens": "Revisé las funciones por película",
     "compare_titles": "Comparé dos películas",
     "get_popcorn_price": "Comparé los precios de dulcería a domicilio",
+    "get_distributor_screens": "Revisé las salas y funciones por distribuidora",
 }
 # Respuestas fijas del agente cuando no puede contestar con dato real (agent/tools.py).
 AGENT_TEXT = {
@@ -689,6 +690,9 @@ AGENT_TEXT = {
     "seats_only": "Solo hay butacas medidas en estas plazas: {plazas}. No puedo responder sobre venta en otras.",
     "unknown_plaza": "La plaza {plaza} no existe. Las plazas son: {plazas}, o todo el país.",
     "chain_not_compared": "Solo comparo Cinemex y Cinépolis.",
+    "tool_module_denied": "El módulo {module} no está en el plan de tu organización.",
+    "unknown_platform": "La plataforma {platform} no existe. Las plataformas son: {platforms}.",
+    "unknown_bucket": "El tipo de producto {bucket} no existe. Los tipos son: {buckets}.",
     "title_not_found": "No encuentro {title} en cartelera.",
     "out_of_scope": "Lo siento, no puedo hacer eso.",
     "no_provider": "Tu organización aún no tiene un proveedor de IA configurado.",
@@ -1187,6 +1191,7 @@ PAGE_LABEL = {
 MODULE_LABEL = {
     "cartelera": "Cartelera",
     "dulceria": "Dulcería",
+    "distribuidores": "Distribuidoras",
     "datos": DATA_TEXT["title"],
     "agente": "Asistente",
     "admin": "Administración",
@@ -1200,6 +1205,7 @@ UPGRADE_TEXT = {
     "body": {
         "cartelera": "Compara la programación, la preventa, los precios y los cines de Cinemex y Cinépolis, con el mapa y la Cineteca.",
         "dulceria": "Compara los precios de dulcería en sala y a domicilio de Cinemex y Cinépolis.",
+        "distribuidores": "Consulta cuántas salas y funciones da cada distribuidora en Cinemex y Cinépolis.",
         "datos": "Explora y descarga las tablas completas de la captura. Viene en el plan Completo.",
         "agente": "Pregunta en español por la cartelera, la venta y los precios, y recibe la respuesta con su fuente. Viene en el plan Completo.",
     },

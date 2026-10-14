@@ -134,7 +134,7 @@ _ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'", "seats": "INTEGER"
 _OLD_ROLE_CHECK = "CHECK (role IN ('admin', 'viewer'))"
 _ROLE_CHECK = "CHECK (role IN ('staff', 'admin', 'analyst', 'viewer'))"
 # Lo que se contrata por separado. "Completo" son todos.
-MODULES = ("cartelera", "dulceria", "datos", "agente")
+MODULES = ("cartelera", "dulceria", "distribuidores", "datos", "agente")
 # La organización de las cuentas anteriores a `organization`: el cliente del piloto, con todos los módulos.
 DEFAULT_ORG_ID = 1
 
