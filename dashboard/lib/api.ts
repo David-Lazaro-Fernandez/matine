@@ -45,10 +45,10 @@ export function query(params: Record<string, string | number | null | undefined>
   return kept.length ? `?${new URLSearchParams(kept)}` : '';
 }
 
-// GET a `/api{path}`, o `method` (POST por defecto) con `body` en JSON. Devuelve el JSON de la respuesta, o undefined si es 204.
-export async function api<T>(path: string, body?: unknown, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
+// GET a `/api{path}`, o `method` (POST si hay `body`) en JSON. Devuelve el JSON de la respuesta, o undefined si es 204.
+export async function api<T>(path: string, body?: unknown, method?: 'POST' | 'PUT' | 'DELETE'): Promise<T> {
   const response = await fetch(`/api${path}`, {
-    method: body === undefined ? 'GET' : method,
+    method: method ?? (body === undefined ? 'GET' : 'POST'),
     credentials: 'same-origin',
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),

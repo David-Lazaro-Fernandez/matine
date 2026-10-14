@@ -7,6 +7,7 @@ import json
 import os
 import queue
 import threading
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -51,6 +52,14 @@ class Message(TypedDict):
     id: int
     role: str
     content: str
+    tools: list[ToolUse] | None
+    useful: bool | None
+
+
+class ConversationItem(TypedDict):
+    id: int
+    title: str
+    updated_at: datetime
 
 
 class Spend(TypedDict):
@@ -154,6 +163,21 @@ def ask_stream(body: Ask, user: User):
     return StreamingResponse(lines(), media_type="application/x-ndjson")
 
 
+@router.get("/conversaciones")
+def conversation_list(user: User) -> list[ConversationItem]:
+    try:
+        tools.require_access(user)
+    except tools.AccessDenied as e:
+        raise HTTPException(*_failure(e)) from None
+    return session.with_conn(lambda conn: conversations.recent(conn, user["id"]))
+
+
+@router.delete("/conversaciones/{conversation_id}", status_code=204)
+def conversation_delete(conversation_id: int, user: User):
+    if not session.with_conn(lambda conn: conversations.delete(conn, user["id"], conversation_id)):
+        raise HTTPException(404)
+
+
 @router.get("/conversaciones/{conversation_id}")
 def conversation(conversation_id: int, user: User) -> list[Message]:
     try:
@@ -161,7 +185,8 @@ def conversation(conversation_id: int, user: User) -> list[Message]:
     except tools.AccessDenied as e:
         raise HTTPException(403, str(e)) from None
     found = session.with_conn(lambda conn: conversations.history(conn, user["id"], conversation_id))
-    return [{"id": m["id"], "role": m["role"], "content": m["content"]} for m in found]
+    return [{"id": m["id"], "role": m["role"], "content": m["content"], "tools": m["tools"], "useful": m["useful"]}
+            for m in found]
 
 
 @router.post("/mensajes/{message_id}/pulgar", status_code=204)

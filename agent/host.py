@@ -182,7 +182,7 @@ def ask(app, user, question, conversation_id=None, on_step=lambda step, **detail
         if not answer:
             raise AgentError(AGENT_TEXT["empty_answer"])
         answer = _without_em_dash(answer)
-        message_id = conversations.add_message(app, conversation_id, "assistant", answer)
+        message_id = conversations.add_message(app, conversation_id, "assistant", answer, tools=audit["tools"])
         # Queda en la auditoría para la revisión semanal de lo que se pide fuera de alcance.
         error = "out_of_scope" if refused else None
     except AgentError as e:

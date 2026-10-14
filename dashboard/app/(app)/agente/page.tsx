@@ -20,6 +20,8 @@ import {
   ThumbLike20Filled,
   ThumbLike20Regular,
 } from '@fluentui/react-icons';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { notifyHistory } from '@/components/agente/chat-history';
 import { PageHeader } from '@/components/common';
 import { Markdown } from '@/components/markdown';
 import { ApiError, api, apiStream, query } from '@/lib/api';
@@ -29,6 +31,7 @@ import { AGENT_SUGGESTIONS, AGENT_TOOL_LABEL, AGENT_UI, NAV_LABEL } from '@/lib/
 type Source = Record<string, string>;
 type ToolUse = { name: string; arguments: Record<string, unknown> | null; rows: number | null; ms: number; sources: Source[] };
 type Answer = { conversation_id: number; message_id: number; answer: string; tools: ToolUse[] };
+type StoredMessage = { id: number; role: 'user' | 'assistant'; content: string; tools: ToolUse[] | null; useful: boolean | null };
 type Message = { role: 'user' | 'assistant'; text: string; id?: number; tools?: ToolUse[]; useful?: boolean; fresh?: boolean };
 type StreamEvent =
   | { event: 'step'; step: 'scope' | 'tool' | 'review'; name?: string }
@@ -94,6 +97,8 @@ const useStyles = makeStyles({
     '@media (max-width: 768px)': { paddingTop: tokens.spacingVerticalL },
   },
   title: { textAlign: 'center' },
+  // En escritorio el panel izquierdo ya tiene este botón.
+  newChat: { '@media (min-width: 769px)': { display: 'none' } },
   composer: {
     position: 'relative',
     width: '100%',
@@ -246,10 +251,39 @@ export default function Page() {
   const [step, setStep] = React.useState<string>(AGENT_UI.step_scope);
   const [error, setError] = React.useState<string | null>(null);
   const input = React.useRef<HTMLTextAreaElement>(null);
+  const router = useRouter();
+  const requested = useSearchParams().get('c');
   const typing = React.useRef<number | undefined>(undefined);
 
   const stopTyping = () => window.clearInterval(typing.current);
   React.useEffect(() => stopTyping, []);
+
+  // La conversación abierta vive en la URL: `?c=` la reabre y quitarlo empieza una nueva. Al contestar por primera vez la
+  // conversación ya está en el estado, así que el cambio de URL no la vuelve a pedir.
+  React.useEffect(() => {
+    const id = requested ? Number(requested) : null;
+    if (id === conversation || busy) return;
+    stopTyping();
+    setError(null);
+    if (id === null) {
+      setMessages([]);
+      setConversation(null);
+      return;
+    }
+    let live = true;
+    api<StoredMessage[]>(`/agente/conversaciones/${id}`).then(
+      (found) => {
+        if (!live) return;
+        if (found.length === 0) return router.replace('/agente/');
+        setConversation(id);
+        setMessages(found.map((m) => ({ role: m.role, text: m.content, id: m.id, tools: m.tools ?? undefined, useful: m.useful ?? undefined })));
+      },
+      () => live && router.replace('/agente/'),
+    );
+    return () => { live = false; };
+    // Solo la URL decide qué conversación se abre.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requested]);
 
   // Borra la caja y escribe `example` letra por letra. Un ejemplo nuevo, una tecla o enviar cortan el anterior.
   const typeOut = (example: string) => {
@@ -284,6 +318,8 @@ export default function Page() {
         } else if (e.event === 'answer') {
           setConversation(e.conversation_id);
           setMessages((m) => [...m, { role: 'assistant', text: e.answer, id: e.message_id, tools: e.tools, fresh: true }]);
+          if (requested === null) router.replace(`/agente/?c=${e.conversation_id}`);
+          notifyHistory();
         } else {
           setError(e.detail || AGENT_UI.error);
         }
@@ -324,7 +360,7 @@ export default function Page() {
   return (
     <>
       <PageHeader title={NAV_LABEL.agente}>
-        <Button appearance="subtle" onClick={() => { setMessages([]); setConversation(null); setError(null); }}>
+        <Button className={s.newChat} appearance="subtle" onClick={() => router.push('/agente/')}>
           {AGENT_UI.new_chat}
         </Button>
       </PageHeader>

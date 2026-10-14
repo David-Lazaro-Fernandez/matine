@@ -14,8 +14,9 @@ def _now():
 
 def start(conn, account_id):
     """Abre una charla y devuelve su id."""
-    return one(conn, "INSERT INTO agent_conversation (account_id, created_at) VALUES (?, ?) RETURNING id",
-               (account_id, _now()))["id"]
+    now = _now()
+    return one(conn, "INSERT INTO agent_conversation (account_id, created_at, updated_at) VALUES (?, ?, ?) RETURNING id",
+               (account_id, now, now))["id"]
 
 
 def owns(conn, account_id, conversation_id):
@@ -24,17 +25,61 @@ def owns(conn, account_id, conversation_id):
                (conversation_id, account_id)) is not None
 
 
-def add_message(conn, conversation_id, role, content):
-    """Guarda un mensaje (`role`: `user` o `assistant`) y devuelve su id."""
-    return one(conn, """INSERT INTO agent_message (conversation_id, role, content, created_at)
-                        VALUES (?, ?, ?, ?) RETURNING id""", (conversation_id, role, content, _now()))["id"]
+# Largo del título de una conversación: la primera pregunta, recortada.
+TITLE_CHARS = 60
+
+
+def _title(question):
+    text = " ".join(question.split())
+    return text if len(text) <= TITLE_CHARS else text[:TITLE_CHARS - 1].rstrip() + "…"
+
+
+def add_message(conn, conversation_id, role, content, tools=None):
+    """Guarda un mensaje (`role`: `user` o `assistant`) y devuelve su id. `tools`: lo que consultó una respuesta
+    (`{name, arguments, rows, ms, sources}`). El primer mensaje del usuario da título a la conversación."""
+    now = _now()
+    with transaction(conn):
+        message_id = one(conn, """INSERT INTO agent_message (conversation_id, role, content, created_at, tools)
+                                  VALUES (?, ?, ?, ?, ?) RETURNING id""",
+                         (conversation_id, role, content, now, json.dumps(tools, default=str) if tools else None))["id"]
+        conn.execute("UPDATE agent_conversation SET updated_at = ?, title = coalesce(title, ?) WHERE id = ?",
+                     (now, _title(content) if role == "user" else None, conversation_id))
+    return message_id
 
 
 def history(conn, account_id, conversation_id):
-    """Los mensajes de una charla de la cuenta, en orden. Una charla ajena o inexistente da lista vacía."""
-    return rows(conn, """SELECT m.id, m.role, m.content, m.created_at
-                         FROM agent_message m JOIN agent_conversation c ON c.id = m.conversation_id
-                         WHERE c.id = ? AND c.account_id = ? ORDER BY m.id""", (conversation_id, account_id))
+    """Los mensajes de una charla de la cuenta, en orden: `id`, `role`, `content`, `created_at`, `tools` (lista o None) y
+    `useful` (el pulgar, o None). Una charla ajena o inexistente da lista vacía."""
+    found = rows(conn, """SELECT m.id, m.role, m.content, m.created_at, m.tools, f.useful
+                          FROM agent_message m JOIN agent_conversation c ON c.id = m.conversation_id
+                          LEFT JOIN agent_feedback f ON f.message_id = m.id
+                          WHERE c.id = ? AND c.account_id = ? ORDER BY m.id""", (conversation_id, account_id))
+    return [{**m, "tools": json.loads(m["tools"]) if m["tools"] else None,
+             "useful": None if m["useful"] is None else bool(m["useful"])} for m in found]
+
+
+# ponytail: la lista llega entera hasta este tope; paginar cuando alguien tenga más conversaciones.
+LIST_LIMIT = 200
+
+
+def recent(conn, account_id):
+    """Las conversaciones de la cuenta, de la más reciente a la más antigua: `id`, `title` y `updated_at`."""
+    return rows(conn, """SELECT id, title, updated_at FROM agent_conversation WHERE account_id = ? AND title IS NOT NULL
+                         ORDER BY updated_at DESC, id DESC LIMIT ?""", (account_id, LIST_LIMIT))
+
+
+def delete(conn, account_id, conversation_id):
+    """Borra una conversación de la cuenta con sus mensajes y pulgares. La auditoría se queda sin la referencia, porque no
+    guarda texto. False si la conversación no es de la cuenta."""
+    if not owns(conn, account_id, conversation_id):
+        return False
+    with transaction(conn):
+        conn.execute("""DELETE FROM agent_feedback WHERE message_id IN
+                        (SELECT id FROM agent_message WHERE conversation_id = ?)""", (conversation_id,))
+        conn.execute("DELETE FROM agent_message WHERE conversation_id = ?", (conversation_id,))
+        conn.execute("UPDATE agent_audit SET conversation_id = NULL WHERE conversation_id = ?", (conversation_id,))
+        conn.execute("DELETE FROM agent_conversation WHERE id = ?", (conversation_id,))
+    return True
 
 
 def audit(conn, user, environment, conversation_id=None, provider=None, model=None, tools=(), latency_ms=None,
