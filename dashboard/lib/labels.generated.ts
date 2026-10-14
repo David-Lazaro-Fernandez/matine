@@ -1472,7 +1472,9 @@ export const LAYER_TEXT = {
 export const TABLE_NOTE_TEXT = {
   "open": "Cómo leer esta tabla",
   "example": "Ejemplo: primera fila",
-  "close": "Cerrar"
+  "close": "Cerrar",
+  "more": "Ver todas las filas",
+  "fewer": "Ver menos"
 } as const;
 
 export const CINES_TEXT = {

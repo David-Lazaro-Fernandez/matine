@@ -1,0 +1,16 @@
+'use client';
+
+// Celular: la misma regla que el menú inferior (`MOBILE` en components/shell.tsx). Fuera del navegador, es escritorio.
+import { useSyncExternalStore } from 'react';
+
+const MOBILE_QUERY = '(max-width: 768px)';
+
+function subscribe(onChange: () => void) {
+  const media = window.matchMedia(MOBILE_QUERY);
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
+}
+
+export function useIsMobile(): boolean {
+  return useSyncExternalStore(subscribe, () => window.matchMedia(MOBILE_QUERY).matches, () => false);
+}

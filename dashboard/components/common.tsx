@@ -28,6 +28,7 @@ import {
   MessageBar,
   MessageBarBody,
   Subtitle1,
+  Switch,
   Subtitle2,
   Title3,
   createTableColumn,
@@ -43,6 +44,7 @@ import { Database20Regular, Image20Regular, Open20Regular, QuestionCircle20Regul
 import { useRouter } from 'next/navigation';
 import type { VisualizationSpec } from 'vega-embed';
 import { useDataColor } from '@/app/providers';
+import { useIsMobile } from '@/lib/mobile';
 import { Acciones, type Boton, type Enlace } from '@/components/acciones';
 import { ApiError, api } from '@/lib/api';
 import { downloadCsv, downloadSpecPng } from '@/lib/download';
@@ -215,6 +217,21 @@ const useStyles = makeStyles({
   cnp: { fontWeight: tokens.fontWeightSemibold },
   sum: { fontWeight: tokens.fontWeightSemibold, backgroundColor: tokens.colorNeutralBackground2 },
   mal: { color: WARN, fontWeight: tokens.fontWeightSemibold },
+  tarjetas: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS, margin: `${tokens.spacingVerticalXS} 0` },
+  tarjeta: {
+    margin: 0,
+    padding: tokens.spacingHorizontalM,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
+    fontSize: tokens.fontSizeBase200,
+  },
+  campo: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: tokens.spacingHorizontalM },
+  campoEtiqueta: { color: tokens.colorNeutralForeground3, minWidth: 0 },
+  campoValor: { margin: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' },
+  campoTotal: { fontWeight: tokens.fontWeightSemibold },
   // Una tabla más ancha que la pantalla se desplaza dentro de su caja, no la página.
   // El borde va en la caja que se desplaza: así enmarca lo que se ve aunque la tabla sea más ancha.
   tableScroll: {
@@ -766,12 +783,47 @@ function cellClasses(cell: Cell): CellClass[] {
 // Lo que necesita una palabra larga de la interfaz, como 'Administrador', para no partirse.
 const TABLE_COLUMN_MIN_WIDTH = 104;
 
+// En celular, cada fila de la tabla es una tarjeta con sus valores etiquetados. Se ven las primeras filas y el resto,
+// con un interruptor: una tabla larga no obliga a bajar por toda la página.
+const MOBILE_ROWS = 5;
+
+function TarjetasTabla({ headers, rows }: { headers: string[]; rows: Cell[][] }) {
+  const s = useStyles();
+  const dataColor = useDataColor();
+  const [todas, setTodas] = React.useState(false);
+  const visibles = todas ? rows : rows.slice(0, MOBILE_ROWS);
+  return (
+    <div className={s.tarjetas}>
+      {visibles.map((row, i) => (
+        <dl key={i} className={s.tarjeta}>
+          {row.map((cell, j) => {
+            const classes = cellClasses(cell);
+            const text = typeof cell === 'string' ? cell : cell[0];
+            return (
+              <div key={j} className={s.campo}>
+                <dt className={s.campoEtiqueta}>{headers[j]}</dt>
+                <dd className={mergeClasses(s.campoValor, classes.includes('sum') && s.campoTotal)}
+                    style={classes.includes('cmx') ? { color: dataColor(RED) } : undefined}>{text}</dd>
+              </div>
+            );
+          })}
+        </dl>
+      ))}
+      {rows.length > MOBILE_ROWS && (
+        <Switch checked={todas} onChange={(_, d) => setTodas(d.checked)} label={todas ? TABLE_NOTE_TEXT.fewer : TABLE_NOTE_TEXT.more} />
+      )}
+    </div>
+  );
+}
+
 // Tabla compacta como `table()` de ui/common.py, sobre el DataGrid de Fluent. `numCols` alinea a la derecha.
 // ponytail: sin virtualizar. El explorador de Datos necesita la versión de @fluentui-contrib para miles de renglones.
 // `wideCols` son las columnas que crecen el triple que las demás, como una lista de nombres.
 export function Table({ headers, rows, numCols = [], wideCols = [] }: { headers: string[]; rows: Cell[][]; numCols?: number[]; wideCols?: number[] }) {
   const dataColor = useDataColor();
   const s = useStyles();
+  const movil = useIsMobile();
+  if (movil) return <TarjetasTabla headers={headers} rows={rows} />;
   const columns = headers.map((header, i) =>
     createTableColumn<Cell[]>({
       columnId: i,
