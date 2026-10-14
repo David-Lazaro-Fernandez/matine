@@ -112,6 +112,13 @@ CREATE TABLE IF NOT EXISTS concession_price (
   product_structure TEXT, promotion_type TEXT, active INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_conc_cinema ON concession_price (chain, cinema_id, sampled_at);
+-- Tamaños de los productos compuestos de la canasta: un renglón por producto, cine y tamaño, con su precio.
+CREATE TABLE IF NOT EXISTS concession_size (
+  id INTEGER PRIMARY KEY,
+  chain TEXT NOT NULL, cinema_id TEXT NOT NULL, sampled_at TEXT NOT NULL,
+  product_id TEXT NOT NULL, product_name TEXT, size_id TEXT, size_name TEXT, price_cents INTEGER, is_menu_size INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_conc_size_cinema ON concession_size (chain, cinema_id, sampled_at);
 -- Preventas de Cinemex: panel fijo de funciones por título, releídas a diario (scraper/presale.py).
 CREATE TABLE IF NOT EXISTS presale_sample (
   id INTEGER PRIMARY KEY,
@@ -170,6 +177,16 @@ def connect():
     conn.executescript(SCHEMA)
     migrate(conn)
     return conn
+
+
+def analyze(conn):
+    """Guarda en `sqlite_stat1` el tamaño y la selectividad de cada índice, para que el planificador elija bien.
+
+    Ejemplo: sin estas estadísticas, el historial de un cine usa `idx_event_show` en lugar de `idx_event_board`.
+    """
+    conn.execute("PRAGMA analysis_limit=1000")
+    conn.execute("ANALYZE")
+    conn.commit()
 
 
 def begin_snapshot(conn, chain, taken_at):

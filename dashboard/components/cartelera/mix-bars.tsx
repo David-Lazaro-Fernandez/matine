@@ -45,7 +45,7 @@ export function MixBars({ rows, dimension, contenedor }: { rows: MixRow[]; dimen
       height: HEIGHT,
       layer: [
         {
-          mark: { type: 'bar', cornerRadius: 0, stroke: PAPER, strokeWidth: 1.5, height: 26 },
+          mark: { type: 'bar', cornerRadius: 0, stroke: PAPER, strokeWidth: 2, height: 26 },
           encoding: {
             y: {
               field: 'Cadena', type: 'nominal', sort: chainDomain, title: null,
