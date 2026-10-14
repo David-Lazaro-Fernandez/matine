@@ -1040,6 +1040,7 @@ export const AGENT_TEXT = {
   "unknown_plaza": "La plaza {plaza} no existe. Las plazas son: {plazas}, o todo el país.",
   "chain_not_compared": "Solo comparo Cinemex y Cinépolis.",
   "title_not_found": "No encuentro {title} en cartelera.",
+  "out_of_scope": "Lo siento, no puedo hacer eso.",
   "no_provider": "Tu organización aún no tiene un proveedor de IA configurado.",
   "unknown_conversation": "No encuentro esa conversación.",
   "provider_failed": "No pude obtener respuesta del modelo. Intenta de nuevo en unos minutos.",

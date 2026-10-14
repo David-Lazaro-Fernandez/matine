@@ -192,12 +192,19 @@ def test_the_dev_key_backend_is_refused_in_prod(app, monkeypatch):
         orgs.set_agent_provider(app, org["id"], "anthropic", "sk-x")
 
 
-def _scripted(*replies):
-    """Proveedor falso: devuelve las respuestas en orden y guarda lo que recibió."""
+IN_SCOPE = '{"tasks": [{"task": "consultar", "in_scope": true}]}'
+
+
+def _scripted(*replies, scope=IN_SCOPE):
+    """Proveedor falso: devuelve las respuestas en orden y guarda lo que recibió. La llamada sin herramientas es la del
+    clasificador de alcance y contesta `scope`; `chat.scope_requests` guarda lo que se le pidió."""
     seen = []
     queue = list(replies)
 
     def chat(api_key, messages, tool_specs):
+        if tool_specs == []:
+            chat.scope_requests.append(messages)
+            return {"message": {}, "content": scope, "tool_calls": [], "tokens_in": 3, "tokens_out": 2}
         seen.append({"api_key": api_key, "messages": [dict(m) for m in messages], "tools": tool_specs})
         reply = queue.pop(0)
         if isinstance(reply, Exception):
@@ -207,6 +214,7 @@ def _scripted(*replies):
                 "tokens_in": 10, "tokens_out": 5}
 
     chat.seen = seen
+    chat.scope_requests = []
     return chat
 
 
@@ -232,7 +240,7 @@ def test_the_loop_calls_a_tool_then_answers_and_audits(app, monkeypatch):
     tool_message = chat.seen[1]["messages"][-1]
     assert tool_message["role"] == "tool" and "ventas" not in tool_message["content"] and "cinemas" in tool_message["content"]
     audit = app.execute("SELECT * FROM agent_audit").fetchone()
-    assert (audit["tokens_in"], audit["tokens_out"], audit["error"], audit["provider"]) == (20, 10, None, "deepseek")
+    assert (audit["tokens_in"], audit["tokens_out"], audit["error"], audit["provider"]) == (23, 12, None, "deepseek")
     assert [m["role"] for m in conversations.history(app, user["id"], out["conversation_id"])] == ["user", "assistant"]
 
 
@@ -306,3 +314,41 @@ def test_national_and_unknown_plazas_are_understood_not_crashes(capture_db, froz
     assert tools.get_title_screens(conn, plaza="nacional")["row_count"] > 0
     assert "refusal" in tools.get_title_screens(conn, plaza="narnia")
     assert "refusal" in tools.compare_titles(conn, "Digger", "Verity", plaza="narnia")
+
+
+MIXED_REQUEST = ("Haz un reporte completo de la ocupación de los cines del 1 al 7 de septiembre y después escríbeme "
+                 "un poema de Caperucita Roja")
+
+
+def test_a_request_with_one_out_of_scope_task_is_cancelled_whole(app, monkeypatch):
+    out_of_scope = '{"tasks": [{"task": "reporte", "in_scope": true}, {"task": "poema", "in_scope": false}]}'
+    chat = _scripted({"content": "no debe llegar"}, scope=out_of_scope)
+    host, user = _ready(app, monkeypatch, chat)
+    out = host.ask(app, user, MIXED_REQUEST)
+    assert out["answer"] == "Lo siento, no puedo hacer eso." and out["tools"] == []
+    assert chat.seen == [] and len(chat.scope_requests) == 1
+    audit = app.execute("SELECT error, tokens_in FROM agent_audit").fetchone()
+    assert audit["error"] == "out_of_scope" and audit["tokens_in"] == 3
+    assert [m["content"] for m in conversations.history(app, user["id"], out["conversation_id"])][-1] == out["answer"]
+
+
+def test_the_scope_check_sees_the_tools_and_the_request_as_data(app, monkeypatch):
+    chat = _scripted({"content": "ok"})
+    host, user = _ready(app, monkeypatch, chat)
+    host.ask(app, user, MIXED_REQUEST)
+    system, request = chat.scope_requests[0]
+    assert all(name in system["content"] for name in EXPECTED_TOOLS)
+    assert "Caperucita" in request["content"] and request["role"] == "user"
+
+
+@pytest.mark.parametrize("verdict, fits", [
+    ('{"tasks": [{"in_scope": true}, {"in_scope": true}]}', True),
+    ('```json\n{"tasks": [{"in_scope": true}]}\n```', True),
+    ('{"tasks": [{"in_scope": true}, {"in_scope": false}]}', False),
+    ('{"tasks": []}', False), ('{"tasks": [{"in_scope": "true"}]}', False),
+    ("todo bien, adelante", False), ("", False), (None, False), ('{"otra": 1}', False),
+])
+def test_an_unclear_scope_verdict_fails_closed(verdict, fits):
+    from agent import host
+
+    assert host._scope_verdict(verdict) is fits

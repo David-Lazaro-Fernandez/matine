@@ -2,7 +2,7 @@
 sobre la captura grabada.
 
 En CI: la forma del conjunto y que cada pregunta de núcleo tenga su respuesta de herramienta esperada. A mano, con un
-proveedor real (`AC_EVAL=1 DEEPSEEK_API_KEY=… make test-eval`): el modelo responde las 54 preguntas y se mide el acierto por
+proveedor real (`AC_EVAL=1 DEEPSEEK_API_KEY=… make test-eval`): el modelo responde las preguntas y se mide el acierto por
 categoría. Esa corrida usa red y cuesta, así que no va en CI.
 """
 import json
@@ -17,15 +17,18 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from agent import tools  # noqa: E402
 from analytics import db as analytics_db  # noqa: E402
+from analytics.labels import AGENT_TEXT  # noqa: E402
 from auth import db, orgs  # noqa: E402
 
 GOLDEN = json.loads((Path(__file__).parent / "fixtures" / "agent_golden.json").read_text(encoding="utf-8"))
 CORE = [q for q in GOLDEN if q["category"] == "core"]
-CATEGORIES = ("core", "ambiguous", "out_of_scope", "write")
+CATEGORIES = ("core", "ambiguous", "out_of_scope", "write", "mixed")
 # Lo que dice una respuesta que se niega o que no encuentra dato.
-_DECLINES = ("no puedo", "no tengo", "no cuento", "no hay", "no encuentro", "solo lectura", "no está disponible",
+_DECLINES = ("no puedo", "no pude", "no tengo", "no cuento", "no hay", "no encuentro", "solo lectura", "no está disponible",
              "no es posible", "no me es posible", "fuera de")
 MIN_OVERALL, MIN_OUT_OF_SCOPE = 0.90, 0.95
+# Una petición mezclada nunca debe correr a medias.
+MIN_MIXED = 1.0
 
 
 def test_the_golden_set_has_the_required_shape():
@@ -63,6 +66,9 @@ def _passes(item, answer, called):
         return not called
     if item["category"] == "out_of_scope":
         return declines and "%" not in answer
+    if item["category"] == "mixed":
+        # Una tarea fuera de alcance cancela toda la petición: sin herramientas y con la frase fija.
+        return not called and answer == AGENT_TEXT["out_of_scope"]
     return declines
 
 
@@ -102,4 +108,4 @@ def test_a_real_model_answers_the_golden_set(capture_db, frozen_week, tmp_path, 
     rate = {c: hits[c] / total[c] for c in CATEGORIES}
     print(f"\nAcierto por categoría: {rate}\nFallaron:\n" + "\n".join(failed))
     assert sum(hits.values()) / len(GOLDEN) >= MIN_OVERALL
-    assert rate["out_of_scope"] >= MIN_OUT_OF_SCOPE
+    assert rate["out_of_scope"] >= MIN_OUT_OF_SCOPE and rate["mixed"] >= MIN_MIXED
