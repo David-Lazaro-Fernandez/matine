@@ -506,11 +506,11 @@ function Contenido({ view, data, params, hallazgos }: {
       {view === 'hallazgos' && <CapaHallazgos hallazgos={hallazgos} d0={data.d0} d1={data.d1} />}
       {view === 'programacion' && (
         <ApendiceAbierto.Provider value>
-          <Anexo<IndicadoresData> slug="indicadores" params={params}>{(ap) => <Indicadores data={data} ap={ap} />}</Anexo>
-          <Evidencia<ResumenData> slug="resumen" params={params} table>{(sec) => <Resumen sec={sec} />}</Evidencia>
           <Evidencia<PeliculasData> slug="peliculas" params={params}>{(sec) => <Peliculas data={data} sec={sec} />}</Evidencia>
           <Evidencia<HorariosData> slug="horarios" params={params}>{(sec) => <Horarios data={data} sec={sec} />}</Evidencia>
           <Evidencia<FormatosData> slug="formatos" params={params}>{(sec) => <Formatos sec={sec} />}</Evidencia>
+          <Evidencia<ResumenData> slug="resumen" params={params} table>{(sec) => <Resumen sec={sec} />}</Evidencia>
+          <Anexo<IndicadoresData> slug="indicadores" params={params}>{(ap) => <Indicadores data={data} ap={ap} />}</Anexo>
         </ApendiceAbierto.Provider>
       )}
       {view === 'preventa' && (

@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
 import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
+import { useIsMobile } from '@/lib/mobile';
 import { fill, fixed, signed, thousands } from '@/lib/format';
 import {
   CARTELERA_CHART_TEXT as TEXT, CHAIN_COLOR, CHAIN_LABEL, COMPARED, GRAY_DARK, PRESALE_OTHER_LABEL, PRESALE_TAG,
@@ -21,6 +22,8 @@ const TITLE_MAX = 42;
 // Ancho de la etiqueta de título y ancho total de la gráfica, en píxeles. Las barras quedan con el resto.
 const PRESALE_LABEL_WIDTH = 200;
 const PRESALE_WIDTH = 480;
+// En celular la gráfica ocupa la pantalla y el título se corta antes, para que las barras tengan espacio.
+const PRESALE_LABEL_WIDTH_MOVIL = 110;
 const PERCENT_TICKS = [0, 25, 50, 75, 100];
 
 type Chain = (typeof COMPARED)[number];
@@ -39,6 +42,7 @@ function releaseEs(iso: string | null): string {
 }
 
 export function PresaleBars({ rows, paired, contenedor }: { rows: PresaleRow[]; paired: boolean; contenedor?: ContenedorGrafica }) {
+  const movil = useIsMobile();
   const spec = useMemo<VisualizationSpec>(() => {
     const values = rows.map((r) => {
       const sold = fill(TEXT.percent, { value: fixed(r.sold_pct, 0) });
@@ -61,7 +65,7 @@ export function PresaleBars({ rows, paired, contenedor }: { rows: PresaleRow[]; 
     const encoding = {
       y: {
         field: 'Título', type: 'nominal' as const, sort: order, title: null,
-        axis: { labelLimit: PRESALE_LABEL_WIDTH, labelColor: GRAY_DARK, ticks: false, domain: false },
+        axis: { labelLimit: movil ? PRESALE_LABEL_WIDTH_MOVIL : PRESALE_LABEL_WIDTH, labelColor: GRAY_DARK, ticks: false, domain: false },
       },
       color: {
         field: 'Cadena', type: 'nominal' as const, legend: null,
@@ -81,8 +85,8 @@ export function PresaleBars({ rows, paired, contenedor }: { rows: PresaleRow[]; 
     };
     return {
       data: { values },
-      // Ancho fijo: en celular la caja de `VegaChart` se desplaza, como el rival de Cines, y no aplasta las barras.
-      width: PRESALE_WIDTH,
+      // En escritorio el ancho es fijo y la caja de `VegaChart` se desplaza; en celular ocupa la pantalla.
+      width: movil ? 'container' : PRESALE_WIDTH,
       height: Math.max(90, (paired ? 34 : 26) * order.length),
       layer: [
         {
@@ -101,7 +105,7 @@ export function PresaleBars({ rows, paired, contenedor }: { rows: PresaleRow[]; 
         },
       ],
     };
-  }, [rows, paired]);
+  }, [rows, paired, movil]);
 
   const titles = new Set(rows.map((r) => r.title)).size;
   return <VegaChart spec={spec} height={Math.max(90, (paired ? 34 : 26) * titles) + 40} contenedor={contenedor} />;

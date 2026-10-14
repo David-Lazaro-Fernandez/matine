@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
 import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
+import { useIsMobile } from '@/lib/mobile';
 import { CHAIN_COLOR, COMPARED, GRAY_DARK, NEUTRAL, US } from '@/lib/labels.generated';
 
 type Chain = (typeof COMPARED)[number];
@@ -19,6 +20,7 @@ type Movie = {
 const ROW = 24;
 
 export function MoviesDumbbell({ movies, axisTitle, contenedor }: { movies: Movie[]; axisTitle: string; contenedor?: ContenedorGrafica }) {
+  const movil = useIsMobile();
   const spec = useMemo<VisualizationSpec>(() => {
     const order = movies.map((m) => m.title);
     // Un punto por película y cadena que la proyecta: una exclusiva queda con un solo punto.
@@ -29,11 +31,11 @@ export function MoviesDumbbell({ movies, axisTitle, contenedor }: { movies: Movi
     return {
       hconcat: [
         {
-          width: 620,
+          width: movil ? 'container' : 620,
           height: { step: ROW },
           data: { values: points },
           encoding: {
-            y: { ...y, title: null, axis: { labelLimit: 300, labelColor: GRAY_DARK, labelFontSize: 12.5, ticks: false, domain: false, labelPadding: 10 } },
+            y: { ...y, title: null, axis: { labelLimit: movil ? 120 : 300, labelColor: GRAY_DARK, labelFontSize: 12.5, ticks: false, domain: false, labelPadding: 10 } },
           },
           layer: [
             {
@@ -69,7 +71,7 @@ export function MoviesDumbbell({ movies, axisTitle, contenedor }: { movies: Movi
       spacing: 6,
       resolve: { scale: { y: 'shared' } },
     };
-  }, [movies, axisTitle]);
+  }, [movies, axisTitle, movil]);
 
   return <VegaChart spec={spec} height={ROW * movies.length + 50} contenedor={contenedor} />;
 }

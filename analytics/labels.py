@@ -1069,7 +1069,8 @@ DISTRIBUTOR_KIND_LABEL = {"distribuidor": "Distribuidora", "programa_propio": "P
 # Rótulos fijos de los componentes de capa (`capa`, `leerla` en ui/common.py y dashboard/components/common.tsx).
 LAYER_TEXT = {"read_it": "Cómo leerla", "evidence": "Ver más"}
 # Botón "?" al pie de una tabla: abre su nota con la primera fila como ejemplo.
-TABLE_NOTE_TEXT = {"open": "Cómo leer esta tabla", "example": "Ejemplo: primera fila", "close": "Cerrar"}
+TABLE_NOTE_TEXT = {"open": "Cómo leer esta tabla", "example": "Ejemplo: primera fila", "close": "Cerrar",
+                   "more": "Ver todas las filas", "fewer": "Ver menos"}
 # Pantalla Cines de la Cartelera (dashboard/components/cartelera/cines.tsx, analytics/cinema_sales.py).
 CINES_TEXT = {
     "q_ranking": "Venta por cine",

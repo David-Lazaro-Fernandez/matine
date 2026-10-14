@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
 import type { ContenedorGrafica } from '@/components/common';
 import { VegaChart } from '@/components/vega-chart';
+import { useIsMobile } from '@/lib/mobile';
 import { DIVERGING, INK, PAPER } from '@/lib/labels.generated';
 
 type Cell = { day: string; slot_label: string; gap_pp: number; label: string; tooltip: string };
@@ -14,12 +15,13 @@ const ROW = 46;
 export function DaySlotHeatmap({ cells, days, slots, limit, contenedor }: {
   cells: Cell[]; days: string[]; slots: string[]; limit: number; contenedor?: ContenedorGrafica;
 }) {
+  const movil = useIsMobile();
   const spec = useMemo<VisualizationSpec>(() => {
     const presentDays = days.filter((d) => cells.some((c) => c.day === d));
     const presentSlots = slots.filter((s) => cells.some((c) => c.slot_label === s));
     return {
       data: { values: cells },
-      width: { step: 134 },
+      width: movil ? 'container' : { step: 134 },
       height: { step: ROW },
       encoding: {
         x: {
@@ -51,7 +53,7 @@ export function DaySlotHeatmap({ cells, days, slots, limit, contenedor }: {
         },
       ],
     };
-  }, [cells, days, slots, limit]);
+  }, [cells, days, slots, limit, movil]);
 
   return <VegaChart spec={spec} height={ROW * days.length + 40} contenedor={contenedor} />;
 }
