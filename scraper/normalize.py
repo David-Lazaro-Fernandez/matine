@@ -12,7 +12,7 @@ from . import cabanas, cinemania, cineteca_gdl, cineteca_mty, config, epic, lumo
 
 COLUMNS = [
     "chain", "show_id", "cinema_id", "cinema_name", "lat", "lng", "city_id", "state_id", "state_code",
-    "movie_id", "movie_title", "title_norm", "genre", "rating", "duration_min", "distributor",
+    "movie_id", "movie_title", "title_norm", "original_title", "genre", "rating", "duration_min", "distributor",
     "date", "datetime_local", "datetime_utc", "screen", "language", "language_raw",
     "format", "experience", "premium_tier", "version_raw", "availability", "program", "fare_json",
 ]
@@ -122,6 +122,7 @@ def cinepolis_rows(raw):
                             "movie_id": bb["movie_id"],
                             "movie_title": movie.get("name"),
                             "title_norm": norm_title(movie.get("name")),
+                            "original_title": (movie.get("originalName") or "").strip() or None,
                             "genre": "|".join(genre) if isinstance(genre, list) else str(genre),
                             "rating": movie.get("rating"),
                             "duration_min": to_int(movie.get("length")),
@@ -209,6 +210,7 @@ def cinemex_rows(raw):
                             "movie_id": str(m["id"]),
                             "movie_title": m.get("name"),
                             "title_norm": norm_title(m.get("name")),
+                            "original_title": (info.get("original_title") or "").strip() or None,
                             "genre": "|".join(genre) if isinstance(genre, list) else str(genre),
                             "rating": info.get("rating"),
                             "duration_min": cinemex_duration(info.get("duration")),
@@ -276,6 +278,7 @@ def cineteca_rows(raw):
                         "movie_id": film.get("film_id"),
                         "movie_title": title,
                         "title_norm": norm_title(title),
+                        "original_title": None,
                         "genre": None,
                         "rating": film.get("clasificacion"),
                         "duration_min": None,
@@ -326,6 +329,7 @@ def cineteca_gdl_rows(raw):
                 "movie_id": s.get("film_code"),
                 "movie_title": title,
                 "title_norm": norm_title(title),
+                "original_title": None,
                 "genre": None,
                 "rating": s.get("rating"),
                 "duration_min": None,
@@ -374,6 +378,7 @@ def cineteca_mty_rows(raw):
                     "movie_id": film["slug"],
                     "movie_title": title,
                     "title_norm": norm_title(title),
+                    "original_title": None,
                     "genre": None,
                     "rating": None,
                     "duration_min": None,
@@ -407,7 +412,7 @@ def _indep_row(place, *, show_id, movie_id, title, date, hour, **fields):
     return {"chain": place["chain"], "show_id": show_id, "cinema_id": place["cinema_id"], "cinema_name": place["name"],
             "lat": place["lat"], "lng": place["lng"], "city_id": place["city_id"], "state_id": None,
             "state_code": place["state_code"], "movie_id": movie_id, "movie_title": title, "title_norm": norm_title(title),
-            "genre": None, "rating": None, "duration_min": None, "distributor": None, "date": date,
+            "original_title": None, "genre": None, "rating": None, "duration_min": None, "distributor": None, "date": date,
             "datetime_local": local, "datetime_utc": _utc(local, config.PILOT_TIMEZONE), "screen": None,
             "language": cineteca_language(title), "language_raw": None, "format": "2D", "experience": None,
             "premium_tier": "traditional", "version_raw": None, "availability": None, "program": None, **fields}
