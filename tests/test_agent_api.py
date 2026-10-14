@@ -36,10 +36,10 @@ def _account(conn, email, role, org_id=None):
 
 @pytest.fixture
 def client(conn, monkeypatch):
-    def chat(api_key, messages, tool_specs):
+    def chat(api_key, messages, tool_specs, temperature=None):
         if tool_specs == []:
-            return {"message": {}, "content": '{"tasks": [{"in_scope": true}]}', "tool_calls": [],
-                    "tokens_in": 1, "tokens_out": 1}
+            verdict = '{"fits": true}' if messages[0]["content"].startswith("Revisas") else '{"tasks": [{"in_scope": true}]}'
+            return {"message": {}, "content": verdict, "tool_calls": [], "tokens_in": 1, "tokens_out": 1}
         reply = {"role": "assistant", "content": "Respuesta."}
         return {"message": reply, "content": "Respuesta.", "tool_calls": [], "tokens_in": 10, "tokens_out": 5}
 
@@ -94,7 +94,7 @@ def test_too_many_questions_is_429(client, conn, monkeypatch):
 
 
 def test_the_org_token_budget_is_429(client, conn, monkeypatch):
-    monkeypatch.setattr(config, "AGENT_ORG_TOKENS_PER_DAY", 24)
+    monkeypatch.setattr(config, "AGENT_ORG_TOKENS_PER_DAY", 30)
     analyst = _account(conn, "a@test.mx", "analyst")
     orgs.set_agent_provider(conn, analyst["org_id"], "deepseek", "sk-1")
     _login(client, "a@test.mx")

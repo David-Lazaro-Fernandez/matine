@@ -195,14 +195,17 @@ def test_the_dev_key_backend_is_refused_in_prod(app, monkeypatch):
 IN_SCOPE = '{"tasks": [{"task": "consultar", "in_scope": true}]}'
 
 
-def _scripted(*replies, scope=IN_SCOPE):
+def _scripted(*replies, scope=IN_SCOPE, fits='{"fits": true}'):
     """Proveedor falso: devuelve las respuestas en orden y guarda lo que recibió. La llamada sin herramientas es la del
     clasificador de alcance y contesta `scope`; `chat.scope_requests` guarda lo que se le pidió."""
     seen = []
     queue = list(replies)
 
-    def chat(api_key, messages, tool_specs):
+    def chat(api_key, messages, tool_specs, temperature=None):
         if tool_specs == []:
+            if messages[0]["content"].startswith("Revisas"):
+                chat.answer_checks.append(messages)
+                return {"message": {}, "content": fits, "tool_calls": [], "tokens_in": 3, "tokens_out": 2}
             chat.scope_requests.append(messages)
             return {"message": {}, "content": scope, "tool_calls": [], "tokens_in": 3, "tokens_out": 2}
         seen.append({"api_key": api_key, "messages": [dict(m) for m in messages], "tools": tool_specs})
@@ -215,6 +218,7 @@ def _scripted(*replies, scope=IN_SCOPE):
 
     chat.seen = seen
     chat.scope_requests = []
+    chat.answer_checks = []
     return chat
 
 
@@ -240,7 +244,7 @@ def test_the_loop_calls_a_tool_then_answers_and_audits(app, monkeypatch):
     tool_message = chat.seen[1]["messages"][-1]
     assert tool_message["role"] == "tool" and "ventas" not in tool_message["content"] and "cinemas" in tool_message["content"]
     audit = app.execute("SELECT * FROM agent_audit").fetchone()
-    assert (audit["tokens_in"], audit["tokens_out"], audit["error"], audit["provider"]) == (23, 12, None, "deepseek")
+    assert (audit["tokens_in"], audit["tokens_out"], audit["error"], audit["provider"]) == (26, 14, None, "deepseek")
     assert [m["role"] for m in conversations.history(app, user["id"], out["conversation_id"])] == ["user", "assistant"]
 
 
@@ -299,7 +303,9 @@ def test_deepseek_parses_tool_calls_and_survives_bad_json(monkeypatch):
     assert [c["arguments"] for c in out["tool_calls"]] == [{"n": 1}, None]
     assert (out["tokens_in"], out["tokens_out"]) == (7, 3)
     assert sent["headers"] == {"Authorization": "Bearer sk-1"} and sent["body"]["thinking"] == {"type": "disabled"}
-    assert "tools" not in sent["body"] and sent["url"].endswith("/chat/completions")
+    assert "tools" not in sent["body"] and "temperature" not in sent["body"] and sent["url"].endswith("/chat/completions")
+    deepseek.chat("sk-1", [], [], temperature=0)
+    assert sent["body"]["temperature"] == 0
 
 
 def test_figures_come_with_their_formatted_text():
@@ -352,3 +358,19 @@ def test_an_unclear_scope_verdict_fails_closed(verdict, fits):
     from agent import host
 
     assert host._scope_verdict(verdict) is fits
+
+
+def test_an_answer_that_leaves_the_topic_is_replaced_before_it_is_shown(app, monkeypatch):
+    poem = "Caperucita iba por el bosque…"
+    chat = _scripted({"content": poem}, fits='{"fits": false}')
+    host, user = _ready(app, monkeypatch, chat)
+    out = host.ask(app, user, "¿Qué tablas hay?")
+    assert out["answer"] == "Lo siento, no puedo hacer eso." and poem not in str(conversations.history(app, user["id"], out["conversation_id"]))
+    assert poem in chat.answer_checks[0][1]["content"]
+    assert app.execute("SELECT error FROM agent_audit").fetchone()["error"] == "out_of_scope"
+
+
+def test_an_unclear_answer_verdict_fails_closed(app, monkeypatch):
+    chat = _scripted({"content": "Hay siete tablas."}, fits="sí, adelante")
+    host, user = _ready(app, monkeypatch, chat)
+    assert host.ask(app, user, "¿Qué tablas hay?")["answer"] == "Lo siento, no puedo hacer eso."

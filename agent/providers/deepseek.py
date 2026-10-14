@@ -7,9 +7,12 @@ import json
 from scraper import config, http
 
 
-def chat(api_key, messages, tools):
-    """Una vuelta del modelo. `tools`: lista en el formato `{"type": "function", "function": {...}}`."""
+def chat(api_key, messages, tools, temperature=None):
+    """Una vuelta del modelo. `tools`: lista en el formato `{"type": "function", "function": {...}}`. `temperature=0`
+    para los revisores, que deben dar siempre el mismo veredicto."""
     body = {"model": config.AGENT_MODEL, "messages": messages, "thinking": {"type": config.AGENT_THINKING}}
+    if temperature is not None:
+        body["temperature"] = temperature
     if tools:
         body["tools"] = tools
     reply = http.request_json(f"{config.AGENT_BASE_URL}/chat/completions", method="POST", body=body,
