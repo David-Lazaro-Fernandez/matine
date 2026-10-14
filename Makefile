@@ -7,7 +7,7 @@ VENV ?= .venv/bin
 
 .PHONY: help job units units-check labels tick snapshot seats occupancy post-start health prices concessions delivery capacity capacity-cinemex presale \
         calibrate-cinemex dashboard api backup launchd-load launchd-unload \
-        user-create user-list user-reset user-deactivate user-activate user-role org-create org-modules org-list auth-prune deploy restart check lint test test-live test-ui fixtures hooks \
+        user-create user-list user-reset user-deactivate user-activate user-role org-create org-modules org-billing org-list auth-prune deploy restart check lint test test-live test-ui fixtures hooks \
         marketing-dev dashboard-dev marketing-build export-places
 
 # Mata lo que escucha en el puerto antes de levantar un servidor de desarrollo. Solo LISTEN, para no cortar navegadores.
@@ -111,6 +111,9 @@ org-create:         ## organización nueva: NAME= MODULES=cartelera,dulceria,dat
 
 org-modules:        ## cambia los módulos de una organización: ORG= MODULES=cartelera,dulceria,datos|completo
 	$(VENV)/python -m auth.cli org-modules --org "$(ORG)" --modules "$(MODULES)"
+
+org-billing:        ## asientos pagados y próximo cobro: ORG= SEATS=5 NEXT_BILLING=2026-11-01 (sin SEATS quita la suscripción)
+	$(VENV)/python -m auth.cli org-billing --org "$(ORG)" $(if $(SEATS),--seats "$(SEATS)") $(if $(NEXT_BILLING),--next-billing "$(NEXT_BILLING)")
 
 org-list:           ## todas las organizaciones con sus módulos
 	$(VENV)/python -m auth.cli org-list

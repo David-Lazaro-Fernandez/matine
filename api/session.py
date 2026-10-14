@@ -164,6 +164,27 @@ def list_users(actor):
     return with_conn(lambda conn: auth.list_users(conn, org_id=actor["org_id"], staff=False))
 
 
+def workspace(actor):
+    """El espacio de trabajo de la organización de `actor` (`auth.orgs.workspace`)."""
+    return with_conn(lambda conn: auth.workspace(conn, actor["org_id"]))
+
+
+def integrations(actor):
+    """Estado de las integraciones de la organización de `actor`, sin el webhook (es un secreto)."""
+    settings = with_conn(lambda conn: auth.orgs.integrations(conn, actor["org_id"]))
+    return {"slack_connected": bool(settings.get("slack_webhook")),
+            "digest_recipients": settings.get("digest_recipients") or []}
+
+
+def set_integrations(actor, changes):
+    """Guarda `changes` (`auth.orgs.set_settings`). 422 con el texto de `invalid_integrations` si no son válidos."""
+    try:
+        with_conn(lambda conn: auth.orgs.set_settings(conn, actor["org_id"], changes))
+    except ValueError:
+        raise HTTPException(422, AUTH_TEXT["invalid_integrations"]) from None
+    return integrations(actor)
+
+
 def record_interest(user_id, module=None):
     with_conn(lambda conn: auth.record_interest(conn, user_id, module))
 

@@ -86,8 +86,9 @@ CREATE TABLE IF NOT EXISTS setting (              -- ajustes de toda la instanci
 _ACCOUNT_COLUMNS = {"avatar": "TEXT", "theme": "TEXT NOT NULL DEFAULT 'system'",
                     "org_id": "INTEGER REFERENCES organization"}
 # Columnas de `organization` posteriores a la primera versión (mismo mecanismo que `account`). `integrations` guarda
-# el JSON de `auth/orgs.py` (webhook de Slack, destinatarios del resumen y su estado de envío).
-_ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'"}
+# el JSON de `auth/orgs.py` (webhook de Slack, destinatarios del resumen y su estado de envío). `seats` y
+# `next_billing_at` (ISO, UTC) los fija staff; NULL es una organización sin suscripción.
+_ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'", "seats": "INTEGER", "next_billing_at": "TEXT"}
 _OLD_ROLE_CHECK = "CHECK (role IN ('admin', 'viewer'))"
 _ROLE_CHECK = "CHECK (role IN ('staff', 'admin', 'analyst', 'viewer'))"
 # Lo que se contrata por separado. "Completo" son todos.
