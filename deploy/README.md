@@ -152,7 +152,7 @@ imprime, para entregarlo por otro canal. Después, el admin crea el resto de las
 comandos: `make user-list`, `make user-reset EMAIL=…` (enlace nuevo), `make user-deactivate EMAIL=…`, `make user-activate EMAIL=…`.
 
 **Organizaciones.** `make org-create NAME="Cliente" MODULES=cartelera,dulceria` (o `MODULES=completo`) imprime el id;
-`make user-create … ORG=ID` crea su primer admin; `make org-modules ORG=ID MODULES=…` cambia lo contratado y
+`make user-create … ORG=ID` crea su primer admin; `make org-modules ORG=ID MODULES=…` cambia lo contratado, `make org-billing ORG=ID SEATS=N NEXT_BILLING=AAAA-MM-DD` fija asientos y próximo cobro (el admin los ve en Configuración › Personas) y
 `make org-list` las lista. Las cuentas anteriores al 2026-10-12 quedan en la organización 1, "Cinemex", con todos los
 módulos.
 

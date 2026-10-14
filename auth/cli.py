@@ -49,6 +49,10 @@ def main(argv=None):
     p.add_argument("--org", type=int, required=True)
     p.add_argument("--slack-webhook", help="URL de webhook de Slack; cadena vacía la quita")
     p.add_argument("--digest-to", help="correos separados por coma; cadena vacía los quita")
+    p = sub.add_parser("org-billing", help="asientos pagados y próximo cobro de una organización")
+    p.add_argument("--org", type=int, required=True)
+    p.add_argument("--seats", type=int, help="asientos pagados; omítelo para quitar la suscripción")
+    p.add_argument("--next-billing", help="fecha del próximo cobro, AAAA-MM-DD")
     sub.add_parser("org-list", help="todas las organizaciones")
     sub.add_parser("prune", help="borra sesiones y tokens vencidos hace más de 90 días")
     args = ap.parse_args(argv)
@@ -109,6 +113,16 @@ def _run(conn, args):
         settings = orgs.integrations(conn, args.org)
         print(f"organización {args.org}: slack {'sí' if settings.get('slack_webhook') else 'no'}, "
               f"resumen a {len(settings.get('digest_recipients') or [])} correos")
+    elif args.cmd == "org-billing":
+        try:
+            found = orgs.set_billing(conn, args.org, args.seats, args.next_billing)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+        if not found:
+            print(f"error: no hay organización {args.org}", file=sys.stderr)
+            return 1
+        print(f"organización {args.org}: {args.seats or 'sin'} asientos, cobro {args.next_billing or '—'}")
     elif args.cmd == "org-list":
         for org in orgs.list_orgs(conn):
             print(f"{org['id']:>4}  {org['name']:<30} {', '.join(org['modules']) or 'sin módulos'}")

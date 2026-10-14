@@ -58,7 +58,7 @@ TABLET = {"820": (820, 1180)}
 VIEWER_PAGES = ["/?plaza=nacional", "/programacion/?plaza=nacional", "/preventa/?plaza=nacional",
                 "/precios/?plaza=nacional", "/cines/?plaza=nacional", "/historial/?plaza=nacional", "/mapa/", "/recomendador/", "/independientes/?plaza=cdmx", "/dulceria/",
                 "/dulceria/domicilio/", "/datos/", "/configuracion/"]
-ADMIN_PAGES = ["/usuarios/", "/operaciones/"]
+ADMIN_PAGES = ["/configuracion/personas/", "/operaciones/"]
 PUBLIC_PAGES = ["/entrar/", "/olvide/", "/restablecer/?token=no-existe"]
 
 
@@ -347,10 +347,12 @@ def test_the_phone_navigation_goes_to_each_page(browser, server):
         tab = pages_bar.get_by_role("tab", name=NAV_LABEL[key])
         sync_api.expect(tab).to_have_attribute("aria-selected", "true")
         sync_api.expect(tab).to_be_in_viewport()
-    for module, path in [("dulceria", "/dulceria/"), ("datos", "/datos/"), ("admin", "/usuarios/"),
+    for module, path in [("dulceria", "/dulceria/"), ("datos", "/datos/"), ("admin", "/operaciones/"),
                          ("cartelera", "/")]:
         _module_bar(page).get_by_role("tab", name=MODULE_LABEL[module]).click()
         page.wait_for_url(re.compile(re.escape(path) + r"(\?|$)"))
+    # Operaciones pide su detalle al abrirse; cerrar el contexto a media petición rompe la ruta simulada.
+    page.wait_for_load_state("networkidle")
     page.context.close()
 
 

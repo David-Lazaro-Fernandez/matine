@@ -1516,9 +1516,9 @@ SQL: es parte del valor que se entrega al cliente, sin regalarle la base complet
   no delatar por tiempo) y emite a lo más 3 enlaces por hora. Nadie se desactiva ni se cambia el rol a sí mismo, ni deja
   el sistema sin admin activo (`SelfChange`, `LastAdmin`). Todo queda en `app.audit`.
 - **Navegación** (`app.py`): la lista de páginas depende de la sesión. Sin cookie válida: `login` (raíz), `olvide`,
-  `restablecer` (`?token=`), con navegación oculta. Con sesión: Cartelera, Dulcería, Datos y, para admin, Usuarios y Operaciones; la
+  `restablecer` (`?token=`), con navegación oculta. Con sesión: Cartelera, Dulcería, Datos, Operaciones (staff) y Configuración, que para un admin suma el espacio de trabajo (General y Personas: asientos pagados, miembros y próximo cobro, que fija staff con `make org-billing`); la
   página `restablecer` queda oculta pero accesible para que el enlace del correo abra aun con sesión. Una URL que no
-  corresponde al rol cae en la página por defecto; `usuarios` y `operaciones` además exigen admin.
+  corresponde al rol cae en la página por defecto; `configuracion/personas` y `configuracion/general` exigen admin y `operaciones`, staff.
 - **Correo.** `AC_MAIL_BACKEND=console` (default) escribe el correo en `data/logs/mail.log`; `ses` envía con boto3 y el
   rol de la instancia (IAM `ses:SendEmail`, identidad del dominio con DKIM; la cuenta nace en sandbox, ver
   `docs/aws-setup.md`). Si el correo falla, la cuenta y el enlace ya existen (`MailFailed` trae el enlace para entregarlo
@@ -1584,7 +1584,7 @@ servicio de Google Cloud que aún no existe. Teams, OneDrive, SharePoint y Power
   `digest_last_week`, así un envío fallido se reintenta.
 - **Dónde vive:** `organization.integrations` (JSON, `auth/orgs.py`). El admin cambia `slack_webhook` y
   `digest_recipients`; el trabajo escribe solo el estado. Hoy se configura con
-  `auth.cli org-integrations --org ID --slack-webhook URL --digest-to a@x,b@x`; la pantalla del admin falta.
+  `auth.cli org-integrations --org ID --slack-webhook URL --digest-to a@x,b@x`; el admin las edita en Configuración › Integraciones (`/api/integraciones`, que nunca devuelve el webhook).
 - **Trabajo:** `integrations` en `jobs/registry.py`, cada hora en `:20`, paso `venv` (`auth` usa `hashlib.scrypt`, que
   el Python del sistema no tiene).
 - **Pendiente:** pantalla de configuración en Ajustes, precios en los avisos, Google Drive (cuenta de servicio), y un

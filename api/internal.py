@@ -61,6 +61,18 @@ class Account(TypedDict):
     last_login_at: datetime | None
 
 
+class Workspace(TypedDict):
+    name: str
+    seats: int | None
+    members: int
+    next_billing_at: datetime | None
+
+
+class Integrations(TypedDict):
+    slack_connected: bool
+    digest_recipients: list[str]
+
+
 class TokenInfo(TypedDict):
     purpose: Literal["invite", "reset"]
     email: str
@@ -117,6 +129,11 @@ class LogoChange(BaseModel):
 
 class Interest(BaseModel):
     module: Module | None = None
+
+
+class IntegrationsChange(BaseModel):
+    slack_webhook: str | None = None
+    digest_recipients: list[Email] | None = None
 
 
 class AccountAction(BaseModel):
@@ -202,6 +219,24 @@ def set_logo(body: LogoChange, admin: Admin) -> Profile:
 def interest(body: Interest, user: User):
     """Avisa a Ventas que la cuenta quiere un módulo que su organización no tiene, o solo hablar con Ventas."""
     session.record_interest(user["id"], body.module)
+
+
+@api.get("/espacio")
+def workspace(admin: Admin) -> Workspace:
+    """Nombre, asientos pagados, miembros y próximo cobro de la organización del admin."""
+    return session.workspace(admin)
+
+
+@api.get("/integraciones")
+def integrations(admin: Admin) -> Integrations:
+    """Si la organización tiene Slack conectado y a quién llega el resumen por correo. El webhook no sale de la API."""
+    return session.integrations(admin)
+
+
+@api.post("/integraciones")
+def set_integrations(body: IntegrationsChange, admin: Admin) -> Integrations:
+    """Cambia los ajustes que vienen en el cuerpo; una cadena vacía o una lista vacía quita el ajuste."""
+    return session.set_integrations(admin, body.model_dump(exclude_unset=True))
 
 
 @api.get("/usuarios")

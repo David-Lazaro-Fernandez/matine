@@ -52,6 +52,32 @@ def list_orgs(conn):
     return [_decode(row) for row in rows(conn, "SELECT id, name, modules FROM organization ORDER BY id")]
 
 
+def workspace(conn, org_id):
+    """Lo que el admin ve de su espacio de trabajo: `name`, `seats` (pagados, None sin suscripción), `members` (cuentas
+    activas de clientes, con invitación pendiente incluida, porque ya ocupan un asiento) y `next_billing_at`."""
+    org = one(conn, "SELECT name, seats, next_billing_at FROM organization WHERE id = ?", (org_id,))
+    members = one(conn, "SELECT count(*) AS n FROM account WHERE org_id = ? AND active AND role != 'staff'",
+                  (org_id,))["n"]
+    return {**org, "members": members}
+
+
+def set_billing(conn, org_id, seats, next_billing_at):
+    """Fija asientos pagados y próximo cobro (fecha ISO). `seats=None` quita la suscripción y su fecha."""
+    if seats is None:
+        next_billing_at = None
+    elif seats < 1:
+        raise ValueError("los asientos deben ser 1 o más")
+    elif not next_billing_at:
+        raise ValueError("falta la fecha del próximo cobro")
+    else:
+        when = datetime.fromisoformat(next_billing_at)
+        next_billing_at = when.replace(tzinfo=when.tzinfo or timezone.utc).astimezone(timezone.utc).isoformat()
+    with cursor(conn) as cur:
+        cur.execute("UPDATE organization SET seats = ?, next_billing_at = ? WHERE id = ?",
+                    (seats, next_billing_at, org_id))
+        return cur.rowcount == 1
+
+
 def decode_modules(raw):
     """La columna `modules` como lista: '["cartelera"]' → ['cartelera']."""
     return json.loads(raw or "[]")
