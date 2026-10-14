@@ -7,7 +7,7 @@ VENV ?= .venv/bin
 
 .PHONY: help job units units-check labels tick snapshot seats occupancy post-start health prices concessions delivery capacity capacity-cinemex presale \
         calibrate-cinemex dashboard api backup launchd-load launchd-unload \
-        user-create user-list user-reset user-deactivate user-activate user-role org-create org-modules org-billing org-list auth-prune deploy restart check lint test test-live test-ui fixtures hooks \
+        user-create user-list user-reset user-deactivate user-activate user-role org-create org-modules org-billing org-list auth-prune deploy restart check lint test test-live test-ui test-eval fixtures hooks \
         marketing-dev dashboard-dev marketing-build export-places
 
 # Mata lo que escucha en el puerto antes de levantar un servidor de desarrollo. Solo LISTEN, para no cortar navegadores.
@@ -151,6 +151,9 @@ test:               ## pruebas (las de pantalla se omiten si no hay data/snapsho
 
 test-live:          ## la captura contra las APIs reales, alcance chico de cada cadena (red; Cinépolis necesita WARP fuera de la Mac)
 	AC_LIVE=1 $(VENV)/python -m pytest -q tests/test_live_capture.py
+
+test-eval:          ## el asistente responde las 54 preguntas del conjunto de oro con DeepSeek real (AC_EVAL, DEEPSEEK_API_KEY; usa red y cuesta)
+	AC_EVAL=1 $(VENV)/python -m pytest -q -s tests/test_agent_eval.py -k real_model
 
 test-ui:            ## el dashboard en celular con Chromium (build de dashboard/, captura grabada); deja capturas de pantalla
 	cd dashboard && pnpm run build

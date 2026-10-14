@@ -71,10 +71,12 @@ def describe_table(conn, table):
     """Columnas de una tabla del catálogo (`column`, `label`) y su número de renglones."""
     if table not in datasets.DATASETS:
         return _refusal(labels.AGENT_TEXT["unknown_table"].format(table=table))
-    first = datasets.page(conn, table, limit=1)
-    columns = [{"column": c, "label": labels.COLUMN_LABEL.get(c, c)} for c in (first[0] if first else {})]
-    return _result(columns, table=table, total_rows=datasets.count(conn, table),
-                   filters=list(datasets.DATASETS[table]["filters"]))
+    filters = list(datasets.DATASETS[table]["filters"])
+    # Las tablas con fechas piden un periodo: la semana de cine en curso, como el explorador.
+    period = dict(zip(("d0", "d1"), queries.cinema_week(queries.today()))) if "dates" in filters else {}
+    columns = [{"column": c, "label": labels.COLUMN_LABEL.get(c, c)} for c in datasets.columns(conn, table, **period)]
+    return _result(columns, table=table, total_rows=datasets.count(conn, table, **period), filters=filters,
+                   **({"window": {"from": period["d0"], "to": period["d1"]}} if period else {}))
 
 
 def get_cinema_ranking(conn, chain="cinemex", plaza="cdmx", order="desc", limit=10, days=cinema_sales.DAYS):

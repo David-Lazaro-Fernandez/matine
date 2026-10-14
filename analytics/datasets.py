@@ -207,6 +207,12 @@ def count(conn, dataset, **filters):
     return conn.execute(f"SELECT count(*) FROM ({sql})", params).fetchone()[0]
 
 
+def columns(conn, dataset, **filters):
+    """Los nombres de columna del conjunto `dataset`, aunque no tenga renglones con esos filtros."""
+    sql, params, _ = DATASETS[dataset]["fn"](conn, **filters)
+    return [c[0] for c in conn.execute(f"SELECT * FROM ({sql}) LIMIT 0", params).description]
+
+
 def page(conn, dataset, sort=None, desc=False, limit=50, offset=0, **filters):
     """Los renglones de una página del conjunto `dataset`. `sort` es una columna del conjunto; una que no existe se
     ignora. Los vacíos van al final en ambas direcciones. Ejemplo: `page(conn, "cinemas", sort="seats", desc=True)`."""

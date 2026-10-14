@@ -65,10 +65,16 @@ def test_every_catalog_table_has_a_description_and_lists(capture_db):
     assert tools.describe_table(capture_db("cinemex"), "cinemas")["total_rows"] > 0
 
 
-def test_title_screens_return_shares_for_both_chains(capture_db):
+def test_title_screens_return_shares_for_both_chains(capture_db, frozen_week):
     out = tools.get_title_screens(capture_db("cinemex", "cinepolis"), plaza=None)
-    assert out["window"]["from"] <= out["window"]["to"]
-    assert all("share_cinemex" in r and "share_cinepolis" in r for r in out["rows"])
+    assert out["window"] == {"from": "2026-09-24", "to": "2026-09-30"} and out["row_count"] > 0
+    assert all("share_cinemex_text" in r and "share_cinepolis" in r for r in out["rows"])
+    assert out["rows"][0]["share_cinemex_text"].endswith(" %")
+
+
+def test_describing_a_table_with_dates_uses_the_cinema_week(capture_db, frozen_week):
+    out = tools.describe_table(capture_db("cinemex"), "ticket_prices")
+    assert out["window"]["from"] == "2026-09-24" and out["row_count"] > 0
 
 
 def test_the_agent_connection_cannot_write(tmp_path):
