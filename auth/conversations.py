@@ -3,9 +3,9 @@
 Cada pregunta deja un renglón de `agent_audit` aunque falle. Una charla solo la ve la cuenta que la abrió.
 """
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from .db import one, rows, transaction
+from .db import cursor, one, rows, transaction
 
 
 def _now():
@@ -37,13 +37,13 @@ def history(conn, account_id, conversation_id):
                          WHERE c.id = ? AND c.account_id = ? ORDER BY m.id""", (conversation_id, account_id))
 
 
-def audit(conn, user, environment, conversation_id=None, provider=None, tools=(), latency_ms=None,
+def audit(conn, user, environment, conversation_id=None, provider=None, model=None, tools=(), latency_ms=None,
           tokens_in=None, tokens_out=None, error=None):
     """Registra una pregunta. `tools`: lista de {name, arguments, rows, ms}."""
-    conn.execute("""INSERT INTO agent_audit (at, account_id, org_id, role, environment, conversation_id, provider, tools,
-                                             latency_ms, tokens_in, tokens_out, error)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                 (_now(), user["id"], user.get("org_id"), user["role"], environment, conversation_id, provider,
+    conn.execute("""INSERT INTO agent_audit (at, account_id, org_id, role, environment, conversation_id, provider, model,
+                                             tools, latency_ms, tokens_in, tokens_out, error)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 (_now(), user["id"], user.get("org_id"), user["role"], environment, conversation_id, provider, model,
                   json.dumps(list(tools), default=str), latency_ms, tokens_in, tokens_out, error))
 
 
@@ -70,3 +70,24 @@ def tokens_since(conn, org_id, since):
     """Tokens de entrada y salida que gastó la organización desde `since` (datetime)."""
     return one(conn, """SELECT coalesce(sum(tokens_in), 0) + coalesce(sum(tokens_out), 0) AS n
                         FROM agent_audit WHERE org_id = ? AND at >= ?""", (org_id, since))["n"]
+
+
+# Las conversaciones se conservan 12 meses sin actividad. La auditoría no guarda texto y se queda: de ella salen las
+# estadísticas de uso.
+RETENTION_DAYS = 365
+
+
+def prune(conn, now=None):
+    """Borra las conversaciones sin actividad en `RETENTION_DAYS` días, con sus mensajes y pulgares. Devuelve cuántas."""
+    cutoff = (now or _now()) - timedelta(days=RETENTION_DAYS)
+    old = """SELECT c.id FROM agent_conversation c
+             WHERE coalesce((SELECT max(m.created_at) FROM agent_message m WHERE m.conversation_id = c.id), c.created_at) < ?"""
+    with transaction(conn):
+        conn.execute(f"""DELETE FROM agent_feedback WHERE message_id IN
+                         (SELECT m.id FROM agent_message m WHERE m.conversation_id IN ({old}))""", (cutoff,))
+        conn.execute(f"DELETE FROM agent_message WHERE conversation_id IN ({old})", (cutoff,))
+        # La auditoría se queda sin la referencia: lo que apuntaba a la conversación ya no existe.
+        conn.execute(f"UPDATE agent_audit SET conversation_id = NULL WHERE conversation_id IN ({old})", (cutoff,))
+        with cursor(conn) as cur:
+            cur.execute(f"DELETE FROM agent_conversation WHERE id IN ({old})", (cutoff,))
+            return cur.rowcount

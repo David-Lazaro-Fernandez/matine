@@ -695,6 +695,31 @@ AGENT_SUGGESTIONS = [
     {"key": "snacks", "label": "Dulcería", "question": "¿Cómo están nuestros precios de palomitas frente a Cinépolis?"},
     {"key": "tables", "label": "Qué datos hay", "question": "¿Qué datos puedes consultar?"},
 ]
+# Pantalla de uso de IA (Configuración): tokens exactos y costo estimado por persona, día y modelo.
+AGENT_USAGE = {
+    "title": "Uso de IA",
+    "period": "Periodo",
+    "period_days": "Últimos {days} días",
+    "organization": "Organización",
+    "all_organizations": "Todas",
+    "questions": "Preguntas",
+    "tokens": "Tokens",
+    "cost": "Costo estimado",
+    "errors": "Con error",
+    "person": "Persona",
+    "day": "Día",
+    "provider": "Proveedor",
+    "model": "Modelo",
+    "by_person": "Por persona",
+    "by_day": "Por día",
+    "by_model": "Por modelo",
+    "by_organization": "Por organización",
+    "no_price": "Sin precio",
+    "unpriced": "{tokens} tokens sin precio",
+    "unregistered": "Sin registrar",
+    "estimate_note": "Los tokens son exactos. El costo es un tope estimado: usa el precio verificado de cada modelo y no descuenta la caché del proveedor.",
+    "empty": "Nadie ha usado el asistente en este periodo.",
+}
 # Proveedores de IA que staff puede elegir (agent/providers/).
 AGENT_PROVIDER_LABEL = {"bedrock": "Amazon Bedrock", "openai": "ChatGPT", "claude": "Claude", "mistral": "Mistral", "gemini": "Gemini",
                         "deepseek": "DeepSeek", "deepseek-dev": "DeepSeek (dev)"}

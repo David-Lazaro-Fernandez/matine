@@ -166,13 +166,14 @@ def ask(app, user, question, conversation_id=None, on_step=lambda step, **detail
     tools.require_access(user)
     _check_limits(app, user)
     started = time.monotonic()
-    audit = {"provider": None, "tools": [], "tokens_in": None, "tokens_out": None}
+    audit = {"provider": None, "model": None, "tools": [], "tokens_in": None, "tokens_out": None}
     error = None
     try:
         configured = orgs.agent_provider(app, user["org_id"])
         if not configured:
             raise AgentError(AGENT_TEXT["no_provider"])
         audit["provider"], api_key = configured
+        audit["model"] = providers.model_of(audit["provider"])
         conversation_id, past = _open_conversation(app, user, conversation_id)
         conversations.add_message(app, conversation_id, "user", question)
         messages = [{"role": "system", "content": server.INSTRUCTIONS}, *past, {"role": "user", "content": question}]

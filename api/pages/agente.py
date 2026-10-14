@@ -9,12 +9,12 @@ import queue
 import threading
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, StringConstraints
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
-from agent import host, providers, tools
+from agent import host, providers, tools, usage
 from auth import conversations, orgs
 
 from .. import session
@@ -24,6 +24,7 @@ router = APIRouter(prefix="/agente", dependencies=[Depends(session.require_modul
 Question = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
 User = Annotated[dict, Depends(session.current_user)]
 Staff = Annotated[dict, Depends(session.require_staff)]
+Admin = Annotated[dict, Depends(session.require_admin)]
 
 
 class Ask(BaseModel):
@@ -50,6 +51,45 @@ class Message(TypedDict):
     id: int
     role: str
     content: str
+
+
+class Spend(TypedDict):
+    questions: int
+    errors: int
+    tokens_in: int
+    tokens_out: int
+    tokens: int
+    cost_usd: float | None
+    unpriced_tokens: int
+
+
+class PersonUsage(Spend):
+    name: str
+    email: str
+
+
+class DayUsage(Spend):
+    day: str
+
+
+class ModelUsage(Spend):
+    provider: str | None
+    model: str | None
+
+
+class OrgUsage(Spend):
+    org_id: int | None
+    name: str | None
+
+
+class Usage(TypedDict):
+    days: int
+    since: str
+    totals: Spend
+    people: list[PersonUsage]
+    by_day: list[DayUsage]
+    models: list[ModelUsage]
+    organizations: NotRequired[list[OrgUsage]]
 
 
 class Thumb(BaseModel):
@@ -147,3 +187,10 @@ def set_provider(org_id: int, body: ProviderIn, staff: Staff):
     if not session.with_conn(lambda conn: orgs.set_agent_provider(conn, org_id, body.provider, body.api_key, actor_id=staff["id"],
                                                            secret=body.provider not in providers.KEYLESS)):
         raise HTTPException(404)
+
+
+@router.get("/uso")
+def usage_stats(admin: Admin, org_id: int | None = None, days: Annotated[int, Query(ge=1, le=365)] = 30) -> Usage:
+    """Uso de IA de la organización del admin. Staff ve todas, o una con `org_id`."""
+    scope = org_id if admin["role"] == "staff" else admin["org_id"]
+    return session.with_conn(lambda conn: usage.summary(conn, org_id=scope, days=days))

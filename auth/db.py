@@ -131,6 +131,8 @@ _ACCOUNT_COLUMNS = {"avatar": "TEXT", "theme": "TEXT NOT NULL DEFAULT 'system'",
 # `agent_provider` y `agent_key` (cifrada por `auth/secrets.py`) son el proveedor de IA de la organización.
 _ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'", "seats": "INTEGER", "next_billing_at": "TEXT",
                 "agent_provider": "TEXT", "agent_key": "TEXT"}
+# `model` es el id del modelo que respondió: con él se calcula el costo estimado de cada pregunta.
+_AUDIT_COLUMNS = {"model": "TEXT"}
 _OLD_ROLE_CHECK = "CHECK (role IN ('admin', 'viewer'))"
 _ROLE_CHECK = "CHECK (role IN ('staff', 'admin', 'analyst', 'viewer'))"
 # Lo que se contrata por separado. "Completo" son todos.
@@ -208,7 +210,7 @@ def _default_org(conn):
 
 
 def _add_columns(conn):
-    for table, columns in (("account", _ACCOUNT_COLUMNS), ("organization", _ORG_COLUMNS)):
+    for table, columns in (("account", _ACCOUNT_COLUMNS), ("organization", _ORG_COLUMNS), ("agent_audit", _AUDIT_COLUMNS)):
         present = {column["name"] for column in conn.execute(f"PRAGMA table_info({table})")}
         for name, declaration in columns.items():
             if name in present:

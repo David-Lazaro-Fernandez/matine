@@ -25,3 +25,12 @@ def _deepseek_dev(_stored_key, messages, tools, temperature=None):
 
 CHAT = {"bedrock": bedrock.chat, "deepseek": deepseek.chat, DEV: _deepseek_dev,
         **{name: compatible.make_chat(name) for name in config.AGENT_COMPATIBLE}}
+
+
+def model_of(provider):
+    """El id del modelo con el que responde `provider`, el que se cobra. Ejemplo: `model_of("deepseek")` → `"deepseek-flash"`."""
+    if provider in config.AGENT_COMPATIBLE:
+        return config.AGENT_COMPATIBLE[provider]["model"]
+    if provider == "bedrock":
+        return config.AGENT_BEDROCK_MODEL
+    return config.AGENT_MODEL

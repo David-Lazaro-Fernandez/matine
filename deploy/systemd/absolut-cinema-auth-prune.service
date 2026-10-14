@@ -1,6 +1,6 @@
 # Generado por `python3 -m jobs.units write` desde jobs/registry.py; no se edita a mano.
 [Unit]
-Description=absolut-cinema: Borra sesiones y enlaces de acceso vencidos hace más de 90 días
+Description=absolut-cinema: Borra sesiones y enlaces de acceso vencidos hace más de 90 días y conversaciones del asistente sin actividad en 12 meses
 After=network-online.target
 Wants=network-online.target
 
