@@ -15,6 +15,7 @@ const PROVIDERS = Object.keys(AGENT_PROVIDER_LABEL) as Provider[];
 // Proveedores sin clave que pegar: usan la del entorno del servidor o el rol de AWS.
 const KEYLESS: Provider[] = ['bedrock', 'deepseek-dev'];
 
+// Provisional: los logos viven en `public/` y deben pasar a imágenes en S3 (DESIGN.md, selector de proveedor de IA).
 function ProviderName({ provider }: { provider: Provider }) {
   const s = useStyles();
   return (

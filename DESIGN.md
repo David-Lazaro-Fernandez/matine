@@ -265,6 +265,13 @@ Una sola página (`app/(app)/agente/page.tsx`) con dos estados. Todo son tokens 
   al elegir una conversación, empezar una nueva o borrar la abierta. "Nueva conversación" también está en el encabezado de
   la página en celular; en escritorio se oculta porque el panel ya la tiene.
 
+### Selector de proveedor de IA (Configuración → Asistente de IA)
+
+Solo staff. Un `Dropdown` de Fluent con el logo de cada proveedor (20 px, `objectFit: contain`) y su nombre, tanto en la
+lista como en el botón. Los proveedores sin clave que pegar (Amazon Bedrock y `deepseek-dev`) esconden el campo de clave.
+**Pendiente:** los logos son `dashboard/public/<proveedor>.webp`, un archivo por proveedor dentro del repo. Deben pasar a
+imágenes en S3, con su dirección en la configuración. Falta el logo de Bedrock: sin archivo, el selector oculta la imagen.
+
 ## Carga
 
 Ninguna pantalla se queda en blanco ni con un `Spinner` suelto. Mientras un endpoint no responde, la página pinta
