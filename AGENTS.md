@@ -24,6 +24,7 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
 | Negocio | `analytics/` | **solo stdlib** | nada (abre la base en `mode=ro`) |
 | Presentación | `dashboard/` (Next.js estático) + `api/internal.py` y `api/pages/` | `dashboard/`: Node/pnpm solo para el build; API: `.venv` (fastapi, uvicorn) | nada |
 | Acceso | `auth/` | `.venv` (`hashlib.scrypt`; boto3 solo para SES) | `data/app.db` (organizaciones, cuentas, perfil, sesiones, enlaces, auditoría, logo), **nada más** |
+| Agente | `agent/` | `.venv` (fastmcp 4.1.0) | nada directo: conversaciones, auditoría y pulgares van por `auth/conversations.py` a `data/app.db` |
 | Programación | `jobs/` | **solo stdlib**, `/usr/bin/python3` | `data/logs/jobs.jsonl`, `data/locks/`; genera `deploy/systemd/` |
 | Avisos | `integrations/` | `.venv` (`analytics/` en solo lectura; `auth/` para config y estado) | nada directo: el estado de envío va por `auth/orgs.py` a `data/app.db` |
 | API pública | `api/` | `.venv` (fastapi, uvicorn) | nada (lee `snapshots.db` con `analytics.connect()`, `mode=ro`) |
@@ -67,7 +68,8 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
 - **El dashboard nunca escribe datos.** `analytics.connect()` abre `snapshots.db` en `mode=ro`, a propósito. Lo único
   que escribe desde el dashboard es `auth/`, y solo en `app.db` (cuentas y su perfil, sesiones, enlaces de acceso, auditoría, logo); las
   endpoints no lo llaman directo, pasan por `api/session.py`, el único módulo que conoce la cookie de sesión.
-  `scraper/` y `analytics/` jamás importan `auth/`, y `auth/` no importa FastAPI.
+  `scraper/` y `analytics/` jamás importan `auth/`, y `auth/` no importa FastAPI. Las herramientas de `agent/` envuelven
+  funciones de `analytics/` (sin SQL) y `agent/` no importa FastAPI; nadie importa `agent/` salvo `api/`.
 - Las reglas de "qué cuenta como cambio" y "cómo se cierra una función" viven en `scraper/diff.py` (`changed_fields`,
   `closing_kind`) y `scraper/normalize.py` (`TRACKED_FIELDS`); scraper y dashboard las comparten y no se duplican. El
   crudo (`data/raw/`) es la fuente para reconstruir cualquier historia con esas mismas reglas.

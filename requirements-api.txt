@@ -1,3 +1,4 @@
 # Solo para la API pública (api/), en el mismo venv del dashboard. analytics/ sigue sin dependencias.
 fastapi>=0.115
 uvicorn>=0.30
+fastmcp==4.1.0

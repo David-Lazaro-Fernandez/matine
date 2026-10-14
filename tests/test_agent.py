@@ -107,3 +107,41 @@ def test_conversations_audit_and_feedback_belong_to_their_account(app):
     assert conversations.set_feedback(app, mine["id"], answer, False) is True
     conversations.audit(app, mine, "dev", conversation_id=chat, tools=[{"name": "get_cinema_ranking", "rows": 3}])
     assert app.execute("SELECT count(*) AS n FROM agent_audit").fetchone()["n"] == 1
+
+
+EXPECTED_TOOLS = {"list_tables", "describe_table", "get_cinema_ranking", "get_title_screens", "compare_titles",
+                  "get_popcorn_price"}
+
+
+def _ask(user, name, arguments):
+    import asyncio
+
+    from fastmcp import Client
+
+    from agent import server
+
+    async def go():
+        async with Client(server.build(user)) as client:
+            tool_list = await client.list_tools()
+            return tool_list, await client.call_tool(name, arguments)
+
+    return asyncio.run(go())
+
+
+def test_server_lists_exactly_the_expected_read_only_tools(app):
+    listed, _ = _ask(_user(app, "analyst", ["agente"]), "list_tables", {})
+    assert {t.name for t in listed} == EXPECTED_TOOLS
+    assert all(t.annotations.readOnlyHint and not t.annotations.destructiveHint for t in listed)
+
+
+def test_server_answers_through_the_in_memory_client(app):
+    _, result = _ask(_user(app, "analyst", ["agente"]), "list_tables", {})
+    assert {r["table"] for r in result.data["rows"]} == set(datasets.DATASETS)
+
+
+def test_the_server_is_not_built_for_a_viewer_or_an_org_without_the_module(app):
+    from agent import server
+
+    for role, modules in (("viewer", ["agente"]), ("analyst", ["cartelera"])):
+        with pytest.raises(tools.AccessDenied):
+            server.build(_user(app, role, modules))
