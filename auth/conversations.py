@@ -18,6 +18,12 @@ def start(conn, account_id):
                (account_id, _now()))["id"]
 
 
+def owns(conn, account_id, conversation_id):
+    """Si la charla existe y es de la cuenta."""
+    return one(conn, "SELECT 1 AS ok FROM agent_conversation WHERE id = ? AND account_id = ?",
+               (conversation_id, account_id)) is not None
+
+
 def add_message(conn, conversation_id, role, content):
     """Guarda un mensaje (`role`: `user` o `assistant`) y devuelve su id."""
     return one(conn, """INSERT INTO agent_message (conversation_id, role, content, created_at)

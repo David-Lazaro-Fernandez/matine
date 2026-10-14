@@ -227,6 +227,13 @@ APP_DB_PATH = Path(os.environ.get("AC_APP_DB", DATA_DIR / "app.db"))
 # `dev` solo codifica y está prohibido con `AC_ENV=prod`.
 KEY_BACKEND = os.environ.get("AC_KEY_BACKEND", "dev")
 KMS_KEY_ID = os.environ.get("AC_KMS_KEY_ID", "")
+# Agente de IA (agent/). DeepSeek con `deepseek-flash` y sin modo de razonamiento: es lo más barato y no hay que devolver
+# `reasoning_content` entre llamadas (verificado 2026-10-14 en api-docs.deepseek.com).
+AGENT_BASE_URL = os.environ.get("AC_AGENT_BASE_URL", "https://api.deepseek.com")
+AGENT_MODEL = os.environ.get("AC_AGENT_MODEL", "deepseek-flash")
+AGENT_THINKING = os.environ.get("AC_AGENT_THINKING", "disabled")
+# Vueltas de herramientas por pregunta, para que un modelo que no converge no gaste sin fin.
+AGENT_MAX_STEPS = int(os.environ.get("AC_AGENT_MAX_STEPS", "6"))
 # `console` escribe data/logs/mail.log; `ses` envía por Amazon SES.
 MAIL_BACKEND = os.environ.get("AC_MAIL_BACKEND", "console")
 # En SES, identidad verificada.

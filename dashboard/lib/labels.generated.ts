@@ -1014,7 +1014,14 @@ export const AGENT_TEXT = {
   "unknown_table": "La tabla {table} no existe.",
   "seats_only": "Solo hay butacas medidas en estas plazas: {plazas}. No puedo responder sobre venta en otras.",
   "chain_not_compared": "Solo comparo Cinemex y Cinépolis.",
-  "title_not_found": "No encuentro {title} en cartelera."
+  "title_not_found": "No encuentro {title} en cartelera.",
+  "no_provider": "Tu organización aún no tiene un proveedor de IA configurado.",
+  "unknown_conversation": "No encuentro esa conversación.",
+  "provider_failed": "No pude obtener respuesta del modelo. Intenta de nuevo en unos minutos.",
+  "empty_answer": "El modelo no devolvió respuesta. Intenta de nuevo.",
+  "too_many_steps": "No logré responder en el número de pasos permitido. Haz una pregunta más concreta.",
+  "bad_arguments": "Los argumentos de la herramienta no son un JSON válido.",
+  "tool_failed": "La herramienta falló y no hay dato para esa parte de la pregunta."
 } as const;
 
 export const DATA_TEXT = {

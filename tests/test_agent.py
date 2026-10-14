@@ -22,7 +22,7 @@ def app(tmp_path):
 def _user(app, role, modules):
     org = orgs.create(app, "Otra", modules)
     user, _ = flows.invite(app, None, f"{role}@test.mx", role, role, send_mail=False, org_id=org["id"])
-    return flows.profile(app, user["id"])
+    return {**flows.profile(app, user["id"]), "org_id": org["id"]}
 
 
 @pytest.mark.parametrize("role, modules, allowed", [
@@ -184,3 +184,105 @@ def test_the_dev_key_backend_is_refused_in_prod(app, monkeypatch):
     org = orgs.create(app, "Uno", ["agente"])
     with pytest.raises(ValueError):
         orgs.set_agent_provider(app, org["id"], "anthropic", "sk-x")
+
+
+def _scripted(*replies):
+    """Proveedor falso: devuelve las respuestas en orden y guarda lo que recibió."""
+    seen = []
+    queue = list(replies)
+
+    def chat(api_key, messages, tool_specs):
+        seen.append({"api_key": api_key, "messages": [dict(m) for m in messages], "tools": tool_specs})
+        reply = queue.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return {"message": {"role": "assistant", "content": reply.get("content"), "tool_calls": reply.get("raw")},
+                "content": reply.get("content"), "tool_calls": reply.get("calls", []),
+                "tokens_in": 10, "tokens_out": 5}
+
+    chat.seen = seen
+    return chat
+
+
+def _ready(app, monkeypatch, chat, user=None):
+    from agent import host, providers
+
+    monkeypatch.setitem(providers.CHAT, "deepseek", chat)
+    user = user or _user(app, "analyst", ["agente"])
+    orgs.set_agent_provider(app, user["org_id"], "deepseek", "sk-prueba")
+    return host, user
+
+
+def _tool_call(name="list_tables", arguments={}):  # noqa: B006
+    return {"calls": [{"id": "c1", "name": name, "arguments": arguments}], "raw": []}
+
+
+def test_the_loop_calls_a_tool_then_answers_and_audits(app, monkeypatch):
+    chat = _scripted(_tool_call(), {"content": "Hay siete tablas."})
+    host, user = _ready(app, monkeypatch, chat)
+    out = host.ask(app, user, "¿Qué tablas hay?")
+    assert out["answer"] == "Hay siete tablas." and out["tools"][0]["name"] == "list_tables"
+    assert chat.seen[0]["api_key"] == "sk-prueba" and len(chat.seen[0]["tools"]) == len(EXPECTED_TOOLS)
+    tool_message = chat.seen[1]["messages"][-1]
+    assert tool_message["role"] == "tool" and "ventas" not in tool_message["content"] and "cinemas" in tool_message["content"]
+    audit = app.execute("SELECT * FROM agent_audit").fetchone()
+    assert (audit["tokens_in"], audit["tokens_out"], audit["error"], audit["provider"]) == (20, 10, None, "deepseek")
+    assert [m["role"] for m in conversations.history(app, user["id"], out["conversation_id"])] == ["user", "assistant"]
+
+
+def test_a_provider_failure_gives_no_invented_answer_and_is_audited(app, monkeypatch):
+    host, user = _ready(app, monkeypatch, _scripted(RuntimeError("boom")))
+    with pytest.raises(host.AgentError):
+        host.ask(app, user, "hola")
+    assert "RuntimeError" in app.execute("SELECT error FROM agent_audit").fetchone()["error"]
+    assert app.execute("SELECT count(*) AS n FROM agent_message WHERE role = 'assistant'").fetchone()["n"] == 0
+
+
+def test_the_loop_stops_at_the_step_limit(app, monkeypatch):
+    monkeypatch.setattr(tools.config, "AGENT_MAX_STEPS", 3)
+    chat = _scripted(*[_tool_call() for _ in range(3)])
+    host, user = _ready(app, monkeypatch, chat)
+    with pytest.raises(host.AgentError):
+        host.ask(app, user, "hola")
+    assert len(chat.seen) == 3
+
+
+def test_invalid_tool_arguments_and_refusals_go_back_to_the_model(app, monkeypatch):
+    from agent import server
+
+    monkeypatch.setattr(server.db, "connect", lambda: sqlite3.connect(":memory:"))
+    chat = _scripted(_tool_call(arguments=None), _tool_call("describe_table", {"table": "app"}), {"content": "ok"})
+    host, user = _ready(app, monkeypatch, chat)
+    host.ask(app, user, "hola")
+    assert "JSON" in chat.seen[1]["messages"][-1]["content"]
+    assert "refusal" in chat.seen[2]["messages"][-1]["content"]
+
+
+def test_a_missing_provider_and_a_foreign_conversation_are_refused(app, monkeypatch):
+    from agent import host
+
+    user = _user(app, "analyst", ["agente"])
+    with pytest.raises(host.AgentError):
+        host.ask(app, user, "hola")
+    other = _user(app, "admin", ["agente"])
+    foreign = conversations.start(app, other["id"])
+    host, user = _ready(app, monkeypatch, _scripted({"content": "no debe llegar"}), user)
+    with pytest.raises(host.AgentError):
+        host.ask(app, user, "hola", conversation_id=foreign)
+    assert conversations.history(app, other["id"], foreign) == []
+
+
+def test_deepseek_parses_tool_calls_and_survives_bad_json(monkeypatch):
+    from agent.providers import deepseek
+
+    reply = {"usage": {"prompt_tokens": 7, "completion_tokens": 3},
+             "choices": [{"message": {"role": "assistant", "content": None, "tool_calls": [
+                 {"id": "a", "type": "function", "function": {"name": "x", "arguments": '{"n": 1}'}},
+                 {"id": "b", "type": "function", "function": {"name": "y", "arguments": "{roto"}}]}}]}
+    sent = {}
+    monkeypatch.setattr(deepseek.http, "request_json", lambda url, **kw: sent.update(kw, url=url) or reply)
+    out = deepseek.chat("sk-1", [{"role": "user", "content": "hi"}], [])
+    assert [c["arguments"] for c in out["tool_calls"]] == [{"n": 1}, None]
+    assert (out["tokens_in"], out["tokens_out"]) == (7, 3)
+    assert sent["headers"] == {"Authorization": "Bearer sk-1"} and sent["body"]["thinking"] == {"type": "disabled"}
+    assert "tools" not in sent["body"] and sent["url"].endswith("/chat/completions")
