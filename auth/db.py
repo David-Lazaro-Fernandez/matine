@@ -128,7 +128,9 @@ _ACCOUNT_COLUMNS = {"avatar": "TEXT", "theme": "TEXT NOT NULL DEFAULT 'system'",
 # Columnas de `organization` posteriores a la primera versión (mismo mecanismo que `account`). `integrations` guarda
 # el JSON de `auth/orgs.py` (webhook de Slack, destinatarios del resumen y su estado de envío). `seats` y
 # `next_billing_at` (ISO, UTC) los fija staff; NULL es una organización sin suscripción.
-_ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'", "seats": "INTEGER", "next_billing_at": "TEXT"}
+# `agent_provider` y `agent_key` (cifrada por `auth/secrets.py`) son el proveedor de IA de la organización.
+_ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'", "seats": "INTEGER", "next_billing_at": "TEXT",
+                "agent_provider": "TEXT", "agent_key": "TEXT"}
 _OLD_ROLE_CHECK = "CHECK (role IN ('admin', 'viewer'))"
 _ROLE_CHECK = "CHECK (role IN ('staff', 'admin', 'analyst', 'viewer'))"
 # Lo que se contrata por separado. "Completo" son todos.

@@ -145,3 +145,42 @@ def test_the_server_is_not_built_for_a_viewer_or_an_org_without_the_module(app):
     for role, modules in (("viewer", ["agente"]), ("analyst", ["cartelera"])):
         with pytest.raises(tools.AccessDenied):
             server.build(_user(app, role, modules))
+
+
+class _FakeKms:
+    """Cifra con un XOR y exige el mismo contexto, como KMS."""
+
+    def encrypt(self, KeyId, Plaintext, EncryptionContext):
+        self.calls = [("encrypt", KeyId, EncryptionContext)]
+        return {"CiphertextBlob": bytes(b ^ 7 for b in Plaintext) + repr(sorted(EncryptionContext.items())).encode()}
+
+    def decrypt(self, CiphertextBlob, EncryptionContext):
+        suffix = repr(sorted(EncryptionContext.items())).encode()
+        if not CiphertextBlob.endswith(suffix):
+            raise PermissionError("InvalidCiphertextException")
+        return {"Plaintext": bytes(b ^ 7 for b in CiphertextBlob[:-len(suffix)])}
+
+
+def test_the_provider_key_is_stored_encrypted_with_kms_and_bound_to_its_org(app, monkeypatch):
+    from auth import secrets
+    monkeypatch.setattr(secrets.config, "KEY_BACKEND", "kms")
+    monkeypatch.setattr(secrets.config, "KMS_KEY_ID", "alias/matine")
+    monkeypatch.setattr(secrets, "_kms", _FakeKms)
+    mine, other = orgs.create(app, "Uno", ["agente"]), orgs.create(app, "Dos", ["agente"])
+    assert orgs.set_agent_provider(app, mine["id"], "anthropic", "sk-secreto")
+    stored = app.execute("SELECT agent_key FROM organization WHERE id = ?", (mine["id"],)).fetchone()["agent_key"]
+    assert "sk-secreto" not in stored
+    assert orgs.agent_provider(app, mine["id"]) == ("anthropic", "sk-secreto")
+    assert orgs.agent_provider(app, other["id"]) is None
+    with pytest.raises(PermissionError):
+        secrets.decrypt(stored, other["id"])
+    assert "sk-secreto" not in str(orgs.list_orgs(app)) and "agent_key" not in orgs.workspace(app, mine["id"])
+    orgs.set_agent_provider(app, mine["id"], None, None)
+    assert orgs.agent_provider(app, mine["id"]) is None
+
+
+def test_the_dev_key_backend_is_refused_in_prod(app, monkeypatch):
+    monkeypatch.setenv("AC_ENV", "prod")
+    org = orgs.create(app, "Uno", ["agente"])
+    with pytest.raises(ValueError):
+        orgs.set_agent_provider(app, org["id"], "anthropic", "sk-x")

@@ -8,6 +8,7 @@ filtra). Los módulos de una organización son claves de `MODULES`; un plan es s
 import json
 from datetime import datetime, timezone
 
+from . import secrets
 from .db import MODULES, cursor, one, rows, transaction
 
 ROLES = ("staff", "admin", "analyst", "viewer")
@@ -137,3 +138,21 @@ def _merge(conn, org_id, changes):
             raise ValueError(f"no hay organización {org_id}")
         values = {**json.loads(row["integrations"]), **changes}
         conn.execute("UPDATE organization SET integrations = ? WHERE id = ?", (json.dumps(values), org_id))
+
+
+def set_agent_provider(conn, org_id, provider, api_key):
+    """Guarda el proveedor de IA de la organización y su clave, cifrada con KMS. `api_key=None` quita ambos."""
+    token = secrets.encrypt(api_key, org_id) if api_key else None
+    with cursor(conn) as cur:
+        cur.execute("UPDATE organization SET agent_provider = ?, agent_key = ? WHERE id = ?",
+                    (provider if api_key else None, token, org_id))
+        return cur.rowcount == 1
+
+
+def agent_provider(conn, org_id):
+    """(proveedor, clave en claro) de la organización, o None sin configurar. Solo para `agent/`: la clave nunca
+    llega al navegador ni al modelo."""
+    row = one(conn, "SELECT agent_provider, agent_key FROM organization WHERE id = ?", (org_id,))
+    if not row or not row["agent_key"]:
+        return None
+    return row["agent_provider"], secrets.decrypt(row["agent_key"], org_id)

@@ -223,6 +223,10 @@ PRECALC_ENABLED = os.environ.get("AC_PRECALC", "1") != "0"
 # Cuentas, sesiones, enlaces y auditoría en su propia base SQLite: la escribe solo auth/ (dashboard y auth.cli), nunca
 # la captura; snapshots.db sigue siendo solo de la captura (decisión 2026-09-25: sin Postgres ni RDS).
 APP_DB_PATH = Path(os.environ.get("AC_APP_DB", DATA_DIR / "app.db"))
+# Cifrado de las claves de proveedor de IA (`auth/secrets.py`): `kms` usa AWS KMS con `AC_KMS_KEY_ID` (id, ARN o alias);
+# `dev` solo codifica y está prohibido con `AC_ENV=prod`.
+KEY_BACKEND = os.environ.get("AC_KEY_BACKEND", "dev")
+KMS_KEY_ID = os.environ.get("AC_KMS_KEY_ID", "")
 # `console` escribe data/logs/mail.log; `ses` envía por Amazon SES.
 MAIL_BACKEND = os.environ.get("AC_MAIL_BACKEND", "console")
 # En SES, identidad verificada.
