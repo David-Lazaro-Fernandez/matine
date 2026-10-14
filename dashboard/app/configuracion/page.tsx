@@ -1,7 +1,6 @@
 'use client';
 
-// Configuración de la propia cuenta: perfil, tema, correo y contraseña. Un admin fija además el logo de la empresa.
-// Las imágenes se reducen en el navegador y viajan como URL `data:` PNG; la API rechaza las que pasan de su tope.
+// Configuración de la propia cuenta: perfil, tema, correo y contraseña.
 import * as React from 'react';
 import {
   Avatar,
@@ -16,14 +15,13 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { PageHeader, Pregunta, Seccion, errorText } from '@/components/common';
+import { PageHeader, Pregunta, Seccion } from '@/components/common';
+import { ImagePicker, StatusBar, useAction } from '@/components/configuracion/comunes';
 import { useSession } from '@/lib/session';
 import { useSetTheme, type ThemeChoice } from '@/app/providers';
 import { api, type Profile } from '@/lib/api';
 import { AUTH_TEXT, ROLE_HELP, ROLE_LABEL, THEME_LABEL } from '@/lib/labels.generated';
 
-// Lado mayor de la imagen guardada. 256 px se ven nítidos al doble de densidad en el riel y en el avatar.
-const IMAGE_SIDE = 256;
 const THEMES = Object.keys(THEME_LABEL) as ThemeChoice[];
 
 const useStyles = makeStyles({
@@ -36,78 +34,7 @@ const useStyles = makeStyles({
   },
   stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
   imageRow: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: tokens.spacingHorizontalM },
-  logo: { width: '120px', height: '48px', objectFit: 'contain' },
-  hidden: { display: 'none' },
 });
-
-type Status = { error?: string; success?: string } | null;
-
-// PNG de `file` con su lado mayor en `IMAGE_SIDE` o menos. Un SVG también pasa a PNG.
-function resized(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, IMAGE_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error(AUTH_TEXT.InvalidImage));
-    };
-    img.src = url;
-  });
-}
-
-function StatusBar({ status }: { status: Status }) {
-  if (status?.error) return <MessageBar intent="error"><MessageBarBody>{status.error}</MessageBarBody></MessageBar>;
-  if (status?.success) return <MessageBar intent="success"><MessageBarBody>{status.success}</MessageBarBody></MessageBar>;
-  return null;
-}
-
-// `run(fn)` marca ocupado, corre `fn` y guarda el aviso de éxito o el error de la API.
-function useAction(success: string) {
-  const [busy, setBusy] = React.useState(false);
-  const [status, setStatus] = React.useState<Status>(null);
-  const run = async (fn: () => Promise<void>) => {
-    setBusy(true);
-    setStatus(null);
-    try {
-      await fn();
-      setStatus({ success });
-    } catch (err) {
-      setStatus({ error: errorText(err) });
-    }
-    setBusy(false);
-  };
-  return { busy, status, run };
-}
-
-function ImagePicker({ onPick, disabled }: { onPick: (dataUrl: string) => void; disabled: boolean }) {
-  const s = useStyles();
-  const input = React.useRef<HTMLInputElement>(null);
-  return (
-    <>
-      <input
-        ref={input}
-        type="file"
-        accept="image/png,image/jpeg,image/webp,image/svg+xml"
-        className={s.hidden}
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          e.target.value = '';
-          if (file) onPick(await resized(file).catch(() => ''));
-        }}
-      />
-      <Button disabled={disabled} onClick={() => input.current?.click()}>{AUTH_TEXT.upload_image}</Button>
-    </>
-  );
-}
 
 function ProfileSection({ user, save }: { user: Profile; save: (change: Partial<Profile>) => Promise<void> }) {
   const s = useStyles();
@@ -224,25 +151,6 @@ function PasswordSection() {
   );
 }
 
-function LogoSection({ user, onSaved }: { user: Profile; onSaved: (user: Profile) => void }) {
-  const s = useStyles();
-  const { busy, status, run } = useAction(AUTH_TEXT.saved);
-  const save = (logo: string | null) => run(async () => onSaved(await api<Profile>('/logo', { logo })));
-  return (
-    <Seccion slug="logo">
-      <Pregunta texto={AUTH_TEXT.logo} conclusion={AUTH_TEXT.logo_help} />
-      <div className={s.stack}>
-        <div className={s.imageRow}>
-          {user.logo && <img src={user.logo} alt={AUTH_TEXT.logo} className={s.logo} />}
-          <ImagePicker disabled={busy} onPick={(url) => url && save(url)} />
-          {user.logo && <Button appearance="subtle" disabled={busy} onClick={() => save(null)}>{AUTH_TEXT.remove_image}</Button>}
-        </div>
-        <StatusBar status={status} />
-      </div>
-    </Seccion>
-  );
-}
-
 export default function Page() {
   const s = useStyles();
   const { user, setUser } = useSession();
@@ -262,13 +170,12 @@ export default function Page() {
 
   return (
     <>
-      <PageHeader title={AUTH_TEXT.settings_title} />
+      <PageHeader title={AUTH_TEXT.profile} />
       <div className={s.columns}>
         <ProfileSection user={user} save={save} />
         <ThemeSection user={user} save={save} />
         <EmailSection user={user} onSaved={setUser} />
         <PasswordSection />
-        {user.can_manage && <LogoSection user={user} onSaved={setUser} />}
       </div>
     </>
   );

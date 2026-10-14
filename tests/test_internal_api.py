@@ -137,6 +137,37 @@ def test_admin_manages_accounts(client, admin, viewer):
     assert client.post("/api/usuarios/9999", json={"action": "resend"}).status_code == 404
 
 
+def test_workspace_counts_seats_and_shows_billing(client, conn, admin, viewer, staff):
+    _login(client, "viewer@example.test")
+    assert client.get("/api/espacio").status_code == 403
+    client.cookies.clear()
+    _login(client, "admin@example.test")
+    assert client.get("/api/espacio").json() == {"name": "Cinemex", "seats": None, "members": 2, "next_billing_at": None}
+    orgs.set_billing(conn, admin["org_id"], 5, "2026-11-01")
+    client.post("/api/usuarios", json={"email": "nueva@example.test", "name": "Nueva"})
+    space = client.get("/api/espacio").json()
+    assert (space["seats"], space["members"]) == (5, 3) and space["next_billing_at"].startswith("2026-11-01")
+    with pytest.raises(ValueError):
+        orgs.set_billing(conn, admin["org_id"], 0, "2026-11-01")
+    orgs.set_billing(conn, admin["org_id"], None, "2026-11-01")
+    assert client.get("/api/espacio").json()["next_billing_at"] is None
+
+
+def test_admin_sets_integrations_without_leaking_the_webhook(client, admin, viewer):
+    _login(client, "viewer@example.test")
+    assert client.get("/api/integraciones").status_code == 403
+    client.cookies.clear()
+    _login(client, "admin@example.test")
+    assert client.get("/api/integraciones").json() == {"slack_connected": False, "digest_recipients": []}
+    res = client.post("/api/integraciones", json={"slack_webhook": "https://hooks.slack.com/services/T/B/x"})
+    assert res.json() == {"slack_connected": True, "digest_recipients": []}
+    res = client.post("/api/integraciones", json={"digest_recipients": ["a@example.test"]})
+    assert res.json() == {"slack_connected": True, "digest_recipients": ["a@example.test"]}
+    bad = client.post("/api/integraciones", json={"slack_webhook": "https://evil.test/x"})
+    assert bad.status_code == 422 and bad.json()["detail"] == AUTH_TEXT["invalid_integrations"]
+    assert client.post("/api/integraciones", json={"slack_webhook": ""}).json()["slack_connected"] is False
+
+
 def test_deactivated_account_loses_its_session(client, admin, viewer):
     other = TestClient(internal.app)
     _login(other, "viewer@example.test")
