@@ -1020,6 +1020,8 @@ export const AGENT_TEXT = {
   "provider_failed": "No pude obtener respuesta del modelo. Intenta de nuevo en unos minutos.",
   "empty_answer": "El modelo no devolvió respuesta. Intenta de nuevo.",
   "too_many_steps": "No logré responder en el número de pasos permitido. Haz una pregunta más concreta.",
+  "user_limit": "Hiciste muchas preguntas seguidas. Intenta de nuevo en un rato.",
+  "org_limit": "Tu organización llegó al límite de uso del asistente de hoy.",
   "bad_arguments": "Los argumentos de la herramienta no son un JSON válido.",
   "tool_failed": "La herramienta falló y no hay dato para esa parte de la pregunta."
 } as const;

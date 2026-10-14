@@ -234,6 +234,9 @@ AGENT_MODEL = os.environ.get("AC_AGENT_MODEL", "deepseek-flash")
 AGENT_THINKING = os.environ.get("AC_AGENT_THINKING", "disabled")
 # Vueltas de herramientas por pregunta, para que un modelo que no converge no gaste sin fin.
 AGENT_MAX_STEPS = int(os.environ.get("AC_AGENT_MAX_STEPS", "6"))
+# Tope de uso del agente: preguntas por cuenta en una hora y tokens por organización en un día.
+AGENT_QUESTIONS_PER_HOUR = int(os.environ.get("AC_AGENT_QUESTIONS_PER_HOUR", "30"))
+AGENT_ORG_TOKENS_PER_DAY = int(os.environ.get("AC_AGENT_ORG_TOKENS_PER_DAY", "500000"))
 # `console` escribe data/logs/mail.log; `ses` envía por Amazon SES.
 MAIL_BACKEND = os.environ.get("AC_MAIL_BACKEND", "console")
 # En SES, identidad verificada.

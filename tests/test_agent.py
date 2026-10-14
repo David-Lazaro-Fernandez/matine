@@ -286,3 +286,10 @@ def test_deepseek_parses_tool_calls_and_survives_bad_json(monkeypatch):
     assert (out["tokens_in"], out["tokens_out"]) == (7, 3)
     assert sent["headers"] == {"Authorization": "Bearer sk-1"} and sent["body"]["thinking"] == {"type": "disabled"}
     assert "tools" not in sent["body"] and sent["url"].endswith("/chat/completions")
+
+
+def test_figures_come_with_their_formatted_text():
+    rows = tools._with_text([{"sold_pct": 12.34, "delta_pp": -1.2, "sold_pct_prev": None}],
+                            percent=("sold_pct", "sold_pct_prev"), points=("delta_pp",))
+    assert rows[0]["sold_pct_text"] == "12.3 %" and rows[0]["delta_pp_text"] == "-1.2 pp"
+    assert rows[0]["sold_pct_prev_text"] is None

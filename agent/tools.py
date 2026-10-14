@@ -5,6 +5,7 @@ Una pregunta que no se puede responder con dato real devuelve `{"refusal": motiv
 Ejemplo: `get_cinema_ranking(conn, plaza="gdl")` → `{"refusal": "Solo hay butacas medidas en CDMX…"}`.
 """
 import os
+from datetime import date, timedelta
 from pathlib import Path
 
 from analytics import cinema_sales, datasets, delivery, labels, queries, seats
@@ -36,6 +37,20 @@ def require_access(user):
         raise AccessDenied(labels.AGENT_TEXT["role_denied"])
     if user["role"] != "staff" and "agente" not in user["modules"]:
         raise AccessDenied(labels.AGENT_TEXT["module_denied"])
+
+
+def _percent(value):
+    return None if value is None else f"{value:.1f} %"
+
+
+def _points(value):
+    return None if value is None else f"{value:+.1f} pp"
+
+
+def _with_text(rows, percent=(), points=()):
+    """Cada cifra gana su texto listo (`sold_pct` → `sold_pct_text`): el modelo cita el texto y no formatea."""
+    return [{**r, **{f"{k}_text": _percent(r.get(k)) for k in percent},
+             **{f"{k}_text": _points(r.get(k)) for k in points}} for r in rows]
 
 
 def _result(rows, **context):
@@ -73,8 +88,15 @@ def get_cinema_ranking(conn, chain="cinemex", plaza="cdmx", order="desc", limit=
     kept = [r for r in everyone if r["shows"] >= cinema_sales.MIN_SHOWS]
     kept.sort(key=lambda r: (r["sold_pct"], r["cinema_id"]), reverse=order == "desc")
     cutoff = queries.today()
-    return _result(kept[:limit], chain=chain, plaza=plaza, measure="ocupación medida", days=days, cutoff_date=cutoff,
-                   min_shows=cinema_sales.MIN_SHOWS, cinemas_dropped=len(everyone) - len(kept))
+    shown = _with_text(kept[:limit], percent=("sold_pct", "sold_pct_prev"), points=("delta_pp",))
+    return _result(shown, chain=chain, plaza=plaza, measure="ocupación medida", days=days, cutoff_date=cutoff,
+                   min_shows=cinema_sales.MIN_SHOWS, cinemas_dropped=len(everyone) - len(kept),
+                   window_text=labels.range_es(*_days_back(days)))
+
+
+def _days_back(days):
+    end = date.fromisoformat(queries.today())
+    return (end - timedelta(days=days - 1)).isoformat(), end.isoformat()
 
 
 def _week_titles(conn, plaza):
@@ -92,7 +114,9 @@ def get_title_screens(conn, title=None, plaza="cdmx", limit=10):
         if not titles:
             return _refusal(labels.AGENT_TEXT["title_not_found"].format(title=title))
     titles.sort(key=lambda t: (-(t["shows_cinemex"] or 0), t["title_norm"]))
-    return _result(titles[:limit], plaza=plaza, window={"from": d0, "to": d1}, measure="participación en funciones")
+    shown = _with_text(titles[:limit], percent=("share_cinemex", "share_cinepolis"), points=("gap_pp",))
+    return _result(shown, plaza=plaza, window={"from": d0, "to": d1}, window_text=labels.range_es(d0, d1),
+                   measure="participación en funciones")
 
 
 def compare_titles(conn, title_a, title_b, plaza="cdmx"):
@@ -111,7 +135,8 @@ def compare_titles(conn, title_a, title_b, plaza="cdmx"):
         demand = {r["title_norm"]: r for r in seats.occupancy_by_title(conn, chain="cinemex", plaza=plaza)}
     for t in found:
         t["occupancy"] = demand.get(t["title_norm"])
-    return _result(found, plaza=plaza, window={"from": d0, "to": d1})
+    shown = _with_text(found, percent=("share_cinemex", "share_cinepolis"), points=("gap_pp",))
+    return _result(shown, plaza=plaza, window={"from": d0, "to": d1}, window_text=labels.range_es(d0, d1))
 
 
 def get_popcorn_price(conn, platform=None):

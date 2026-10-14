@@ -58,3 +58,15 @@ def set_feedback(conn, account_id, message_id, useful):
                         ON CONFLICT (message_id) DO UPDATE SET useful = excluded.useful""",
                      (message_id, account_id, int(bool(useful)), _now()))
     return True
+
+
+def questions_since(conn, account_id, since):
+    """Preguntas que hizo la cuenta desde `since` (datetime), con o sin respuesta."""
+    return one(conn, "SELECT count(*) AS n FROM agent_audit WHERE account_id = ? AND at >= ?",
+               (account_id, since))["n"]
+
+
+def tokens_since(conn, org_id, since):
+    """Tokens de entrada y salida que gastó la organización desde `since` (datetime)."""
+    return one(conn, """SELECT coalesce(sum(tokens_in), 0) + coalesce(sum(tokens_out), 0) AS n
+                        FROM agent_audit WHERE org_id = ? AND at >= ?""", (org_id, since))["n"]

@@ -140,13 +140,20 @@ def _merge(conn, org_id, changes):
         conn.execute("UPDATE organization SET integrations = ? WHERE id = ?", (json.dumps(values), org_id))
 
 
-def set_agent_provider(conn, org_id, provider, api_key):
-    """Guarda el proveedor de IA de la organización y su clave, cifrada con KMS. `api_key=None` quita ambos."""
+def set_agent_provider(conn, org_id, provider, api_key, actor_id=None):
+    """Guarda el proveedor de IA de la organización y su clave, cifrada con KMS. `api_key=None` quita ambos. El cambio
+    queda en `audit` sin la clave."""
     token = secrets.encrypt(api_key, org_id) if api_key else None
-    with cursor(conn) as cur:
-        cur.execute("UPDATE organization SET agent_provider = ?, agent_key = ? WHERE id = ?",
-                    (provider if api_key else None, token, org_id))
-        return cur.rowcount == 1
+    with transaction(conn):
+        with cursor(conn) as cur:
+            cur.execute("UPDATE organization SET agent_provider = ?, agent_key = ? WHERE id = ?",
+                        (provider if api_key else None, token, org_id))
+            changed = cur.rowcount == 1
+        if changed:
+            conn.execute("INSERT INTO audit (at, actor_id, action, detail) VALUES (?, ?, ?, ?)",
+                         (datetime.now(timezone.utc), actor_id, "set_agent_provider",
+                          json.dumps({"org_id": org_id, "provider": provider if api_key else None})))
+    return changed
 
 
 def agent_provider(conn, org_id):
@@ -156,3 +163,9 @@ def agent_provider(conn, org_id):
     if not row or not row["agent_key"]:
         return None
     return row["agent_provider"], secrets.decrypt(row["agent_key"], org_id)
+
+
+def agent_status(conn):
+    """Por organización: `id`, `name` y `provider` (None sin configurar). Nunca trae la clave."""
+    return rows(conn, """SELECT id, name, CASE WHEN agent_key IS NULL THEN NULL ELSE agent_provider END AS provider
+                         FROM organization ORDER BY id""")

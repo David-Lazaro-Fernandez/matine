@@ -7,6 +7,7 @@ motivo y la pregunta queda sin respuesta guardada. Cada pregunta deja su rengló
 import asyncio
 import json
 import time
+from datetime import datetime, timedelta, timezone
 
 from fastmcp import Client
 
@@ -19,6 +20,18 @@ from . import providers, server, tools
 
 class AgentError(Exception):
     """El agente no pudo responder; el mensaje es para el usuario."""
+
+
+class OverLimit(AgentError):
+    """La cuenta o su organización llegó a su tope de uso."""
+
+
+def _check_limits(app, user):
+    now = datetime.now(timezone.utc)
+    if conversations.questions_since(app, user["id"], now - timedelta(hours=1)) >= config.AGENT_QUESTIONS_PER_HOUR:
+        raise OverLimit(AGENT_TEXT["user_limit"])
+    if conversations.tokens_since(app, user["org_id"], now - timedelta(days=1)) >= config.AGENT_ORG_TOKENS_PER_DAY:
+        raise OverLimit(AGENT_TEXT["org_limit"])
 
 
 def _tool_specs(listed):
@@ -70,6 +83,7 @@ def ask(app, user, question, conversation_id=None):
     """Responde `question` de la cuenta `user`. Devuelve `conversation_id`, `message_id`, `answer` y `tools`.
     Levanta `tools.AccessDenied` sin acceso y `AgentError` si no hay respuesta."""
     tools.require_access(user)
+    _check_limits(app, user)
     started = time.monotonic()
     audit = {"provider": None, "tools": [], "tokens_in": None, "tokens_out": None}
     error = None
