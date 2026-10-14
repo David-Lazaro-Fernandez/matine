@@ -8,7 +8,7 @@ from .db import rows
 from .plaza import plaza_cinema_where
 
 # Canasta comparable entre complejos: nombres exactos del menú de Cinépolis (categorías Clásicos y Combos).
-# Palomitas y Refresco son "compound": el precio es el del tamaño base; los tamaños van como modificadores.
+# Palomitas, Refresco y otros son "compound": el menú trae un tamaño (el mayor) y los demás están en `concession_size`.
 BASKET = ["Palomitas", "Refresco", "Nachos", "Hot Dog Individual", "ICEE®", "Agua Embotellada",
           "Combo Clásico", "Combo Nachos", "Combo Junior", "Maxicombo Nachos"]
 
@@ -62,11 +62,44 @@ def concession_basket(conn, chain="cinepolis", plaza=None):
     return sorted(out, key=lambda r: order.get(r["product_name"], 99))
 
 
-def concession_product_by_cinema(conn, product_name, chain="cinepolis", plaza=None):
+_LATEST_SIZE = """
+    z AS (SELECT s.cinema_id, s.product_name, TRIM(s.size_name) size_name, s.price_cents, s.is_menu_size
+          FROM concession_size s JOIN latest l ON l.chain = s.chain AND l.cinema_id = s.cinema_id AND l.sampled_at = s.sampled_at
+          WHERE s.chain = ? AND s.price_cents > 0 AND s.size_name IS NOT NULL)
+"""
+
+
+def concession_sizes(conn, product_name, chain="cinepolis", plaza=None):
+    """Tamaños de un producto de la canasta, de menor a mayor precio: `size_name`, `cinemas`, `median_price`,
+    `min_price`, `max_price`, `distinct_prices` e `is_menu_size` (1 si es el tamaño que trae el menú). Vacío si el producto no tiene tamaños.
+    `concession_sizes(conn, "Palomitas")` → Chicas, Medianas, Grandes, Jumbo, Para Llevar."""
+    latest, scope = _latest(plaza)
+    return rows(conn, f"""
+        WITH {latest}, {_LATEST_SIZE},
+        r AS (SELECT size_name, price_cents, is_menu_size, ROW_NUMBER() OVER (PARTITION BY size_name ORDER BY price_cents) rk,
+                     COUNT(*) OVER (PARTITION BY size_name) n FROM z WHERE product_name = ?)
+        SELECT size_name, COUNT(*) cinemas,
+               ROUND(AVG(CASE WHEN rk IN ((n + 1) / 2, (n + 2) / 2) THEN price_cents END) / 100.0, 0) median_price,
+               MIN(price_cents) / 100.0 min_price, MAX(price_cents) / 100.0 max_price,
+               COUNT(DISTINCT price_cents) distinct_prices, MAX(is_menu_size) is_menu_size
+        FROM r GROUP BY size_name ORDER BY median_price, size_name""", (*scope, chain, product_name))
+
+
+def concession_product_by_cinema(conn, product_name, chain="cinepolis", plaza=None, size=None):
     """Precio de un producto en cada complejo, de mayor a menor, con `product_name` y `cinema_type` (vip | traditional).
-    `product_name` es un nombre o una lista de nombres; se comparan sin los espacios de las orillas."""
+    `product_name` es un nombre o una lista de nombres; se comparan sin los espacios de las orillas.
+    Con `size` (un `size_name` de `concession_sizes`) devuelve el precio de ese tamaño; `product_name` es un nombre."""
     names = [product_name] if isinstance(product_name, str) else list(product_name)
     latest, scope = _latest(plaza)
+    if size:
+        return rows(conn, f"""
+            WITH {latest}, {_LATEST_SIZE}
+            SELECT z.cinema_id, COALESCE(n.cinema_name, z.cinema_id) cinema_name, z.product_name, z.price_cents / 100.0 price,
+                   z.size_name,
+                   CASE WHEN z.cinema_id LIKE '%vip%' THEN 'vip' ELSE 'traditional' END cinema_type
+            FROM z LEFT JOIN names n ON n.chain = ? AND n.cinema_id = z.cinema_id
+            WHERE z.product_name = ? AND z.size_name = ?
+            ORDER BY price DESC, cinema_name""", (*scope, chain, chain, product_name, size))
     return rows(conn, f"""
         WITH {latest}
         SELECT m.cinema_id, COALESCE(n.cinema_name, m.cinema_id) cinema_name, TRIM(m.product_name) product_name,

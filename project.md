@@ -636,6 +636,13 @@ Petición del cliente tras la primera revisión: entender los precios de dulcer�
   (`ValidVoucher`). Introspección deshabilitada en todos.
 - Pase `scraper.sample --concessions` (tabla `concession_price`, un menú completo por cine cada 7 días; corre en `daily.sh`
   y en `prices.service`). Primera pasada 2026-09-09: 74 cines, 10,942 referencias, 340 productos distintos, 92 s.
+- **Tamaños (verificado 2026-10-13).** El producto del menú ya es el tamaño mayor: su `ingredientName` es el nombre
+  ("Palomitas" = Jumbo, "Refresco" = Jumbo, "Nachos" = Grandes, "ICEE®" = Grande, "Agua Embotellada" = 1 L). Los demás
+  tamaños son productos aparte, listados en `settings.modifierList` de tipo `size`, cada uno con nombre y precio propios
+  (palomitas en un VIP: Chicas 85, Medianas 90, Grandes 98, Jumbo 107, Para Llevar 120). `batchProducts(cinema, country,
+  products)` los da, y vive en `fab-struct-concession`, no en `fab-struct-product` (esa URL no lo define). El pase
+  `--concessions` pide, por cine, 2 llamadas extra para los productos compuestos de "Clásicos" y los guarda en
+  `concession_size`. Dulcería y Datos los muestran por tamaño.
 - **Hallazgo:** Cinépolis fija el precio **por complejo**: palomitas base de 86 a 107 (7 precios distintos en 74 cines),
   refresco 79–110, Combo Clásico 222–322, Maxicombo Nachos 342–472; los VIP arriba. `analytics/concessions.py` expone la
   canasta comparable (`BASKET`, nombres exactos de Clásicos/Combos), el precio de un producto por complejo, la canasta
@@ -1468,6 +1475,17 @@ respaldo. Pruebas: validación de cifras y adaptador con respuestas grabadas, si
   `#FFBE06` / `#FF804A` / `#A2ACBA` (hoy naranja ≈ 83 %, amarillo ≈ 53 % vendido con pocas muestras); comportamiento
   semanal del competidor (cancelaciones, movimientos, hora de publicación); decaimiento por título (≈2026-09-24) y
   tendencia de 4 semanas (≈2026-10-05).
+- **Decaimiento por título y cadena (pendiente, definido el 2026-10-13).** Los Hallazgos deben contar cada caso en tres
+  tiempos: qué pasó (dimos más pantallas de las debidas a un título), qué está pasando (la semana post-estreno) y qué va
+  a pasar (las ventas caen en una proporción). Esa proporción no se escribe a mano: se mide con nuestra propia historia.
+  Qué falta:
+  - Guardar, por título, cadena y semana de cine desde su estreno, las funciones y el % vendido, para Cinemex, Cinépolis
+    y las demás cadenas capturadas, no solo para la nuestra. Con eso se mide la caída de la semana 1 a la 2 y cómo rinde
+    el título en cada cadena.
+  - Calcularlo en `analytics/` con la llave `title_key`, con umbral de estrenos comparables. Con pocas semanas de
+    captura (desde el 2026-09-07) la muestra es chica.
+  - Mientras no cruce el umbral, el renglón "qué va a pasar" de Programación no se muestra y la tarjeta declara qué lo
+    desbloquea (`AGENTS.md` §2 y §6). Preventa ya mira hacia adelante sin extrapolar.
 - Emparejar cines por distancia (zonas de choque) y alcaldía + población INEGI para el panel geográfico.
 - Integración con el cliente: aforo oficial, taquilla por función, preventa y su tablero de dulcería.
 - **Modelo de tipificación de zonas y consumo por complejo** (esquema de David, 2026-09-08, fuera del repo): arquetipo

@@ -264,6 +264,12 @@ el timer lo note. Si añades un flujo de captura, añade su cobertura ahí y su 
   `Diferido`), no repliques el marcado.
 - **Una página larga pide sus datos por partes** (`useApi`, `Diferido`; `DESIGN.md`, "Carga"): lo de arriba al entrar y
   cada sección cuando se acerca a la pantalla, con su propio endpoint.
+- **El contenedor de una gráfica no cambia de orden.** Toda gráfica va dentro de `Grafica` (`VegaChart` ya lo usa) y
+  lleva siempre estas filas, en este orden: primero la gráfica y la tabla que sale de su misma fuente (`GraficaGrupo`
+  junta las dos); luego los controles que las modifican junto con el "?" (`controles`, `ayuda`); y al final los botones
+  de descarga junto con los enlaces de acceso (`botones`, `enlaces`). Un selector, una nota o un enlace nuevo entra por
+  esas ranuras, nunca arriba de la gráfica ni suelto debajo de los botones. Una tabla que no sale de la misma fuente no
+  va ahí: va en Datos. Mientras carga, el esqueleto va dentro del contenedor para que los controles sigan visibles.
 - **Paneles dependientes de historia**: si un panel necesita más días de los que hay desde `FIRST_SNAPSHOT`, se muestra
   como pendiente con lo que desbloquea, no con una serie de un punto.
 - El cálculo va en `analytics/`. Si te encuentras escribiendo lógica de negocio en un componente o en un endpoint, es

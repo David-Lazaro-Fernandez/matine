@@ -150,6 +150,19 @@ def _concession_prices(conn, chain=None, cinema_ids=None, category=None, search=
         """, p, "chain, cinema_name, category, product_name, sampled_at DESC"
 
 
+def _concession_sizes(conn, chain=None, cinema_ids=None, search=None, latest_only=True):
+    """Precio de cada tamaño de los productos compuestos de la canasta, por complejo. Con `latest_only`, la lectura más
+    reciente de cada tamaño por cine."""
+    w, p = where([("cs.chain = ?", chain), ("(cs.chain || ':' || cs.cinema_id) IN ({marks})", cinema_ids),
+                  ("norm_title(cs.product_name) LIKE ?", contains(search))])
+    source = _latest("concession_size", "chain, cinema_id, product_id, size_id") if latest_only else "concession_size"
+    return f"""
+        SELECT cs.chain, c.name AS cinema_name, cs.product_name, cs.size_name, cs.price_cents / 100.0 AS price, cs.sampled_at
+        FROM {source} cs JOIN cinema c ON c.chain = cs.chain AND c.cinema_id = cs.cinema_id
+        {w}
+        """, p, "chain, cinema_name, product_name, price, size_name, sampled_at DESC"
+
+
 def _delivery_prices(conn, platform=None, chain=None, category=None, search=None, latest_only=True):
     """Dulcería a domicilio (Rappi, DiDi Food) por tienda. Con `latest_only`, la última lectura de cada producto."""
     w, p = where([("dp.platform = ?", platform), ("dp.chain = ?", chain), ("dp.category = ?", category),
@@ -183,6 +196,7 @@ DATASETS = {
     "week_showtimes": {"fn": _week_showtimes, "filters": ("dates", "chain", "cinema_ids", "search", "only_open")},
     "ticket_prices": {"fn": _ticket_prices, "filters": ("dates", "chain", "cinema_ids", "format_bucket", "day_type")},
     "concession_prices": {"fn": _concession_prices, "filters": ("chain", "cinema_ids", "category", "search", "latest_only")},
+    "concession_sizes": {"fn": _concession_sizes, "filters": ("chain", "cinema_ids", "search", "latest_only")},
     "delivery_prices": {"fn": _delivery_prices, "filters": ("platform", "chain", "category", "search", "latest_only")},
 }
 
