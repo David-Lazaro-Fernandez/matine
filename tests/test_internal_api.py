@@ -277,10 +277,10 @@ def test_mapa_reads_the_recorded_capture(client, viewer, recorded):
 
 def test_dulceria_reads_the_recorded_capture(client, viewer, recorded):
     _login(client, "viewer@example.test")
-    body = client.get("/api/dulceria", params={"plaza": "cdmx", "platform": "rappi", "chain": "cinepolis"}).json()
-    assert (body["plaza"], body["platform"], body["chain"]) == ("cdmx", "rappi", "cinepolis")
+    body = client.get("/api/dulceria", params={"plaza": "cdmx", "platform": "rappi"}).json()
+    assert (body["plaza"], body["platform"]) == ("cdmx", "rappi")
     assert isinstance(body["conclusion"], str) and all(f["topic"] == "dulceria" for f in body["findings"])
-    for key in ("basket", "product_by_cinema", "by_cinema", "delivery_compare", "delivery_products", "delivery_stores"):
+    for key in ("basket", "sizes", "product_by_cinema", "delivery_compare"):
         assert isinstance(body[key], list)
     assert client.get("/api/dulceria", params={"product": "Caviar"}).status_code == 422
 

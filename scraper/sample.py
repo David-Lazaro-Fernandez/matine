@@ -44,6 +44,12 @@ MENU_QUERY = """query MenuByType($country: String!, $cinema: String!, $menuType:
       subCategories { name
         products { productName product active price productStructure productType tag promotionType qtyAvailable } } } } }"""
 
+# `ingredientName` del producto del menú es el nombre de su tamaño ("Jumbo"); los demás tamaños son productos
+# aparte, listados en `settings.modifierList` de tipo `size`, cada uno con su nombre y su precio.
+BATCH_QUERY = """query BatchProducts($cinema: String!, $country: String!, $products: [String]!) {
+  batchProducts(cinema: $cinema, country: $country, products: $products) {
+    product productName ingredientName price active settings { modifierList { type modifierProductList } } } }"""
+
 SEATS_QUERY = """query Seats($countryId: String!, $sessionId: String!, $cinemaVistaId: String!) {
   seats(countryId: $countryId, sessionId: $sessionId, cinemaVistaId: $cinemaVistaId) {
     seatLayoutData { areas { description areaCategoryCode rowCount columnCount
@@ -142,6 +148,38 @@ def cinepolis_menu(vista_id, stats=None):
                             "product_name": (p.get("productName") or "").strip(), "price_cents": p.get("price"),
                             "product_structure": p.get("productStructure"), "promotion_type": p.get("promotionType"),
                             "active": 1 if p.get("active") else 0})
+    return out
+
+
+def _batch_products(vista_id, product_ids, stats=None):
+    data = cinepolis.gql(config.CINEPOLIS_CONCESSIONS_URL, BATCH_QUERY,
+                         {"country": config.CINEPOLIS_COUNTRY, "cinema": str(vista_id), "products": list(product_ids)}, stats)
+    return data.get("batchProducts") or []
+
+
+def cinepolis_sizes(vista_id, items, stats=None):
+    """Tamaños y precio de cada uno para los productos compuestos de la canasta del menú `items`.
+    Devuelve un renglón por producto y tamaño; `is_menu_size` marca el tamaño que ya trae el menú."""
+    base = {i["product_id"]: i for i in items
+            if i["product_structure"] == "compound" and i["category"] == config.CINEPOLIS_SIZES_CATEGORY and i["product_id"]}
+    if not base:
+        return []
+    sizes_of = {}
+    for p in _batch_products(vista_id, base, stats):
+        size_ids = [m for st in p.get("settings") or [] for ml in st.get("modifierList") or [] if ml.get("type") == "size"
+                    for m in ml.get("modifierProductList") or []]
+        sizes_of[p["product"]] = (p.get("ingredientName"), size_ids)
+    wanted = {sid for _, ids in sizes_of.values() for sid in ids}
+    detail = {p["product"]: p for p in _batch_products(vista_id, wanted, stats)} if wanted else {}
+    out = []
+    for pid, (menu_size, size_ids) in sizes_of.items():
+        out.append({"product_id": pid, "product_name": base[pid]["product_name"], "size_id": pid, "size_name": menu_size,
+                    "price_cents": base[pid]["price_cents"], "is_menu_size": 1})
+        for sid in size_ids:
+            if sid == pid or sid not in detail:
+                continue
+            out.append({"product_id": pid, "product_name": base[pid]["product_name"], "size_id": sid,
+                        "size_name": detail[sid].get("productName"), "price_cents": detail[sid].get("price"), "is_menu_size": 0})
     return out
 
 
@@ -540,7 +578,16 @@ def concessions_pass(conn, chain="cinepolis", days=config.CONCESSIONS_REFRESH_DA
         time.sleep(config.SAMPLE_PAUSE)
         if not items:
             log(f"concessions skip {slug}: menú vacío"); continue
+        try:
+            sizes = cinepolis_sizes(vid, items, stats)
+        except ApiError as e:
+            sizes = []; log(f"concessions sizes FAIL {slug}: {e}"[:300])
+        time.sleep(config.SAMPLE_PAUSE)
         ts = utc_now()
+        conn.executemany("""INSERT INTO concession_size (chain, cinema_id, sampled_at, product_id, product_name, size_id, size_name,
+                                price_cents, is_menu_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                         [(chain, slug, ts, z["product_id"], z["product_name"], z["size_id"], z["size_name"], z["price_cents"],
+                           z["is_menu_size"]) for z in sizes])
         conn.executemany("""INSERT INTO concession_price (chain, cinema_id, sampled_at, category, sub_category, product_id, product_name,
                                 price_cents, product_structure, promotion_type, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                          [(chain, slug, ts, i["category"], i["sub_category"], i["product_id"], i["product_name"], i["price_cents"],
