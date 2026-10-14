@@ -143,6 +143,7 @@ Como la consola de una aplicación de Microsoft (`components/shell.tsx`):
   las páginas del módulo en una `TabList` arriba del contenido. La barra superior sigue, sin el texto del campo de
   búsqueda. En la barra de abajo los módulos se reparten el ancho:
   icono arriba, nombre abajo en `fontSizeBase100` y "…" si no cabe.
+  El Asistente no tiene pestañas de páginas: su historial se abre en un drawer (ver "Chat del asistente").
 - **Nada se sale de la pantalla** (`tests/test_mobile.py`). Una columna de rejilla es `minmax(0, 1fr)`, no `1fr`, para que
   un nombre largo no la ensanche. Un `RadioGroup` horizontal pasa a otro renglón y el texto se parte antes de salirse de su
   caja (`app/providers.tsx`).
@@ -221,6 +222,48 @@ una tabla más ancha que la pantalla se desplaza de lado dentro de su caja, no l
 - Fuente de Fluent, ejes y leyendas en `GRAY`, rejilla `GRID`, sin marco ni ticks (`lib/vega-theme.ts`).
 - Mapa de calor: celdas con radio 4 px separadas por 4 px de blanco, sin leyenda de color (el número va en la celda).
 - Barras apiladas al 100 %: rampa ordinal roja, etiqueta de la cadena coloreada.
+
+### Chat del asistente (`/agente/`)
+
+Una sola página (`app/(app)/agente/page.tsx`) con dos estados. Todo son tokens de Fluent, sin hex; los textos salen de
+`AGENT_UI` y `AGENT_SUGGESTIONS` en `analytics/labels.py`.
+
+- **Inicio.** Sin encabezado de página: el título es el `h1`, en `Title3` como el resto de las páginas, centrado; debajo la
+  caja de mensaje y los ejemplos, en una columna de 760 px.
+- **Conversación.** `PageHeader` ("Asistente"), el hilo y la caja de mensaje abajo. La pregunta va en una burbuja
+  `colorBrandBackground2` a la derecha; la respuesta, sin burbuja, a la izquierda.
+- **Caja de mensaje.** Contenedor de 1 px `colorNeutralStroke1`, radio `borderRadiusXLarge` y sombra `shadow4`. Con foco el
+  borde pasa a `colorBrandStroke1` y la sombra a `shadow16`. El campo de Fluent no dibuja borde propio: los bordes de
+  Fluent ganan a las clases, así que se quitan con `style={{ border: 'none' }}`, y su línea de foco (`::after`) se oculta.
+  El botón de enviar es circular y primario (`ArrowRight20Regular`) y flota abajo a la derecha. En el inicio mide 140 px
+  de alto. Enter envía y Mayús+Enter baja de línea.
+- **Ejemplos.** Botones `outline` circulares con icono, con el texto "O prueba con:" a su izquierda. El `outline` de Fluent
+  no cambia de fondo al pasar el cursor (solo oscurece el borde, casi sin verse), así que el hover es
+  `colorNeutralBackground1Hover` y el presionado `colorNeutralBackground1Pressed`. Cada pregunta nombra su ciudad, porque el
+  asistente no la supone. Al elegir uno, su pregunta se escribe sola en la caja (8 ms por letra, `TYPE_MS`). Otro ejemplo,
+  una tecla o enviar cortan la animación; con `prefers-reduced-motion` aparece entera.
+- **Pensando.** Tres puntos pulsantes en `colorBrandBackground` y, al lado, el paso en `Caption1` y
+  `colorNeutralForeground3`: entender la pregunta, consultar los datos y revisar la respuesta. Con movimiento reducido los
+  puntos quedan fijos.
+- **Respuesta.** Markdown (`components/markdown.tsx`: `react-markdown` con `remark-gfm`, sin HTML crudo): párrafos, listas
+  y tablas, estas con borde `colorNeutralStroke2` y cabecera `colorNeutralBackground3`. Una respuesta nueva se revela por
+  palabras (3 cada 30 ms, `REVEAL_WORDS` y `REVEAL_MS`); una del historial sale entera.
+- **Línea de ventana.** "Ventana medida: …" va aparte, al final: peso 300, `fontSizeBase200` y
+  `colorNeutralForeground4`, un gris que en el tema oscuro se aclara solo para conservar el contraste. El componente la
+  reconoce por `AGENT_UI.window_label`.
+- **Acciones de la respuesta.** Pulgares, Copiar, "Ver más" y "Ver detalle", botones `subtle` pequeños. "Ver más" es un
+  enlace, en una pestaña nueva, al explorador de Datos con la misma consulta que respaldó la cifra, así no se pierde la
+  conversación. "Ver detalle" lista las herramientas que se consultaron, en español.
+- **Historial.** En escritorio sustituye la lista de páginas del panel del módulo (`components/agente/chat-history.tsx`):
+  el botón "Nueva conversación" y las conversaciones agrupadas en Hoy, Últimos 7 días y Anteriores (`NavSectionHeader`).
+  Cada fila es el título de la primera pregunta recortado con "…" (el completo va en `title`); la seleccionada usa
+  `colorSubtleBackgroundSelected` y semibold, el hover `colorSubtleBackgroundHover`. El botón de borrar aparece al pasar el
+  cursor o al enfocar la fila y pide confirmación, porque no se deshace. La conversación abierta va en la URL (`?c=`), así
+  se puede recargar o compartir.
+- **Celular (≤ 768 px).** No hay panel izquierdo. El mismo historial vive en un `OverlayDrawer` a la izquierda, de tamaño
+  `small` (`components/agente/history-drawer.tsx`), que se abre con el botón "Historial" arriba de la página y se cierra
+  al elegir una conversación, empezar una nueva o borrar la abierta. "Nueva conversación" también está en el encabezado de
+  la página en celular; en escritorio se oculta porque el panel ya la tiene.
 
 ## Carga
 

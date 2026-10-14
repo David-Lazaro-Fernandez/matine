@@ -63,7 +63,8 @@ const useStyles = makeStyles({
   delete: { opacity: 0, flexShrink: 0 },
 });
 
-export function ChatHistory() {
+// `onPick` avisa que se eligió algo (una conversación, una nueva o una borrada): el drawer de celular se cierra.
+export function ChatHistory({ onPick }: { onPick?: () => void }) {
   const s = useStyles();
   const router = useRouter();
   const selected = useSearchParams().get('c');
@@ -81,7 +82,10 @@ export function ChatHistory() {
   const remove = (item: Item) => {
     if (!window.confirm(AGENT_UI.delete_confirm)) return;
     api(`/agente/conversaciones/${item.id}`, undefined, 'DELETE').then(() => {
-      if (selected === String(item.id)) router.push('/agente/');
+      if (selected === String(item.id)) {
+        router.push('/agente/');
+        onPick?.();
+      }
       load();
     });
   };
@@ -89,7 +93,7 @@ export function ChatHistory() {
   return (
     <>
       <div className={s.top}>
-        <Button appearance="subtle" icon={<Add20Regular />} onClick={() => router.push('/agente/')}>{AGENT_UI.new_chat}</Button>
+        <Button appearance="subtle" icon={<Add20Regular />} onClick={() => { router.push('/agente/'); onPick?.(); }}>{AGENT_UI.new_chat}</Button>
       </div>
       {groups(items).map(([title, list]) => (
         <React.Fragment key={title}>
@@ -98,7 +102,7 @@ export function ChatHistory() {
             <div key={item.id} className={s.row}>
               <button type="button" title={item.title} aria-current={selected === String(item.id) ? 'page' : undefined}
                       className={mergeClasses(s.item, selected === String(item.id) && s.selected)}
-                      onClick={() => router.push(`/agente/?c=${item.id}`)}>
+                      onClick={() => { router.push(`/agente/?c=${item.id}`); onPick?.(); }}>
                 {item.title}
               </button>
               <Button data-delete appearance="subtle" size="small" className={s.delete} icon={<Delete16Regular />}

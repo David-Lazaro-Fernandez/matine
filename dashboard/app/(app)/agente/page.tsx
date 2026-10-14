@@ -22,6 +22,7 @@ import {
 } from '@fluentui/react-icons';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { notifyHistory } from '@/components/agente/chat-history';
+import { HistoryDrawer } from '@/components/agente/history-drawer';
 import { PageHeader } from '@/components/common';
 import { Markdown } from '@/components/markdown';
 import { ApiError, api, apiStream, query } from '@/lib/api';
@@ -97,8 +98,10 @@ const useStyles = makeStyles({
     '@media (max-width: 768px)': { paddingTop: tokens.spacingVerticalL },
   },
   title: { textAlign: 'center' },
-  // En escritorio el panel izquierdo ya tiene este botón.
+  // En escritorio el panel izquierdo ya tiene estos botones.
   newChat: { '@media (min-width: 769px)': { display: 'none' } },
+  history: { '@media (min-width: 769px)': { display: 'none' } },
+  historyBar: { alignSelf: 'flex-start', marginLeft: `-${tokens.spacingHorizontalS}` },
   composer: {
     position: 'relative',
     width: '100%',
@@ -338,6 +341,7 @@ export default function Page() {
   if (messages.length === 0 && !busy) {
     return (
       <div className={s.hero}>
+        <div className={mergeClasses(s.history, s.historyBar)}><HistoryDrawer /></div>
         <Title3 as="h1" className={s.title}>{AGENT_UI.title}</Title3>
         {composer(true)}
         {error && <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>}
@@ -360,6 +364,7 @@ export default function Page() {
   return (
     <>
       <PageHeader title={NAV_LABEL.agente}>
+        <HistoryDrawer className={s.history} />
         <Button className={s.newChat} appearance="subtle" onClick={() => router.push('/agente/')}>
           {AGENT_UI.new_chat}
         </Button>

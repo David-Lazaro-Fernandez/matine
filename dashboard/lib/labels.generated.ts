@@ -1020,6 +1020,7 @@ export const AGENT_UI = {
   "hide_detail": "Ocultar detalle",
   "detail_rows": "{rows} renglones",
   "new_chat": "Nueva conversación",
+  "history_title": "Historial",
   "history_today": "Hoy",
   "history_week": "Últimos 7 días",
   "history_older": "Anteriores",
