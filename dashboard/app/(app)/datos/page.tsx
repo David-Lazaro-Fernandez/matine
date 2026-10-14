@@ -37,6 +37,7 @@ import {
   FORMAT_LABEL,
   KIND_LABEL,
   LANGUAGE_LABEL,
+  NATIONAL_LABEL,
   PLATFORM_LABEL,
   PLAZA_LABEL,
   ROLE_LABEL,
@@ -75,7 +76,7 @@ const RELABEL: Record<string, Record<string, string>> = {
   plaza: PLAZA_LABEL,
 };
 // Las llaves de la URL que dependen del conjunto, como las llaves por conjunto de Streamlit.
-const PER_DATASET = ['category', 'search', 'latest_only', 'ocultar', 'orden', 'dir', 'pagina'];
+const PER_DATASET = ['plaza', 'category', 'search', 'latest_only', 'ocultar', 'orden', 'dir', 'pagina'];
 
 const useStyles = makeStyles({
   bar: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalL, alignItems: 'flex-end', marginBottom: tokens.spacingVerticalM },
@@ -220,6 +221,10 @@ export default function Page() {
               <FilterMenu label={DATA_TEXT.platform} value={params.get('platform') ?? ''}
                           options={[['', all], ...Object.entries(PLATFORM_LABEL)]} onChange={choose('platform')} />
             )}
+            {filters.includes('plaza') && (
+              <FilterMenu label={DATA_TEXT.plaza} value={params.get('plaza') ?? ''}
+                          options={[['', all], ...Object.entries(PLAZA_LABEL), ['nacional', NATIONAL_LABEL]]} onChange={choose('plaza')} />
+            )}
             {filters.includes('chain') && (
               <FilterMenu label={DATA_TEXT.chain} value={chain ?? ''}
                           options={[['', all], ...Object.entries(CHAIN_LABEL)]} onChange={choose('chain')} />
@@ -264,6 +269,13 @@ export default function Page() {
                 label={DATA_TEXT.only_open}
                 checked={params.get('only_open') === 'true'}
                 onChange={(_, d) => setParams({ only_open: d.checked ? 'true' : null })}
+              />
+            )}
+            {filters.includes('from_now') && (
+              <Checkbox
+                label={DATA_TEXT.from_now}
+                checked={params.get('from_now') === 'true'}
+                onChange={(_, d) => setParams({ from_now: d.checked ? 'true' : null })}
               />
             )}
             {filters.includes('latest_only') && (

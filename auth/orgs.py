@@ -140,10 +140,14 @@ def _merge(conn, org_id, changes):
         conn.execute("UPDATE organization SET integrations = ? WHERE id = ?", (json.dumps(values), org_id))
 
 
-def set_agent_provider(conn, org_id, provider, api_key, actor_id=None):
-    """Guarda el proveedor de IA de la organización y su clave, cifrada con KMS. `api_key=None` quita ambos. El cambio
-    queda en `audit` sin la clave."""
-    token = secrets.encrypt(api_key, org_id) if api_key else None
+# Marca un valor que no es secreto y se guarda sin cifrar (el marcador de un proveedor sin clave): leerlo no llama a KMS.
+_PLAIN = "plain:"
+
+
+def set_agent_provider(conn, org_id, provider, api_key, actor_id=None, secret=True):
+    """Guarda el proveedor de IA de la organización y su clave, cifrada con KMS. `api_key=None` quita ambos. Con
+    `secret=False` el valor no es una clave y se guarda tal cual. El cambio queda en `audit` sin la clave."""
+    token = (secrets.encrypt(api_key, org_id) if secret else _PLAIN + api_key) if api_key else None
     with transaction(conn):
         with cursor(conn) as cur:
             cur.execute("UPDATE organization SET agent_provider = ?, agent_key = ? WHERE id = ?",
@@ -162,7 +166,8 @@ def agent_provider(conn, org_id):
     row = one(conn, "SELECT agent_provider, agent_key FROM organization WHERE id = ?", (org_id,))
     if not row or not row["agent_key"]:
         return None
-    return row["agent_provider"], secrets.decrypt(row["agent_key"], org_id)
+    key = row["agent_key"]
+    return row["agent_provider"], key[len(_PLAIN):] if key.startswith(_PLAIN) else secrets.decrypt(key, org_id)
 
 
 def agent_status(conn):

@@ -308,6 +308,19 @@ def test_deepseek_parses_tool_calls_and_survives_bad_json(monkeypatch):
     assert sent["body"]["temperature"] == 0
 
 
+def test_compatible_providers_use_their_own_address_and_model(monkeypatch):
+    from agent.providers import CHAT, compatible
+
+    reply = {"usage": {"prompt_tokens": 1, "completion_tokens": 2}, "choices": [{"message": {"role": "assistant", "content": "ok"}}]}
+    sent = {}
+    monkeypatch.setattr(compatible.http, "request_json", lambda url, **kw: sent.update(kw, url=url) or reply)
+    for name in ("openai", "claude", "mistral", "gemini"):
+        out = CHAT[name]("k", [], [])
+        assert out["content"] == "ok" and "thinking" not in sent["body"]
+        assert sent["url"].startswith(compatible.config.AGENT_COMPATIBLE[name]["base_url"])
+        assert sent["body"]["model"] == compatible.config.AGENT_COMPATIBLE[name]["model"]
+
+
 def test_figures_come_with_their_formatted_text():
     rows = tools._with_text([{"sold_pct": 12.34, "delta_pp": -1.2, "sold_pct_prev": None}],
                             percent=("sold_pct", "sold_pct_prev"), points=("delta_pp",))
@@ -374,3 +387,109 @@ def test_an_unclear_answer_verdict_fails_closed(app, monkeypatch):
     chat = _scripted({"content": "Hay siete tablas."}, fits="sí, adelante")
     host, user = _ready(app, monkeypatch, chat)
     assert host.ask(app, user, "¿Qué tablas hay?")["answer"] == "Lo siento, no puedo hacer eso."
+
+
+def test_a_title_answer_links_to_the_rows_that_back_it(capture_db, frozen_week):
+    from analytics import datasets
+
+    conn = capture_db("cinemex", "cinepolis")
+    out = tools.get_title_screens(conn, plaza="nacional", limit=1)
+    source = out["sources"][0]
+    filters = {k: v for k, v in source.items() if k != "dataset"}
+    top = out["rows"][0]
+    filters["search"] = top["title"]
+    backing = datasets.count(conn, source["dataset"], **filters)
+    assert source["dataset"] == "week_showtimes" and source["plaza"] == "nacional"
+    assert backing == top["shows_cinemex"] + top["shows_cinepolis"]
+
+
+def test_the_model_never_sees_the_sources_but_the_screen_does(capture_db, frozen_week):
+    import asyncio
+
+    from agent import host
+
+    conn = capture_db("cinemex", "cinepolis")
+
+    class Client:
+        async def call_tool(self, name, arguments, raise_on_error=False):
+            class Result:
+                is_error = False
+                data = tools.get_title_screens(conn, **arguments)
+            return Result
+
+    content, summary = asyncio.run(host._call_tool(Client(), {"name": "get_title_screens", "arguments": {"plaza": "nacional"}}))
+    assert "sources" not in content and "week_showtimes" not in content
+    assert summary["sources"][0]["dataset"] == "week_showtimes"
+
+
+def test_answers_never_carry_an_em_dash():
+    from agent import host
+
+    assert host._without_em_dash("Cinemex — 479 funciones") == "Cinemex, 479 funciones"
+    assert host._without_em_dash("| a | — |") == "| a | - |"
+
+
+def test_a_film_is_found_by_its_original_name_and_named_with_both(capture_db, frozen_week):
+    from analytics import queries
+
+    conn = capture_db("cinemex", "cinepolis")
+    original = next(iter(queries.original_titles(conn).values()))[0]
+    out = tools.get_title_screens(conn, plaza="nacional", title=original)
+    assert out["row_count"] >= 1 and any(original in r["original_titles"] for r in out["rows"])
+    # El enlace de origen busca con lo que escribió el usuario: el explorador también entiende el nombre original.
+    from analytics import datasets
+
+    source = out["sources"][0]
+    filters = {k: v for k, v in source.items() if k != "dataset"}
+    assert out["row_count"] == len(out["rows"])
+    assert datasets.count(conn, source["dataset"], **filters) == sum(r["shows_cinemex"] + r["shows_cinepolis"] for r in out["rows"])
+
+
+def test_a_misspelt_title_gets_suggestions_not_a_zero(capture_db, frozen_week):
+    conn = capture_db("cinemex", "cinepolis")
+    real = tools.get_title_screens(conn, plaza="nacional", limit=1)["rows"][0]["title"]
+    out = tools.get_title_screens(conn, plaza="nacional", title=real[:-1] + "x" + real[-1:])
+    assert "refusal" in out and real in out["suggestions"]
+    assert tools.get_title_screens(conn, plaza="nacional", title="zzzz qqqq")["suggestions"] == []
+
+
+def test_bedrock_translates_the_history_and_returns_the_openai_shape(monkeypatch):
+    from agent.providers import bedrock
+
+    sent = {}
+
+    class Client:
+        def converse(self, **request):
+            sent.update(request)
+            return {"output": {"message": {"content": [{"text": "Hola"},
+                                                       {"toolUse": {"toolUseId": "t9", "name": "x", "input": {"n": 2}}}]}},
+                    "usage": {"inputTokens": 11, "outputTokens": 4}}
+
+    monkeypatch.setattr(bedrock, "_client", lambda: Client())
+    monkeypatch.setattr(bedrock.config, "AGENT_BEDROCK_MODEL", "modelo-de-prueba")
+    call = lambda i, n: {"id": i, "type": "function", "function": {"name": n, "arguments": '{"a": 1}'}}  # noqa: E731
+    history = [{"role": "system", "content": "Eres el asistente."}, {"role": "user", "content": "Pregunta"},
+               {"role": "assistant", "content": None, "tool_calls": [call("t1", "a"), call("t2", "b")]},
+               {"role": "tool", "tool_call_id": "t1", "content": '{"r": 1}'},
+               {"role": "tool", "tool_call_id": "t2", "content": '{"r": 2}'}]
+    tool = {"type": "function", "function": {"name": "x", "description": "d", "parameters": {"type": "object"}}}
+    out = bedrock.chat("marcador", history, [tool], temperature=0)
+
+    roles = [m["role"] for m in sent["messages"]]
+    assert roles == ["user", "assistant", "user"] and sent["system"] == [{"text": "Eres el asistente."}]
+    # Los dos resultados de herramienta viajan juntos, en un solo mensaje de usuario.
+    assert [b["toolResult"]["toolUseId"] for b in sent["messages"][2]["content"]] == ["t1", "t2"]
+    assert sent["messages"][1]["content"][0]["toolUse"]["input"] == {"a": 1}
+    assert sent["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"] == {"json": {"type": "object"}}
+    assert sent["inferenceConfig"] == {"temperature": 0} and sent["modelId"] == "modelo-de-prueba"
+    assert out["content"] == "Hola" and out["tool_calls"] == [{"id": "t9", "name": "x", "arguments": {"n": 2}}]
+    assert out["message"]["tool_calls"][0]["function"]["arguments"] == '{"n": 2}'
+    assert (out["tokens_in"], out["tokens_out"]) == (11, 4)
+
+
+def test_bedrock_refuses_to_run_without_a_model(monkeypatch):
+    from agent.providers import bedrock
+
+    monkeypatch.setattr(bedrock.config, "AGENT_BEDROCK_MODEL", "")
+    with pytest.raises(ValueError):
+        bedrock.chat("marcador", [{"role": "user", "content": "hola"}], [])

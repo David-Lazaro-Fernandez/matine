@@ -1020,7 +1020,60 @@ export const AGENT_UI = {
   "hide_detail": "Ocultar detalle",
   "detail_rows": "{rows} renglones",
   "new_chat": "Nueva conversación",
-  "error": "No pude responder."
+  "error": "No pude responder.",
+  "title": "¿Qué quieres saber de la cartelera?",
+  "try_with": "O prueba con:",
+  "see_more": "Ver más",
+  "window_label": "Ventana medida:",
+  "step_scope": "Entendiendo tu pregunta…",
+  "step_review": "Revisando la respuesta…",
+  "keys_section": "Asistente de IA",
+  "keys_org": "Organización",
+  "keys_provider": "Proveedor",
+  "keys_key": "Clave",
+  "keys_key_hint": "Se cifra al guardar y no se vuelve a mostrar.",
+  "keys_configured": "Configurada",
+  "keys_missing": "Sin configurar",
+  "keys_replace": "Reemplazar clave",
+  "keys_remove": "Quitar clave"
+} as const;
+
+export const AGENT_SUGGESTIONS = [
+  {
+    "key": "screens",
+    "label": "Más programadas",
+    "question": "¿Qué películas tiene más programadas Cinemex en CDMX esta semana?"
+  },
+  {
+    "key": "sales",
+    "label": "Cines que más venden",
+    "question": "¿Qué cines de Cinemex venden más en CDMX?"
+  },
+  {
+    "key": "rival",
+    "label": "Frente a Cinépolis",
+    "question": "¿Cómo se compara nuestra programación con la de Cinépolis en Guadalajara?"
+  },
+  {
+    "key": "snacks",
+    "label": "Dulcería",
+    "question": "¿Cómo están nuestros precios de palomitas frente a Cinépolis?"
+  },
+  {
+    "key": "tables",
+    "label": "Qué datos hay",
+    "question": "¿Qué datos puedes consultar?"
+  }
+] as const;
+
+export const AGENT_PROVIDER_LABEL = {
+  "bedrock": "Amazon Bedrock",
+  "openai": "ChatGPT",
+  "claude": "Claude",
+  "mistral": "Mistral",
+  "gemini": "Gemini",
+  "deepseek": "DeepSeek",
+  "deepseek-dev": "DeepSeek (dev)"
 } as const;
 
 export const AGENT_TOOL_LABEL = {
@@ -1036,8 +1089,8 @@ export const AGENT_TEXT = {
   "role_denied": "Tu rol no puede usar el asistente.",
   "module_denied": "El asistente no está en el plan de tu organización.",
   "unknown_table": "La tabla {table} no existe.",
-  "seats_only": "Solo hay butacas medidas en estas plazas: {plazas}. No puedo responder sobre venta en otras.",
-  "unknown_plaza": "La plaza {plaza} no existe. Las plazas son: {plazas}, o todo el país.",
+  "seats_only": "Solo hay butacas medidas en estas ciudades: {cities}. No puedo responder sobre venta en otras.",
+  "unknown_plaza": "La ciudad {city} no existe. Las ciudades son: {cities}, o todo el país.",
   "chain_not_compared": "Solo comparo Cinemex y Cinépolis.",
   "title_not_found": "No encuentro {title} en cartelera.",
   "out_of_scope": "Lo siento, no puedo hacer eso.",
@@ -1055,6 +1108,7 @@ export const AGENT_TEXT = {
 export const DATA_TEXT = {
   "title": "Datos",
   "dataset": "Tabla",
+  "plaza": "Ciudad",
   "chain": "Cadena",
   "cinemas": "Cines",
   "dates": "Fechas",
@@ -1062,8 +1116,9 @@ export const DATA_TEXT = {
   "category": "Categoría",
   "all": "Todas",
   "search": "Buscar",
-  "search_help": "Parte del nombre, sin distinguir mayúsculas ni acentos. En funciones, de la película o del cine.",
+  "search_help": "Parte del nombre, sin distinguir mayúsculas ni acentos. En funciones, de la película (también por su nombre original) o del cine.",
   "only_open": "Solo funciones vigentes",
+  "from_now": "Solo funciones que no han empezado",
   "latest_only": "Solo la última lectura de cada producto",
   "format": "Formato",
   "day_type": "Tipo de día",

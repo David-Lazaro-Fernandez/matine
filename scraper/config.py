@@ -232,6 +232,25 @@ KMS_KEY_ID = os.environ.get("AC_KMS_KEY_ID", "")
 AGENT_BASE_URL = os.environ.get("AC_AGENT_BASE_URL", "https://api.deepseek.com")
 AGENT_MODEL = os.environ.get("AC_AGENT_MODEL", "deepseek-flash")
 AGENT_THINKING = os.environ.get("AC_AGENT_THINKING", "disabled")
+# Amazon Bedrock (`agent/providers/bedrock.py`): id del modelo o del perfil de inferencia, sin valor por defecto porque
+# no se verificó ninguno, y región (si falta, la de `AWS_REGION`).
+AGENT_BEDROCK_MODEL = os.environ.get("AC_AGENT_BEDROCK_MODEL", "")
+AGENT_BEDROCK_REGION = os.environ.get("AC_AGENT_BEDROCK_REGION") or None
+# Variable de entorno con la clave de DeepSeek del desarrollador, para el proveedor `deepseek-dev` (nunca en prod).
+DEV_KEY_ENV = "DEEP_SEEK_API_KEY"
+# Los demás proveedores usan su API compatible con OpenAI (`POST /chat/completions`). Modelo y dirección se cambian con
+# `AC_AGENT_<PROVEEDOR>_MODEL` y `AC_AGENT_<PROVEEDOR>_BASE_URL`. Sin verificar contra cada API (pendiente).
+_OPENAI_COMPATIBLE = {
+    "openai": ("https://api.openai.com/v1", "gpt-4.1-mini"),
+    "claude": ("https://api.anthropic.com/v1", "claude-haiku-5-5"),
+    "mistral": ("https://api.mistral.ai/v1", "mistral-small-latest"),
+    "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash"),
+}
+AGENT_COMPATIBLE = {
+    name: {"base_url": os.environ.get(f"AC_AGENT_{name.upper()}_BASE_URL", base_url),
+           "model": os.environ.get(f"AC_AGENT_{name.upper()}_MODEL", model)}
+    for name, (base_url, model) in _OPENAI_COMPATIBLE.items()
+}
 # Vueltas de herramientas por pregunta, para que un modelo que no converge no gaste sin fin.
 AGENT_MAX_STEPS = int(os.environ.get("AC_AGENT_MAX_STEPS", "6"))
 # Tope de uso del agente: preguntas por cuenta en una hora y tokens por organización en un día.

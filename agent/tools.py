@@ -4,6 +4,7 @@ el número de renglones, para que la respuesta cite de dónde sale cada cifra. N
 Una pregunta que no se puede responder con dato real devuelve `{"refusal": motivo}`; el agente lo dice tal cual.
 Ejemplo: `get_cinema_ranking(conn, plaza="gdl")` → `{"refusal": "Solo hay butacas medidas en CDMX…"}`.
 """
+import difflib
 import os
 from datetime import date, timedelta
 from pathlib import Path
@@ -57,8 +58,17 @@ def _result(rows, **context):
     return {"environment": environment(), "row_count": len(rows), "rows": rows[:ROW_LIMIT], **context}
 
 
-def _refusal(reason):
-    return {"environment": environment(), "refusal": reason}
+def _source(dataset, **filters):
+    """Una consulta del explorador de Datos con los mismos filtros que la herramienta. La pantalla la vuelve un enlace."""
+    return {"dataset": dataset, **{k: v for k, v in filters.items() if v is not None}}
+
+
+def _titles_source(title, plaza, d0, d1):
+    return _source("week_showtimes", d0=d0, d1=d1, plaza=plaza or "nacional", search=title, from_now="true")
+
+
+def _refusal(reason, **context):
+    return {"environment": environment(), "refusal": reason, **context}
 
 
 def list_tables():
@@ -76,6 +86,7 @@ def describe_table(conn, table):
     period = dict(zip(("d0", "d1"), queries.cinema_week(queries.today()))) if "dates" in filters else {}
     columns = [{"column": c, "label": labels.COLUMN_LABEL.get(c, c)} for c in datasets.columns(conn, table, **period)]
     return _result(columns, table=table, total_rows=datasets.count(conn, table, **period), filters=filters,
+                   sources=[_source(table, **period)],
                    **({"window": {"from": period["d0"], "to": period["d1"]}} if period else {}))
 
 
@@ -83,7 +94,7 @@ def get_cinema_ranking(conn, chain="cinemex", plaza="cdmx", order="desc", limit=
     """Cines de una cadena por % vendido medido después del inicio, de `order` `desc` (más venden) o `asc`.
     Solo hay butacas medidas en las plazas de `config.SEATS_PLAZAS`; fuera de ellas devuelve un rechazo."""
     if plaza not in config.SEATS_PLAZAS:
-        return _refusal(labels.AGENT_TEXT["seats_only"].format(plazas=", ".join(config.SEATS_PLAZAS)))
+        return _refusal(labels.AGENT_TEXT["seats_only"].format(cities=_city_names(config.SEATS_PLAZAS)))
     if chain not in labels.COMPARED:
         return _refusal(labels.AGENT_TEXT["chain_not_compared"])
     everyone = cinema_sales.cinema_occupancy(conn, days=days, plaza=plaza, min_shows=0, chains=(chain,))
@@ -101,6 +112,11 @@ def _days_back(days):
     return (end - timedelta(days=days - 1)).isoformat(), end.isoformat()
 
 
+def _city_names(keys):
+    """Los nombres para el usuario de las claves de plaza: `("cdmx", "gdl")` → `"CDMX, Guadalajara"`."""
+    return ", ".join(labels.PLAZA_LABEL[k] for k in keys)
+
+
 def _known_plaza(plaza):
     """La plaza como la entiende `analytics/` (`"nacional"` y None son todo el país) o None si no existe."""
     return None if plaza in (None, "nacional") else plaza
@@ -110,42 +126,67 @@ def _unknown_plaza(plaza):
     return _known_plaza(plaza) is not None and plaza not in plazas.PLAZAS
 
 
+_SUGGESTIONS = 3
+_SUGGESTION_CUTOFF = 0.6
+
+
 def _week_titles(conn, plaza):
+    """(d0, d1, películas de la semana). Cada una lleva `original_titles`: los nombres originales que publican las
+    cadenas cuando difieren del de cartelera."""
     d0, d1 = queries.cinema_week(queries.today())
-    return d0, d1, queries.movies_by_chain(conn, d0, d1, limit=10**6, plaza=plaza)
+    originals = queries.original_titles(conn)
+    return d0, d1, [{**t, "original_titles": originals.get(t["title_norm"], [])}
+                    for t in queries.movies_by_chain(conn, d0, d1, limit=10**6, plaza=plaza)]
+
+
+def _names(title):
+    return [title["title"], *title["original_titles"]]
+
+
+def _matching(titles, wanted):
+    """Las películas cuyo nombre, o nombre original, contiene `wanted` sin mayúsculas ni acentos."""
+    needle = normalize.norm_title(wanted)
+    return [t for t in titles if any(needle in normalize.norm_title(name or "") for name in _names(t))]
+
+
+def _title_not_found(titles, wanted):
+    """Rechazo con hasta tres películas de la semana parecidas a `wanted`, para que el agente pregunte si era una de ellas.
+    Son sugerencias de parecido, nunca un dato."""
+    known = {normalize.norm_title(name): name for t in titles for name in _names(t) if name}
+    close = difflib.get_close_matches(normalize.norm_title(wanted), known, n=_SUGGESTIONS, cutoff=_SUGGESTION_CUTOFF)
+    return _refusal(labels.AGENT_TEXT["title_not_found"].format(title=wanted), suggestions=[known[c] for c in close])
 
 
 def get_title_screens(conn, title=None, plaza="cdmx", limit=10):
     """Películas por su participación en la programación de Cinemex esta semana de cine (jueves a miércoles), con la de
     Cinépolis al lado. Con `title`, solo las que lo contienen. `plaza=None` es nacional."""
     if _unknown_plaza(plaza):
-        return _refusal(labels.AGENT_TEXT["unknown_plaza"].format(plaza=plaza, plazas=", ".join(plazas.PLAZAS)))
+        return _refusal(labels.AGENT_TEXT["unknown_plaza"].format(city=plaza, cities=_city_names(plazas.PLAZAS)))
     plaza = _known_plaza(plaza)
     d0, d1, titles = _week_titles(conn, plaza)
     if title:
-        needle = normalize.norm_title(title)
-        titles = [t for t in titles if needle in normalize.norm_title(t["title"] or "")]
-        if not titles:
-            return _refusal(labels.AGENT_TEXT["title_not_found"].format(title=title))
+        matched = _matching(titles, title)
+        if not matched:
+            return _title_not_found(titles, title)
+        titles = matched
     titles.sort(key=lambda t: (-(t["shows_cinemex"] or 0), t["title_norm"]))
     shown = _with_text(titles[:limit], percent=("share_cinemex", "share_cinepolis"), points=("gap_pp",))
     return _result(shown, plaza=plaza, window={"from": d0, "to": d1}, window_text=labels.range_es(d0, d1),
-                   measure="participación en funciones")
+                   measure="participación en funciones", sources=[_titles_source(title, plaza, d0, d1)])
 
 
 def compare_titles(conn, title_a, title_b, plaza="cdmx"):
     """Dos películas lado a lado: funciones y participación en ambas cadenas esta semana de cine y, en plazas con
     butacas medidas, su % vendido y su índice de demanda en Cinemex."""
     if _unknown_plaza(plaza):
-        return _refusal(labels.AGENT_TEXT["unknown_plaza"].format(plaza=plaza, plazas=", ".join(plazas.PLAZAS)))
+        return _refusal(labels.AGENT_TEXT["unknown_plaza"].format(city=plaza, cities=_city_names(plazas.PLAZAS)))
     plaza = _known_plaza(plaza)
     d0, d1, titles = _week_titles(conn, plaza)
     found = []
     for wanted in (title_a, title_b):
-        needle = normalize.norm_title(wanted)
-        match = [t for t in titles if needle in normalize.norm_title(t["title"] or "")]
+        match = _matching(titles, wanted)
         if not match:
-            return _refusal(labels.AGENT_TEXT["title_not_found"].format(title=wanted))
+            return _title_not_found(titles, wanted)
         found.append(max(match, key=lambda t: t["shows_cinemex"] or 0))
     demand = {}
     if plaza in config.SEATS_PLAZAS:
@@ -153,11 +194,13 @@ def compare_titles(conn, title_a, title_b, plaza="cdmx"):
     for t in found:
         t["occupancy"] = demand.get(t["title_norm"])
     shown = _with_text(found, percent=("share_cinemex", "share_cinepolis"), points=("gap_pp",))
-    return _result(shown, plaza=plaza, window={"from": d0, "to": d1}, window_text=labels.range_es(d0, d1))
+    return _result(shown, plaza=plaza, window={"from": d0, "to": d1}, window_text=labels.range_es(d0, d1),
+                   sources=[_titles_source(wanted, plaza, d0, d1) for wanted in (title_a, title_b)])
 
 
 def get_popcorn_price(conn, platform=None):
     """Precio de dulcería de Cinemex contra Cinépolis por tipo de producto, a domicilio (Rappi y DiDi). Es la única
     fuente con las dos cadenas: Cinemex no publica su menú en sala."""
     compared = delivery.delivery_compare(conn, platform=platform)
-    return _result(compared, source="precio a domicilio, mediana por tienda", platform=platform)
+    return _result(compared, source="precio a domicilio, mediana por tienda", platform=platform,
+                   sources=[_source("delivery_prices", platform=platform)])

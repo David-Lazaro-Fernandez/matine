@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo
 
 from scraper import config
 from scraper.health import MAX_AGE_MIN
+from scraper.normalize import norm_title
 from scraper.plazas import city_ids
 from scraper.titles import title_key
 
@@ -221,6 +222,19 @@ def movies_by_chain(conn, d0=None, d1=None, limit=60, from_now=True, hours=None,
                COUNT(*)                                                   shows_total
         FROM base b
         GROUP BY title_norm ORDER BY shows_total DESC LIMIT ?""", params + [limit])
+
+
+def original_titles(conn):
+    """{title_norm: [nombres originales]} de las películas vigentes cuyas cadenas publican un nombre original distinto
+    del nombre en cartelera (la llave es la de `movies_by_chain`; cada cadena puede publicar el suyo). Ejemplo:
+    `{"tu nombre": ["Your Name"]}`."""
+    found = rows(conn, """SELECT title_norm, original_title FROM current_showtime WHERE original_title IS NOT NULL
+                          GROUP BY title_norm, original_title ORDER BY title_norm, original_title""")
+    originals = {}
+    for r in found:
+        if norm_title(r["original_title"]) != r["title_norm"]:
+            originals.setdefault(title_key(r["title_norm"]), []).append(r["original_title"])
+    return originals
 
 
 def movie_gaps(conn, d0=None, d1=None, from_now=True, hours=None, plaza=None, limit=15):

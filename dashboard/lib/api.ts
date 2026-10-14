@@ -45,10 +45,10 @@ export function query(params: Record<string, string | number | null | undefined>
   return kept.length ? `?${new URLSearchParams(kept)}` : '';
 }
 
-// GET a `/api{path}`, o POST con `body` en JSON. Devuelve el JSON de la respuesta, o undefined si es 204.
-export async function api<T>(path: string, body?: unknown): Promise<T> {
+// GET a `/api{path}`, o `method` (POST por defecto) con `body` en JSON. Devuelve el JSON de la respuesta, o undefined si es 204.
+export async function api<T>(path: string, body?: unknown, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
   const response = await fetch(`/api${path}`, {
-    method: body === undefined ? 'GET' : 'POST',
+    method: body === undefined ? 'GET' : method,
     credentials: 'same-origin',
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -61,4 +61,31 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
     throw new ApiError(response.status, typeof data?.detail === 'string' ? data.detail : null);
   }
   return response.status === 204 ? (undefined as T) : response.json();
+}
+
+// POST a `/api{path}` que responde en líneas JSON: llama a `onEvent` con cada una conforme llega.
+export async function apiStream<T>(path: string, body: unknown, onEvent: (event: T) => void): Promise<void> {
+  const response = await fetch(`/api${path}`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (response.status === 401 && !isPublicPath(window.location.pathname)) {
+    window.location.assign(LOGIN_PATH);
+  }
+  if (!response.ok || !response.body) {
+    const data = await response.json().catch(() => null);
+    throw new ApiError(response.status, typeof data?.detail === 'string' ? data.detail : null);
+  }
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let pending = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    pending += value;
+    const lines = pending.split('\n');
+    pending = lines.pop() ?? '';
+    lines.filter(Boolean).forEach((line) => onEvent(JSON.parse(line)));
+  }
 }
