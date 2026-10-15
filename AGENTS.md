@@ -379,15 +379,18 @@ de Slack van al dashboard local. En producción `AC_BASE_URL` va en el `.env` de
   (`.github/workflows/tests.yml`) cuando las pruebas pasan en `main`, y es lo que el servidor despliega
   (`make deploy`, cada 15 min): no la muevas a mano. Si un commit rompe las pruebas, `stable` se queda atrás hasta que se
   arregle; por eso una prueba que falla en CI bloquea el despliegue de todo lo posterior.
-- **La carpeta principal del repo siempre está en `main`, limpia.** Ahí solo se integran ramas. Cada función se trabaja
-  en su propio worktree y en su propia rama: `git worktree add -b mi-funcion ../absolut-cinema-mi-funcion main`, o
-  desde la rama de la que dependa. Dos agentes nunca escriben en la misma carpeta. Así varios agentes trabajan en
-  paralelo y cada rama entra a `main` con su merge, sin pisar el trabajo de otro. El ciclo es `scripts/wt new`, `wt integrate`
-  y `wt done`. La carpeta principal es un checkout normal (`core.bare` en `false`): `wt integrate` falla si no lo es o si tiene
-  cambios, y `wt list` lo avisa. Nunca muevas `main` con `branch -f` ni `reset --hard`. `wt new` enlaza `data/` y `.venv` de la carpeta principal e instala
-  `node_modules`: en el worktree corren `make dashboard` y `make dashboard-dev`. `make dashboard` apaga `precalc.db`
-  (`AC_PRECALC=0`), así un cambio en `analytics/` se ve de inmediato.
+- **La carpeta principal del repo siempre está en `main`, limpia.** Ahí solo se integran ramas. Una función que
+  trabaja un solo agente va en su propia rama (`git switch -c mi-funcion`), sin worktree: cada worktree duplica
+  `node_modules` y ocupa disco. Un worktree solo se crea cuando varios agentes escriben al mismo tiempo, o cuando la
+  persona lo indica: `git worktree add -b mi-funcion ../absolut-cinema-mi-funcion main`, o desde la rama de la que
+  dependa. Dos agentes nunca escriben en la misma carpeta. Así varios agentes trabajan en paralelo y cada rama entra a
+  `main` con su merge, sin pisar el trabajo de otro. Si no te dicen que hay más agentes, no hay worktree. El ciclo con
+  worktrees es `scripts/wt new`, `wt integrate` y `wt done`. La carpeta principal es un checkout normal (`core.bare` en
+  `false`): `wt integrate` falla si no lo es o si tiene cambios, y `wt list` lo avisa. Nunca muevas `main` con
+  `branch -f` ni `reset --hard`. `wt new` enlaza `data/` y `.venv` de la carpeta principal e instala `node_modules`: en
+  el worktree corren `make dashboard` y `make dashboard-dev`. `make dashboard` apaga `precalc.db` (`AC_PRECALC=0`), así
+  un cambio en `analytics/` se ve de inmediato. Al terminar, se borran el worktree y la rama.
 - **Un cambio pequeño se integra solo.** Un cambio de pocas líneas y sin decisión abierta, como una constante, un texto
-  o un dato de configuración, no espera a que se pida el commit. Se hace en su worktree, se prueba con la compuerta que
+  o un dato de configuración, no espera a que se pida el commit. Se hace en su rama (o en su worktree, si hay más agentes), se prueba con la compuerta que
   le toca (`make check` o `pnpm run build`), se hace merge a `main` y se borran el worktree y la rama. Si la prueba
   falla, no hay merge.
