@@ -37,7 +37,7 @@ def test_the_golden_set_has_the_required_shape():
     assert all(n >= 10 for n in Counter(q["category"] for q in GOLDEN).values())
     assert len({q["id"] for q in GOLDEN}) == len(GOLDEN)
     assert all(q["tool"] in {"list_tables", "describe_table", "get_cinema_ranking", "get_title_screens",
-                             "compare_titles", "get_popcorn_price"} for q in CORE)
+                             "compare_titles", "get_popcorn_price", "get_distributor_screens"} for q in CORE)
 
 
 @pytest.mark.parametrize("item", CORE, ids=[q["id"] for q in CORE])

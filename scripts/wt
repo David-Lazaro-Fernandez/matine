@@ -5,6 +5,7 @@
 #   wt integrate <feature>  merge de la rama a main, en la carpeta principal
 #   wt done <feature>   borra el worktree y la rama
 #   wt list             muestra cada worktree con su estado
+#   wt slot             número de esta carpeta para los puertos: 0 en main, 1 el primer worktree, 2 el segundo…
 set -euo pipefail
 
 # La primera entrada de `worktree list` es la carpeta principal, aunque se ejecute desde otro worktree.
@@ -99,10 +100,24 @@ list() {
   done
 }
 
+# Los puertos de desarrollo salen de este número (AGENTS.md, "Puertos de desarrollo").
+slot() {
+  local here n=0 wt
+  here=$(git rev-parse --show-toplevel)
+  [ "$here" != "$ROOT" ] || { echo 0; return; }
+  while read -r wt; do
+    [ "$wt" != "$ROOT" ] || continue
+    n=$((n + 1))
+    [ "$wt" != "$here" ] || { echo "$n"; return; }
+  done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
+  die "esta carpeta no es un worktree conocido"
+}
+
 case "${1:-}" in
   new) shift; new "$@" ;;
   integrate) shift; integrate "$@" ;;
   done) shift; done_wt "$@" ;;
   list) list ;;
-  *) die "uso: wt new <feature> | wt integrate <feature> | wt done <feature> | wt list" ;;
+  slot) slot ;;
+  *) die "uso: wt new <feature> | wt integrate <feature> | wt done <feature> | wt list | wt slot" ;;
 esac

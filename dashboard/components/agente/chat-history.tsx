@@ -53,13 +53,13 @@ const useStyles = makeStyles({
     border: 'none',
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: 'transparent',
-    color: tokens.colorNeutralForeground1,
+    color: tokens.colorNeutralForeground3,
     fontFamily: 'inherit',
     fontSize: tokens.fontSizeBase300,
     cursor: 'pointer',
     ':hover': { backgroundColor: tokens.colorSubtleBackgroundHover },
   },
-  selected: { backgroundColor: tokens.colorSubtleBackgroundSelected, fontWeight: tokens.fontWeightSemibold },
+  selected: { backgroundColor: tokens.colorSubtleBackgroundSelected, color: tokens.colorNeutralForeground1, fontWeight: tokens.fontWeightSemibold },
   delete: { opacity: 0, flexShrink: 0 },
 });
 

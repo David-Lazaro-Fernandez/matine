@@ -6,7 +6,7 @@ import type { ROLE_LABEL } from '@/lib/labels.generated';
 export type Role = keyof typeof ROLE_LABEL;
 export type Me = { id: number; email: string; name: string; role: Role };
 // `GET /api/yo`: la cuenta con su avatar y su tema, y su organización. Las imágenes son URLs `data:`.
-export type Module = 'cartelera' | 'dulceria' | 'datos' | 'agente';
+export type Module = 'cartelera' | 'dulceria' | 'distribuidores' | 'datos' | 'agente';
 export type Profile = Me & {
   avatar: string | null;
   theme: 'system' | 'light' | 'dark';

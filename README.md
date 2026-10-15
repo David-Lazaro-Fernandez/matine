@@ -40,10 +40,10 @@ make hooks                                     # pre-push: make check (lint, imp
 make snapshot                                  # una captura completa (~5 min)
 make health                                    # estado de la captura
 make user-create EMAIL=tu@correo NAME="Tu Nombre" ROLE=admin   # imprime el enlace para elegir la contraseña
-make dashboard                                 # API interna del dashboard en :8501
-cd dashboard && pnpm dev                       # frontend en :3000 (pasa /api a :8501)
+make dashboard                                 # API interna del dashboard en :8500
+make dashboard-dev                             # frontend en :3000 (pasa /api a :8500)
 make api                                       # API pública en http://localhost:8000/docs
-make marketing-dev                             # sitio público en :3001 (pnpm install una vez en marketing/)
+make marketing-dev                             # sitio público en :4000 (pnpm install una vez en marketing/)
 ```
 
 Cada trabajo programado se corre a mano con `make job KEY=llave` (llaves en `jobs/keys.py`). En la Mac,

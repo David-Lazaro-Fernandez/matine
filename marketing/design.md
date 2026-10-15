@@ -135,6 +135,23 @@ navegación llega a 1400 px solo sin scroll. Todo lo que aparece al hacer scroll
 `useReveal` (`components/reveal.tsx`, `IntersectionObserver`), y `prefers-reduced-motion` apaga
 marquesina, letras, progreso y apariciones.
 
+**Siguiente trabajo: duraciones (revisado 2026-10-15).** La guía es: microinteracciones 100–150 ms, UI estándar
+150–250 ms, modales y cajones 200–300 ms, transiciones 300–400 ms, y la UI bajo 300 ms. Hoy casi todo en `globals.css`
+la supera. Orden propuesto:
+
+1. **Hovers a 150 ms o menos.** Hoy 300 ms en `.nav__links a`, `.nav__links a::after`, `.footer li a`, `.ai__card`,
+   `.sched__row`, `.hgrid__cell`, `.demo__dot`, `.pill svg` y `.ai__more svg`; 250 ms en `.pill`; 200 ms en
+   `.rec-suggest__item`.
+2. **Menús y superficies a 250–300 ms.** Hoy 400 ms con `ease-in-out` en `.rec-menu`, `.rec-menu__scrim` y
+   `.rec-menu--sheet` (pasan a `--ease-out`; se actualiza la excepción de arriba); 600 ms en `.rec-stage__glass` y
+   `.rec-dock`; 400 ms en `.nav-overlay` y `.nav-overlay__links a`; 500 ms en `.nav` y `.nav__bar`.
+3. **`transition: all` en `.nav__bar`.** Listar las propiedades que de verdad cambian.
+4. **Entradas a 400 ms o menos** (decisión abierta: dan la primera impresión). Hoy `.reveal` 700 ms, `.fade` 800 ms con
+   retrasos de hasta 600 ms en el hero, `.char` 500 ms, `.win__body` 500 ms y el mapa de `recommender-map.tsx` 900 ms.
+
+Fuera de la regla: la cinta (`.ticker__track`, 44 s), la barra de progreso (5 s), el esqueleto (1.2 s) y las rotaciones
+del hero y del piloto, porque son bucles o temporizadores. `prefers-reduced-motion` ya los apaga.
+
 ## 5. Vocabulario del stylesheet (`app/globals.css`)
 
 Un solo archivo, organizado por sección con prefijos BEM. Documentado para que nadie reinvente una

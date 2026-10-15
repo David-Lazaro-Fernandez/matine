@@ -15,10 +15,11 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import { THEME_ICON } from '@/components/account-menu';
 import { PageHeader, Pregunta, Seccion } from '@/components/common';
 import { ImagePicker, StatusBar, useAction } from '@/components/configuracion/comunes';
-import { useSession } from '@/lib/session';
-import { useSetTheme, type ThemeChoice } from '@/app/providers';
+import { useSaveProfile, useSession } from '@/lib/session';
+import type { ThemeChoice } from '@/app/providers';
 import { api, type Profile } from '@/lib/api';
 import { AUTH_TEXT, ROLE_HELP, ROLE_LABEL, THEME_LABEL } from '@/lib/labels.generated';
 
@@ -33,6 +34,7 @@ const useStyles = makeStyles({
     '@media (max-width: 768px)': { gridTemplateColumns: 'minmax(0, 1fr)' },
   },
   stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
+  themeLabel: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
   imageRow: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: tokens.spacingHorizontalM },
 });
 
@@ -69,6 +71,7 @@ function ProfileSection({ user, save }: { user: Profile; save: (change: Partial<
 }
 
 function ThemeSection({ user, save }: { user: Profile; save: (change: Partial<Profile>) => Promise<void> }) {
+  const s = useStyles();
   const { busy, status, run } = useAction(AUTH_TEXT.saved);
   return (
     <Seccion slug="tema">
@@ -78,7 +81,10 @@ function ThemeSection({ user, save }: { user: Profile; save: (change: Partial<Pr
         disabled={busy}
         onChange={(_, data) => run(() => save({ theme: data.value as ThemeChoice }))}
       >
-        {THEMES.map((t) => <Radio key={t} value={t} label={THEME_LABEL[t]} />)}
+        {THEMES.map((t) => {
+          const Icon = THEME_ICON[t];
+          return <Radio key={t} value={t} label={<span className={s.themeLabel}><Icon />{THEME_LABEL[t]}</span>} />;
+        })}
       </RadioGroup>
       <StatusBar status={status?.error ? status : null} />
     </Seccion>
@@ -154,19 +160,8 @@ function PasswordSection() {
 export default function Page() {
   const s = useStyles();
   const { user, setUser } = useSession();
-  const setTheme = useSetTheme();
+  const save = useSaveProfile();
   if (!user) return null;
-
-  const save = async (change: Partial<Profile>) => {
-    const next = { name: user.name, theme: user.theme, avatar: user.avatar, ...change };
-    if (change.theme) setTheme(change.theme);
-    try {
-      setUser(await api<Profile>('/perfil', { name: next.name.trim(), theme: next.theme, avatar: next.avatar }));
-    } catch (err) {
-      setTheme(user.theme);
-      throw err;
-    }
-  };
 
   return (
     <>
