@@ -17,8 +17,8 @@ import {
 } from '@fluentui/react-components';
 import { PageHeader, Pregunta, Seccion } from '@/components/common';
 import { ImagePicker, StatusBar, useAction } from '@/components/configuracion/comunes';
-import { useSession } from '@/lib/session';
-import { useSetTheme, type ThemeChoice } from '@/app/providers';
+import { useSaveProfile, useSession } from '@/lib/session';
+import type { ThemeChoice } from '@/app/providers';
 import { api, type Profile } from '@/lib/api';
 import { AUTH_TEXT, ROLE_HELP, ROLE_LABEL, THEME_LABEL } from '@/lib/labels.generated';
 
@@ -154,19 +154,8 @@ function PasswordSection() {
 export default function Page() {
   const s = useStyles();
   const { user, setUser } = useSession();
-  const setTheme = useSetTheme();
+  const save = useSaveProfile();
   if (!user) return null;
-
-  const save = async (change: Partial<Profile>) => {
-    const next = { name: user.name, theme: user.theme, avatar: user.avatar, ...change };
-    if (change.theme) setTheme(change.theme);
-    try {
-      setUser(await api<Profile>('/perfil', { name: next.name.trim(), theme: next.theme, avatar: next.avatar }));
-    } catch (err) {
-      setTheme(user.theme);
-      throw err;
-    }
-  };
 
   return (
     <>

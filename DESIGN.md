@@ -117,8 +117,10 @@ Como la consola de una aplicación de Microsoft (`components/shell.tsx`):
   "Mejorar" y "Comunicarse con Ventas" abren el diálogo de mejora y "Cerrar sesión" sale; las demás se muestran
   deshabilitadas hasta tener destino. El botón de imprimir solo aparece si la cuenta descarga (`can_download`).
 - **Búsqueda de secciones** (`components/command-palette.tsx`): el centro de la barra parece un campo con su atajo ⌘K
-  (Ctrl K fuera de Mac). El atajo abre un diálogo con un campo y la lista de páginas que la cuenta ve, con su módulo a la
-  derecha. Las flechas mueven la selección y Enter abre la página. Las palabras se buscan sin acentos.
+  (Ctrl K fuera de Mac). El atajo abre un diálogo con un campo y la lista de páginas que la cuenta ve, agrupadas por
+  módulo: cada grupo lleva su título y una línea gris encima. Al final va el grupo Ayuda con las guías de `HELP_TOPICS`
+  (el tema a la derecha); elegir una abre el cajón de ayuda en esa guía. Las flechas mueven la selección y Enter abre la
+  fila. Las palabras se buscan sin acentos.
 - **Ayuda**, el botón "?" a la izquierda del avatar: abre un `OverlayDrawer` a la derecha con búsqueda, temas y guías
   (`components/help-drawer.tsx`). El contenido sale de `HELP_TOPICS` en `analytics/labels.py`; una guía nueva va ahí.
 - **Riel de módulos** a la izquierda, 56 px, bajo la barra, fondo blanco y borde derecho: un icono por módulo
@@ -292,6 +294,13 @@ Las animaciones de Fluent, no unas propias. Los componentes de Fluent ya traen l
 `Popover`, `Dialog`, `Tooltip`, `Spinner`). Lo que aparece al llegar los datos (secciones, hallazgos, apéndices y la
 tarjeta de acceso) entra con `Entrada` de `components/common.tsx`: sube 8 px y se aclara, con
 `motionTokens.durationNormal` y `curveDecelerateMid`. Fluent la acorta cuando el sistema pide menos movimiento.
+
+**Siguiente trabajo (revisado 2026-10-15).** La guía de duración: microinteracciones 100–150 ms, UI estándar 150–250 ms,
+modales y cajones 200–300 ms, transiciones de página 300–400 ms, y toda animación de UI bajo 300 ms. Lo que se anima más
+a menudo se anima menos: más de 100 veces al día, sin animación. El dashboard cumple las duraciones: `Entrada` 200 ms,
+`Dialog` 250 ms y `OverlayDrawer` pequeño 250 ms. Falta una cosa: la paleta de `components/command-palette.tsx` se abre
+con ⌘K muchas veces al día y hoy anima 250 ms al abrir y al cerrar. Hay que abrirla sin animación (`surfaceMotion={null}`
+en `DialogSurface`). Sin medir: `Tooltip` y `Menu`, que usan los valores por defecto de Fluent.
 
 ## Estilo visual
 
