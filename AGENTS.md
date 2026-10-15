@@ -330,16 +330,22 @@ un endpoint o añades lógica pura; añade una prueba cuando el caso quepa en me
 make help                                  # los targets son lo que corren los timers
 /usr/bin/python3 -m scraper.run            # snapshot completo de ambas cadenas (~5 min)
 /usr/bin/python3 -m scraper.health         # sale 1 si hay huecos o fallos
-make dashboard                             # API interna en :8501
-make dashboard-dev                         # frontend del dashboard en :3000
-make marketing-dev                         # landing en :3001
+make dashboard                             # API interna en :8500 en main; ver "Puertos de desarrollo"
+make dashboard-dev                         # frontend del dashboard en :3000 en main; ver "Puertos de desarrollo"
+make marketing-dev                         # landing en :4000 en main; ver "Puertos de desarrollo"
 sqlite3 data/snapshots.db "SELECT * FROM snapshot ORDER BY id DESC LIMIT 4;"
 ```
 
-**Puertos de desarrollo:** el dashboard va en `localhost:3000` y la landing en `localhost:3001`. Los dos corren
-siempre que trabajas. Si un puerto está ocupado, `make dashboard-dev` o `make marketing-dev` matan el proceso que lo
-ocupa antes de arrancar. `AC_BASE_URL` sin definir apunta a `http://localhost:3000`, así que los enlaces de correo y
-de Slack van al dashboard local. En producción `AC_BASE_URL` va en el `.env` del servidor.
+**Puertos de desarrollo:** los servidores siempre corren en `main`, y en `main` siempre usan el frontend del dashboard en
+`localhost:3000` y la API interna en `localhost:8500`. Solo un worktree distinto corre en otros puertos: con *N* el
+número del worktree activo (el primero es 1, el segundo es 2), el frontend va en `3000 + N` y la API en `8500 + N`. Con
+`main` y dos worktrees activos: `main` en 3000 y 8500, el primer worktree en 3001 y 8501, el segundo en 3002 y 8502. El
+frontend de un worktree pasa `/api` a la API de su mismo número (`AC_API_PORT`). Si un puerto está ocupado,
+`make dashboard-dev` mata el proceso que lo ocupa antes de arrancar. `AC_BASE_URL` sin definir apunta a
+`http://localhost:3000`, así que los enlaces de correo y de Slack van al dashboard local. En producción `AC_BASE_URL` va
+en el `.env` del servidor y la API del servidor sigue en `127.0.0.1:8501` (`deploy/`). La landing (`make marketing-dev`)
+sigue la misma regla desde `4000`: `main` en 4000, el primer worktree en 4001. El número de cada carpeta sale de
+`scripts/wt slot` y lo usa el `Makefile`.
 
 - **Ejecuta el módulo que tocaste**, no solo el que te queda a mano. Un cambio en `normalize.py` o
   `store.py` se verifica con un `scraper.run` real; uno en `analytics/` levantando el dashboard (`make dashboard` y

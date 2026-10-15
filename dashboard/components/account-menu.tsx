@@ -40,7 +40,7 @@ import type { Profile } from '@/lib/api';
 import { useSaveProfile } from '@/lib/session';
 import { AUTH_TEXT, HELP_TEXT, ROLE_LABEL, SHELL_TEXT, THEME_LABEL } from '@/lib/labels.generated';
 
-const THEME_ICON = { light: WeatherSunny20Regular, dark: WeatherMoon20Regular, system: Desktop20Regular } as const;
+export const THEME_ICON = { light: WeatherSunny20Regular, dark: WeatherMoon20Regular, system: Desktop20Regular } as const;
 
 // La vista de Aspecto entra desde la derecha y el menú inicial vuelve desde la izquierda, en la misma posición.
 const slideFrom = (x: number) => createMotionComponent({
