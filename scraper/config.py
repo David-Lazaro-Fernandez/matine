@@ -223,6 +223,39 @@ PRECALC_ENABLED = os.environ.get("AC_PRECALC", "1") != "0"
 # Cuentas, sesiones, enlaces y auditoría en su propia base SQLite: la escribe solo auth/ (dashboard y auth.cli), nunca
 # la captura; snapshots.db sigue siendo solo de la captura (decisión 2026-09-25: sin Postgres ni RDS).
 APP_DB_PATH = Path(os.environ.get("AC_APP_DB", DATA_DIR / "app.db"))
+# Cifrado de las claves de proveedor de IA (`auth/secrets.py`): `kms` usa AWS KMS con `AC_KMS_KEY_ID` (id, ARN o alias);
+# `dev` solo codifica y está prohibido con `AC_ENV=prod`.
+KEY_BACKEND = os.environ.get("AC_KEY_BACKEND", "dev")
+KMS_KEY_ID = os.environ.get("AC_KMS_KEY_ID", "")
+# Agente de IA (agent/). DeepSeek con `deepseek-flash` y sin modo de razonamiento: es lo más barato y no hay que devolver
+# `reasoning_content` entre llamadas (verificado 2026-10-14 en api-docs.deepseek.com).
+AGENT_BASE_URL = os.environ.get("AC_AGENT_BASE_URL", "https://api.deepseek.com")
+AGENT_MODEL = os.environ.get("AC_AGENT_MODEL", "deepseek-flash")
+AGENT_THINKING = os.environ.get("AC_AGENT_THINKING", "disabled")
+# Amazon Bedrock (`agent/providers/bedrock.py`): id del modelo o del perfil de inferencia, sin valor por defecto porque
+# no se verificó ninguno, y región (si falta, la de `AWS_REGION`).
+AGENT_BEDROCK_MODEL = os.environ.get("AC_AGENT_BEDROCK_MODEL", "")
+AGENT_BEDROCK_REGION = os.environ.get("AC_AGENT_BEDROCK_REGION") or None
+# Variable de entorno con la clave de DeepSeek del desarrollador, para el proveedor `deepseek-dev` (nunca en prod).
+DEV_KEY_ENV = "DEEP_SEEK_API_KEY"
+# Los demás proveedores usan su API compatible con OpenAI (`POST /chat/completions`). Modelo y dirección se cambian con
+# `AC_AGENT_<PROVEEDOR>_MODEL` y `AC_AGENT_<PROVEEDOR>_BASE_URL`. Sin verificar contra cada API (pendiente).
+_OPENAI_COMPATIBLE = {
+    "openai": ("https://api.openai.com/v1", "gpt-4.1-mini"),
+    "claude": ("https://api.anthropic.com/v1", "claude-haiku-5-5"),
+    "mistral": ("https://api.mistral.ai/v1", "mistral-small-latest"),
+    "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash"),
+}
+AGENT_COMPATIBLE = {
+    name: {"base_url": os.environ.get(f"AC_AGENT_{name.upper()}_BASE_URL", base_url),
+           "model": os.environ.get(f"AC_AGENT_{name.upper()}_MODEL", model)}
+    for name, (base_url, model) in _OPENAI_COMPATIBLE.items()
+}
+# Vueltas de herramientas por pregunta, para que un modelo que no converge no gaste sin fin.
+AGENT_MAX_STEPS = int(os.environ.get("AC_AGENT_MAX_STEPS", "6"))
+# Tope de uso del agente: preguntas por cuenta en una hora y tokens por organización en un día.
+AGENT_QUESTIONS_PER_HOUR = int(os.environ.get("AC_AGENT_QUESTIONS_PER_HOUR", "30"))
+AGENT_ORG_TOKENS_PER_DAY = int(os.environ.get("AC_AGENT_ORG_TOKENS_PER_DAY", "500000"))
 # `console` escribe data/logs/mail.log; `ses` envía por Amazon SES.
 MAIL_BACKEND = os.environ.get("AC_MAIL_BACKEND", "console")
 # En SES, identidad verificada.

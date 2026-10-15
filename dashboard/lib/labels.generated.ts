@@ -998,9 +998,148 @@ export const DATASET_LABEL = {
   "delivery_prices": "Dulcería a domicilio"
 } as const;
 
+export const DATASET_DESCRIPTION = {
+  "cinemas": "Cada cine de las dos cadenas con su número de salas y butacas medidas.",
+  "auditoriums": "Cada sala con su aforo medido en el plano de asientos.",
+  "week_showtimes": "Las funciones de la semana de cine, con película, horario, formato y precio.",
+  "ticket_prices": "Precio del boleto por cine, formato y tipo de día.",
+  "concession_prices": "Precios de dulcería en sala de Cinépolis. Cinemex no los publica.",
+  "concession_sizes": "Tamaños de los productos de dulcería en sala de Cinépolis.",
+  "delivery_prices": "Precios de dulcería a domicilio (Rappi y DiDi) de ambas cadenas."
+} as const;
+
+export const AGENT_UI = {
+  "placeholder": "Pregunta por la cartelera, la venta o los precios",
+  "send": "Enviar",
+  "thinking": "Consultando los datos…",
+  "useful": "Útil",
+  "not_useful": "No útil",
+  "copy": "Copiar",
+  "copied": "Copiado",
+  "show_detail": "Ver detalle",
+  "hide_detail": "Ocultar detalle",
+  "detail_rows": "{rows} renglones",
+  "new_chat": "Nueva conversación",
+  "history_title": "Historial",
+  "history_today": "Hoy",
+  "history_week": "Últimos 7 días",
+  "history_older": "Anteriores",
+  "delete_chat": "Eliminar conversación",
+  "delete_confirm": "¿Eliminar esta conversación? No se puede deshacer.",
+  "error": "No pude responder.",
+  "title": "¿Qué quieres saber de la cartelera?",
+  "try_with": "O prueba con:",
+  "see_more": "Ver más",
+  "window_label": "Ventana medida:",
+  "step_scope": "Entendiendo tu pregunta…",
+  "step_review": "Revisando la respuesta…",
+  "keys_section": "Asistente de IA",
+  "keys_org": "Organización",
+  "keys_provider": "Proveedor",
+  "keys_key": "Clave",
+  "keys_key_hint": "Se cifra al guardar y no se vuelve a mostrar.",
+  "keys_configured": "Configurada",
+  "keys_missing": "Sin configurar",
+  "keys_replace": "Reemplazar clave",
+  "keys_remove": "Quitar clave"
+} as const;
+
+export const AGENT_SUGGESTIONS = [
+  {
+    "key": "screens",
+    "label": "Más programadas",
+    "question": "¿Qué películas tiene más programadas Cinemex en CDMX esta semana?"
+  },
+  {
+    "key": "sales",
+    "label": "Cines que más venden",
+    "question": "¿Qué cines de Cinemex venden más en CDMX?"
+  },
+  {
+    "key": "rival",
+    "label": "Frente a Cinépolis",
+    "question": "¿Cómo se compara nuestra programación con la de Cinépolis en Guadalajara?"
+  },
+  {
+    "key": "snacks",
+    "label": "Dulcería",
+    "question": "¿Cómo están nuestros precios de palomitas frente a Cinépolis?"
+  },
+  {
+    "key": "tables",
+    "label": "Qué datos hay",
+    "question": "¿Qué datos puedes consultar?"
+  }
+] as const;
+
+export const AGENT_USAGE = {
+  "title": "Uso de IA",
+  "period": "Periodo",
+  "period_days": "Últimos {days} días",
+  "organization": "Organización",
+  "all_organizations": "Todas",
+  "questions": "Preguntas",
+  "tokens": "Tokens",
+  "cost": "Costo estimado",
+  "errors": "Con error",
+  "person": "Persona",
+  "day": "Día",
+  "provider": "Proveedor",
+  "model": "Modelo",
+  "by_person": "Por persona",
+  "by_day": "Por día",
+  "by_model": "Por modelo",
+  "by_organization": "Por organización",
+  "no_price": "Sin precio",
+  "unpriced": "{tokens} tokens sin precio",
+  "unregistered": "Sin registrar",
+  "estimate_note": "Los tokens son exactos. El costo es un tope estimado: usa el precio verificado de cada modelo y no descuenta la caché del proveedor.",
+  "empty": "Nadie ha usado el asistente en este periodo."
+} as const;
+
+export const AGENT_PROVIDER_LABEL = {
+  "bedrock": "Amazon Bedrock",
+  "openai": "ChatGPT",
+  "claude": "Claude",
+  "mistral": "Mistral",
+  "gemini": "Gemini",
+  "deepseek": "DeepSeek",
+  "deepseek-dev": "DeepSeek (dev)"
+} as const;
+
+export const AGENT_TOOL_LABEL = {
+  "list_tables": "Revisé las tablas disponibles",
+  "describe_table": "Revisé las columnas de una tabla",
+  "get_cinema_ranking": "Ordené los cines por venta medida",
+  "get_title_screens": "Revisé las funciones por película",
+  "compare_titles": "Comparé dos películas",
+  "get_popcorn_price": "Comparé los precios de dulcería a domicilio"
+} as const;
+
+export const AGENT_TEXT = {
+  "role_denied": "Tu rol no puede usar el asistente.",
+  "module_denied": "El asistente no está en el plan de tu organización.",
+  "unknown_table": "La tabla {table} no existe.",
+  "seats_only": "Solo hay butacas medidas en estas ciudades: {cities}. No puedo responder sobre venta en otras.",
+  "unknown_plaza": "La ciudad {city} no existe. Las ciudades son: {cities}, o todo el país.",
+  "chain_not_compared": "Solo comparo Cinemex y Cinépolis.",
+  "title_not_found": "No encuentro {title} en cartelera.",
+  "out_of_scope": "Lo siento, no puedo hacer eso.",
+  "no_provider": "Tu organización aún no tiene un proveedor de IA configurado.",
+  "unknown_conversation": "No encuentro esa conversación.",
+  "provider_failed": "No pude obtener respuesta del modelo. Intenta de nuevo en unos minutos.",
+  "empty_answer": "El modelo no devolvió respuesta. Intenta de nuevo.",
+  "too_many_steps": "No logré responder en el número de pasos permitido. Haz una pregunta más concreta.",
+  "user_limit": "Hiciste muchas preguntas seguidas. Intenta de nuevo en un rato.",
+  "org_limit": "Tu organización llegó al límite de uso del asistente de hoy.",
+  "bad_arguments": "Los argumentos de la herramienta no son un JSON válido.",
+  "tool_failed": "La herramienta falló y no hay dato para esa parte de la pregunta."
+} as const;
+
 export const DATA_TEXT = {
   "title": "Datos",
   "dataset": "Tabla",
+  "plaza": "Ciudad",
   "chain": "Cadena",
   "cinemas": "Cines",
   "dates": "Fechas",
@@ -1008,8 +1147,9 @@ export const DATA_TEXT = {
   "category": "Categoría",
   "all": "Todas",
   "search": "Buscar",
-  "search_help": "Parte del nombre, sin distinguir mayúsculas ni acentos. En funciones, de la película o del cine.",
+  "search_help": "Parte del nombre, sin distinguir mayúsculas ni acentos. En funciones, de la película (también por su nombre original) o del cine.",
   "only_open": "Solo funciones vigentes",
+  "from_now": "Solo funciones que no han empezado",
   "latest_only": "Solo la última lectura de cada producto",
   "format": "Formato",
   "day_type": "Tipo de día",
@@ -1578,6 +1718,7 @@ export const PAGE_LABEL = {
   "independientes": "Independientes",
   "distribuidoras": "Distribuidoras",
   "datos": "Datos",
+  "agente": "Asistente",
   "operaciones": "Operaciones",
   "configuracion": "Configuración"
 } as const;
@@ -1586,6 +1727,7 @@ export const MODULE_LABEL = {
   "cartelera": "Cartelera",
   "dulceria": "Dulcería",
   "datos": "Datos",
+  "agente": "Asistente",
   "admin": "Administración"
 } as const;
 
@@ -1596,7 +1738,8 @@ export const UPGRADE_TEXT = {
   "body": {
     "cartelera": "Compara la programación, la preventa, los precios y los cines de Cinemex y Cinépolis, con el mapa y la Cineteca.",
     "dulceria": "Compara los precios de dulcería en sala y a domicilio de Cinemex y Cinépolis.",
-    "datos": "Explora y descarga las tablas completas de la captura. Viene en el plan Completo."
+    "datos": "Explora y descarga las tablas completas de la captura. Viene en el plan Completo.",
+    "agente": "Pregunta en español por la cartelera, la venta y los precios, y recibe la respuesta con su fuente. Viene en el plan Completo."
   },
   "cta": "Quiero conocerlo",
   "sent": "Listo. Ventas te escribirá pronto.",
@@ -1617,6 +1760,7 @@ export const NAV_LABEL = {
   "independientes": "Independientes",
   "distribuidoras": "Distribuidoras",
   "datos": "Datos",
+  "agente": "Asistente",
   "operaciones": "Operaciones",
   "configuracion": "Configuración",
   "domicilio": "A domicilio"

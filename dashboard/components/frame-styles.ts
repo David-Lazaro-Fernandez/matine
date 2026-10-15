@@ -94,6 +94,8 @@ export const useFrameStyles = makeStyles({
     alignItems: 'center',
     rowGap: '2px',
     padding: '6px 0',
+    // El nombre en negritas del módulo activo es más ancho que su casilla; se recorta en vez de salirse.
+    '&.fui-Tab': { overflow: 'hidden' },
     // Fluent reserva el ancho del nombre en negritas. Aquí cada módulo ya tiene un ancho fijo.
     '& .fui-Tab__content--reserved-space': { display: 'none' },
     '& .fui-Tab__content': {

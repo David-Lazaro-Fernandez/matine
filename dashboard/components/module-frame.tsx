@@ -9,6 +9,7 @@ import { LockClosed12Filled } from '@fluentui/react-icons';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useFrameStyles } from '@/components/frame-styles';
 import { MODULES, PAGE_ICON, canSee, isLocked, pageAt, pageLink, type Icon, type PageKey } from '@/components/navigation';
+import { ChatHistory } from '@/components/agente/chat-history';
 import { LockedPage } from '@/components/upgrade';
 import type { Module } from '@/lib/api';
 import { MODULE_LABEL, NAV_LABEL, UPGRADE_TEXT } from '@/lib/labels.generated';
@@ -62,7 +63,7 @@ export function ModuleFrame({ children }: { children: React.ReactNode }) {
           <NavDrawer open type="inline" selectedValue={current} className={s.panel}>
             <NavDrawerHeader className={s.panelTitle}>{MODULE_LABEL[active.key]}</NavDrawerHeader>
             <NavDrawerBody>
-              {active.pages.map((key) => {
+              {active.key === 'agente' ? <ChatHistory /> : active.pages.map((key) => {
                 const PageIcon = PAGE_ICON[key];
                 return (
                   <NavItem

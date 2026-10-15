@@ -11,7 +11,7 @@ data/logs/mail.log. `role` es la única forma de dar el rol `staff`. Sale con 1 
 import argparse
 import sys
 
-from . import flows, orgs, sessions, users
+from . import conversations, flows, orgs, sessions, users
 from .db import DEFAULT_ORG_ID, MODULES, connect
 from .errors import AuthError
 
@@ -54,7 +54,7 @@ def main(argv=None):
     p.add_argument("--seats", type=int, help="asientos pagados; omítelo para quitar la suscripción")
     p.add_argument("--next-billing", help="fecha del próximo cobro, AAAA-MM-DD")
     sub.add_parser("org-list", help="todas las organizaciones")
-    sub.add_parser("prune", help="borra sesiones y tokens vencidos hace más de 90 días")
+    sub.add_parser("prune", help="borra sesiones y tokens vencidos hace más de 90 días y conversaciones sin actividad en 12 meses")
     args = ap.parse_args(argv)
 
     with connect() as conn:
@@ -128,7 +128,8 @@ def _run(conn, args):
             print(f"{org['id']:>4}  {org['name']:<30} {', '.join(org['modules']) or 'sin módulos'}")
     elif args.cmd == "prune":
         n_sessions, n_tokens = sessions.prune(conn)
-        print(f"borradas {n_sessions} sesiones y {n_tokens} tokens")
+        n_conversations = conversations.prune(conn)
+        print(f"borradas {n_sessions} sesiones, {n_tokens} tokens y {n_conversations} conversaciones")
     else:
         user = users.by_email(conn, args.email)
         if user is None:

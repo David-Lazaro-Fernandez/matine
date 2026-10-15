@@ -2,10 +2,15 @@
 // de Configuración.
 import type * as React from 'react';
 import {
+  Bot20Regular,
   BuildingMultiple20Regular,
+  Chat20Regular,
+  Chat24Filled,
+  Chat24Regular,
   BuildingShop20Regular,
   DataBarVertical20Regular,
   Database20Regular,
+  DataUsage20Regular,
   Database24Filled,
   Database24Regular,
   Food24Filled,
@@ -31,12 +36,13 @@ import {
   VideoClip20Regular,
 } from '@fluentui/react-icons';
 import type { Module, Profile } from '@/lib/api';
-import { AUTH_TEXT, MODULE_LABEL, NAV_LABEL } from '@/lib/labels.generated';
+import { AGENT_UI, AGENT_USAGE, AUTH_TEXT, MODULE_LABEL, NAV_LABEL } from '@/lib/labels.generated';
 
 export type PageKey = keyof typeof NAV_LABEL;
 export type ModuleKey = keyof typeof MODULE_LABEL;
 export type Icon = React.ComponentType<{ className?: string }>;
-type SettingsSection = { path: string; label: string; icon: Icon };
+// `module`: la sección solo aplica a organizaciones que lo contrataron (staff las ve siempre).
+type SettingsSection = { path: string; label: string; icon: Icon; staff?: boolean; module?: Module };
 
 // Cada módulo se contrata aparte: Cartelera trae las páginas de películas, Dulcería las de precios de dulcería.
 // Las páginas van por valor para el negocio: primero lo que decide la programación de la semana, al final las consultas.
@@ -45,6 +51,7 @@ export const MODULES: { key: ModuleKey; icon: Icon; iconSelected: Icon; pages: P
   { key: 'cartelera', icon: MoviesAndTv24Regular, iconSelected: MoviesAndTv24Filled, pages: ['cartelera', 'programacion', 'preventa', 'cines', 'precios', 'distribuidoras', 'mapa', 'independientes', 'historial'] },
   { key: 'dulceria', icon: Food24Regular, iconSelected: Food24Filled, pages: ['dulceria', 'domicilio'] },
   { key: 'datos', icon: Database24Regular, iconSelected: Database24Filled, pages: ['datos'] },
+  { key: 'agente', icon: Chat24Regular, iconSelected: Chat24Filled, pages: ['agente'] },
   { key: 'admin', icon: Settings24Regular, iconSelected: Settings24Filled, pages: ['operaciones'] },
 ];
 // Configuración lleva su propio panel: las secciones de la cuenta y, para un admin, las del espacio de trabajo.
@@ -57,6 +64,8 @@ const SETTINGS: { title: string; admin: boolean; sections: SettingsSection[] }[]
       { path: '/configuracion/general', label: AUTH_TEXT.workspace_general, icon: Building20Regular },
       { path: '/configuracion/personas', label: AUTH_TEXT.people, icon: People20Regular },
       { path: '/configuracion/integraciones', label: AUTH_TEXT.integrations, icon: PlugConnected20Regular },
+      { path: '/configuracion/uso-ia', label: AGENT_USAGE.title, icon: DataUsage20Regular, module: 'agente' },
+      { path: '/configuracion/asistente', label: AGENT_UI.keys_section, icon: Bot20Regular, staff: true },
     ],
   },
 ];
@@ -74,12 +83,15 @@ export const PAGE_ICON: Partial<Record<PageKey, Icon>> = {
   dulceria: BuildingShop20Regular,
   domicilio: VehicleTruckProfile20Regular,
   datos: Database20Regular,
+  agente: Chat20Regular,
   operaciones: HeartPulse20Regular,
   configuracion: Settings20Regular,
 };
 export const HREF: Partial<Record<PageKey, string>> = { cartelera: '/', domicilio: '/dulceria/domicilio/' };
-// Operaciones y Distribuidoras son solo del equipo de la plataforma: Distribuidoras todavía no se vende.
+// Operaciones y Distribuidoras son solo del equipo de la plataforma: Distribuidoras todavía no se vende. El asistente
+// lo usan los analistas y los roles de arriba; un lector no lo ve.
 export function canSee(user: Profile, key: PageKey): boolean {
+  if (key === 'agente') return user.role !== 'viewer';
   if (key === 'operaciones' || key === 'distribuidoras') return user.role === 'staff';
   return true;
 }
@@ -113,5 +125,6 @@ export function pageLink(key: PageKey, current: PageKey, search: URLSearchParams
 
 // Las secciones de Configuración que ve la cuenta, agrupadas.
 export function settingsGroups(user: Profile) {
-  return SETTINGS.filter((g) => !g.admin || user.can_manage);
+  return SETTINGS.filter((g) => !g.admin || user.can_manage)
+    .map((g) => ({ ...g, sections: g.sections.filter((section) => (!section.staff || user.role === 'staff') && (!section.module || user.role === 'staff' || user.modules.includes(section.module))) }));
 }

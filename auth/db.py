@@ -73,6 +73,46 @@ CREATE TABLE IF NOT EXISTS organization (         -- un cliente: lo que contrat�
   created_at  TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS agent_conversation (   -- una charla de una cuenta con el agente
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id  INTEGER NOT NULL REFERENCES account,
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS agent_conversation_account ON agent_conversation (account_id, created_at);
+
+CREATE TABLE IF NOT EXISTS agent_message (        -- cada pregunta y cada respuesta de una charla
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id  INTEGER NOT NULL REFERENCES agent_conversation,
+  role             TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content          TEXT NOT NULL,
+  created_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS agent_message_conversation ON agent_message (conversation_id, id);
+
+CREATE TABLE IF NOT EXISTS agent_audit (          -- un renglón por pregunta: quién, con qué herramientas y a qué costo
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  at               TEXT NOT NULL,
+  account_id       INTEGER NOT NULL REFERENCES account,
+  org_id           INTEGER REFERENCES organization,
+  role             TEXT NOT NULL,
+  environment      TEXT NOT NULL,
+  conversation_id  INTEGER REFERENCES agent_conversation,
+  provider         TEXT,
+  tools            TEXT NOT NULL DEFAULT '[]',    -- JSON: [{name, arguments, rows, ms}]
+  latency_ms       INTEGER,
+  tokens_in        INTEGER,
+  tokens_out       INTEGER,
+  error            TEXT
+);
+CREATE INDEX IF NOT EXISTS agent_audit_at ON agent_audit (at);
+
+CREATE TABLE IF NOT EXISTS agent_feedback (       -- el pulgar de una respuesta
+  message_id  INTEGER PRIMARY KEY REFERENCES agent_message,
+  account_id  INTEGER NOT NULL REFERENCES account,
+  useful      INTEGER NOT NULL CHECK (useful IN (0, 1)),
+  created_at  TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS setting (              -- ajustes de toda la instancia; el logo vive en `organization`
   key         TEXT PRIMARY KEY,
   value       TEXT,
@@ -88,11 +128,19 @@ _ACCOUNT_COLUMNS = {"avatar": "TEXT", "theme": "TEXT NOT NULL DEFAULT 'system'",
 # Columnas de `organization` posteriores a la primera versión (mismo mecanismo que `account`). `integrations` guarda
 # el JSON de `auth/orgs.py` (webhook de Slack, destinatarios del resumen y su estado de envío). `seats` y
 # `next_billing_at` (ISO, UTC) los fija staff; NULL es una organización sin suscripción.
-_ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'", "seats": "INTEGER", "next_billing_at": "TEXT"}
+# `agent_provider` y `agent_key` (cifrada por `auth/secrets.py`) son el proveedor de IA de la organización.
+_ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'", "seats": "INTEGER", "next_billing_at": "TEXT",
+                "agent_provider": "TEXT", "agent_key": "TEXT"}
+# `model` es el id del modelo que respondió: con él se calcula el costo estimado de cada pregunta.
+_AUDIT_COLUMNS = {"model": "TEXT"}
+# Historial de conversaciones: `title` es la primera pregunta recortada, `updated_at` ordena la lista y `tools` guarda,
+# en la respuesta, lo que consultó (para reabrir una conversación con sus enlaces de origen).
+_CONVERSATION_COLUMNS = {"title": "TEXT", "updated_at": "TEXT"}
+_MESSAGE_COLUMNS = {"tools": "TEXT"}
 _OLD_ROLE_CHECK = "CHECK (role IN ('admin', 'viewer'))"
 _ROLE_CHECK = "CHECK (role IN ('staff', 'admin', 'analyst', 'viewer'))"
 # Lo que se contrata por separado. "Completo" son todos.
-MODULES = ("cartelera", "dulceria", "datos")
+MODULES = ("cartelera", "dulceria", "datos", "agente")
 # La organización de las cuentas anteriores a `organization`: el cliente del piloto, con todos los módulos.
 DEFAULT_ORG_ID = 1
 
@@ -129,9 +177,22 @@ def connect(path=None):
     conn.executescript(SCHEMA)
     _widen_roles(conn)
     _add_columns(conn)
+    _index_conversations(conn)
     _default_org(conn)
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
+
+
+def _index_conversations(conn):
+    # `updated_at` llega por migración, así que su índice y el relleno de las conversaciones anteriores van aquí.
+    conn.execute("CREATE INDEX IF NOT EXISTS agent_conversation_recent ON agent_conversation (account_id, updated_at)")
+    conn.execute("""UPDATE agent_conversation SET
+                      title = coalesce(title, (SELECT substr(replace(m.content, char(10), ' '), 1, 60) FROM agent_message m
+                                               WHERE m.conversation_id = agent_conversation.id AND m.role = 'user'
+                                               ORDER BY m.id LIMIT 1)),
+                      updated_at = coalesce((SELECT max(m.created_at) FROM agent_message m
+                                             WHERE m.conversation_id = agent_conversation.id), created_at)
+                    WHERE updated_at IS NULL""")
 
 
 def _widen_roles(conn):
@@ -166,7 +227,8 @@ def _default_org(conn):
 
 
 def _add_columns(conn):
-    for table, columns in (("account", _ACCOUNT_COLUMNS), ("organization", _ORG_COLUMNS)):
+    for table, columns in (("account", _ACCOUNT_COLUMNS), ("organization", _ORG_COLUMNS), ("agent_audit", _AUDIT_COLUMNS),
+                           ("agent_conversation", _CONVERSATION_COLUMNS), ("agent_message", _MESSAGE_COLUMNS)):
         present = {column["name"] for column in conn.execute(f"PRAGMA table_info({table})")}
         for name, declaration in columns.items():
             if name in present:

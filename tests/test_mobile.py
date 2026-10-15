@@ -58,7 +58,7 @@ TABLET = {"820": (820, 1180)}
 VIEWER_PAGES = ["/?plaza=nacional", "/programacion/?plaza=nacional", "/preventa/?plaza=nacional",
                 "/precios/?plaza=nacional", "/cines/?plaza=nacional", "/historial/?plaza=nacional", "/mapa/", "/recomendador/", "/independientes/?plaza=cdmx", "/dulceria/",
                 "/dulceria/domicilio/", "/datos/", "/configuracion/"]
-ADMIN_PAGES = ["/configuracion/personas/", "/operaciones/"]
+ADMIN_PAGES = ["/configuracion/personas/", "/agente/", "/operaciones/"]
 PUBLIC_PAGES = ["/entrar/", "/olvide/", "/restablecer/?token=no-existe"]
 
 
@@ -308,7 +308,7 @@ def test_public_pages_fit_the_screen(browser, server, shots, path, size):
 
 
 @pytest.mark.parametrize("email, modules", [
-    (ADMIN_EMAIL, ["cartelera", "dulceria", "datos", "admin"]),
+    (ADMIN_EMAIL, ["cartelera", "dulceria", "datos", "agente", "admin"]),
     (VIEWER_EMAIL, ["cartelera", "dulceria", "datos"]),
 ], ids=["admin", "viewer"])
 def test_the_phone_navigation_shows_the_modules_of_the_role(browser, server, email, modules):

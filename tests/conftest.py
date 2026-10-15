@@ -34,3 +34,24 @@ def capture_db(tmp_path, monkeypatch):
     yield make
     for conn in opened:
         conn.close()
+
+
+class _FrozenToday:
+    """`analytics.queries` con `today()` fija. La captura grabada es de septiembre; con la fecha real, la semana de cine en
+    curso queda vacía."""
+
+    def __init__(self, queries, today):
+        self._queries, self.today = queries, lambda *args: today
+
+    def __getattr__(self, name):
+        return getattr(self._queries, name)
+
+
+@pytest.fixture
+def frozen_week(monkeypatch):
+    """Las herramientas del agente miran la semana del 24 al 30 de septiembre de 2026, la de la captura grabada. Solo ellas:
+    `analytics` sigue con la fecha real, así que su corte de "ya empezó" no vacía la semana."""
+    from agent import tools
+    from analytics import queries
+
+    monkeypatch.setattr(tools, "queries", _FrozenToday(queries, "2026-09-26"))
