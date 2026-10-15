@@ -11,10 +11,14 @@ declara su consulta y su orden por defecto; el orden que pide el usuario va prim
 página siempre trae los mismos renglones. Una página trae como mucho `MAX_ROWS` renglones (lo que baja el CSV).
 """
 import json
+from datetime import datetime, timezone
 
 from scraper.normalize import norm_title
+from scraper.titles import title_key
 
 from .db import rows
+from .plaza import plaza_cinema_where
+from .queries import today
 
 MAX_ROWS = 5000
 PAGE_SIZES = (25, 50, 100)
@@ -71,30 +75,44 @@ def _auditoriums(conn, chain=None, cinema_ids=None, search=None):
 
 
 def _matching_showtimes(conn, d0, d1, search):
-    """(títulos, cines 'cadena:id') del rango cuyo nombre contiene `search` sin mayúsculas ni acentos."""
+    """(títulos, cines 'cadena:id') del rango cuyo nombre, o nombre original, contiene `search` sin mayúsculas ni acentos, junto con
+    las demás variantes de esa película."""
     needle = norm_title(search)
     titles = conn.execute("""
-        SELECT DISTINCT movie_title FROM current_showtime WHERE date BETWEEN ? AND ?
-        UNION SELECT DISTINCT movie_title FROM event WHERE kind IN ('removed', 'expired') AND date BETWEEN ? AND ?""",
+        SELECT DISTINCT movie_title, original_title FROM current_showtime WHERE date BETWEEN ? AND ?
+        UNION SELECT DISTINCT movie_title, NULL FROM event WHERE kind IN ('removed', 'expired') AND date BETWEEN ? AND ?""",
                           [d0, d1, d0, d1]).fetchall()
     cinemas = conn.execute("SELECT chain, cinema_id, name FROM cinema").fetchall()
-    return ([t for (t,) in titles if needle in norm_title(t)],
+    # Una película es una llave de título común (`title_key`): sus variantes de formato y de cadena entran juntas, como
+    # en las comparaciones del dashboard.
+    keys = {title_key(norm_title(t)) for t, original in titles if needle in norm_title(t) or needle in norm_title(original or "")}
+    return ([t for t in {t for t, _ in titles} if title_key(norm_title(t)) in keys],
             [f"{chain}:{cinema_id}" for chain, cinema_id, name in cinemas if needle in norm_title(name)])
 
 
-def _week_showtimes(conn, d0, d1, chain=None, cinema_ids=None, search=None, only_open=False):
+def _week_showtimes(conn, d0, d1, chain=None, cinema_ids=None, search=None, only_open=False, plaza=None, from_now=False):
     """Funciones con fecha entre `d0` y `d1`: las publicadas hoy (`current_showtime`) y, salvo `only_open`, las que ya
     se cerraron en ese rango (canceladas o concluidas), con su última versión tomada del evento de cierre. `search`
-    busca en la película y en el cine."""
+    busca en la película y en el cine. `plaza` es una clave de `scraper/plazas.py` o `"nacional"`; en ambos casos
+    quedan solo Cinemex y Cinépolis, como en las comparaciones del dashboard. Sin `plaza` entran todas las cadenas.
+    `from_now` deja las funciones vigentes que no han empezado, el mismo corte de las comparaciones (solo si el rango
+    incluye hoy; Cinépolis borra cada función al empezar y Cinemex la conserva unas horas)."""
+    cut = from_now and d0 <= today() <= d1
+    only_open = only_open or cut
     def filters(alias):
-        return where([(f"{alias}chain = ?", chain), (f"({alias}chain || ':' || {alias}cinema_id) IN ({{marks}})", cinema_ids)],
+        w, p = where([(f"{alias}chain = ?", chain), (f"({alias}chain || ':' || {alias}cinema_id) IN ({{marks}})", cinema_ids)],
                      prefix="AND")
+        if plaza is None:
+            return w, p
+        extra, extra_params = plaza_cinema_where(None if plaza == "nacional" else plaza, alias)
+        return w + extra, p + extra_params
 
     w, p = filters("")
     we, pe = filters("e.")
     # `norm_title` es una función de Python: en cada renglón del rango cuesta más de un segundo. Se aplica a los
     # títulos y cines distintos, y cada renglón solo se compara con esas listas.
     found = _matching_showtimes(conn, d0, d1, search) if contains(search) else None
+    started, started_params = (" AND datetime_utc >= ?", [datetime.now(timezone.utc).isoformat(timespec="seconds")]) if cut else ("", [])
     closed = "" if only_open else f"""
         UNION ALL
         SELECT e.chain, e.date, json_extract(e.before_json, '$.datetime_local'), e.cinema_id, e.movie_title,
@@ -108,13 +126,13 @@ def _week_showtimes(conn, d0, d1, chain=None, cinema_ids=None, search=None, only
         WITH s AS (
           SELECT chain, date AS show_date, datetime_local AS starts_at, cinema_id, movie_title, screen, language, format,
                  experience, premium_tier, availability, first_seen AS first_seen_at, NULL AS closed_at, NULL AS closed_kind, show_id
-          FROM current_showtime WHERE date BETWEEN ? AND ? {w}{closed})
+          FROM current_showtime WHERE date BETWEEN ? AND ? {w}{started}{closed})
         SELECT s.chain, s.show_date, s.starts_at, c.name AS cinema_name, s.movie_title, s.screen, s.language, s.format,
                s.experience, s.premium_tier, s.availability, s.first_seen_at, s.closed_at, s.closed_kind, s.show_id
         FROM s JOIN cinema c ON c.chain = s.chain AND c.cinema_id = s.cinema_id
         {"WHERE s.movie_title IN (SELECT value FROM json_each(?))"
          " OR (s.chain || ':' || s.cinema_id) IN (SELECT value FROM json_each(?))" if found else ""}
-        """, [d0, d1, *p, *([] if only_open else [d0, d1, *pe]), *([json.dumps(found[0]), json.dumps(found[1])] if found else [])], \
+        """, [d0, d1, *p, *started_params, *([] if only_open else [d0, d1, *pe]), *([json.dumps(found[0]), json.dumps(found[1])] if found else [])], \
         "chain, show_date, starts_at, cinema_name, screen, show_id"
 
 
@@ -193,7 +211,7 @@ def categories(conn, dataset):
 DATASETS = {
     "cinemas": {"fn": _cinemas, "filters": ("chain", "search")},
     "auditoriums": {"fn": _auditoriums, "filters": ("chain", "cinema_ids", "search")},
-    "week_showtimes": {"fn": _week_showtimes, "filters": ("dates", "chain", "cinema_ids", "search", "only_open")},
+    "week_showtimes": {"fn": _week_showtimes, "filters": ("dates", "plaza", "chain", "cinema_ids", "search", "only_open", "from_now")},
     "ticket_prices": {"fn": _ticket_prices, "filters": ("dates", "chain", "cinema_ids", "format_bucket", "day_type")},
     "concession_prices": {"fn": _concession_prices, "filters": ("chain", "cinema_ids", "category", "search", "latest_only")},
     "concession_sizes": {"fn": _concession_sizes, "filters": ("chain", "cinema_ids", "search", "latest_only")},

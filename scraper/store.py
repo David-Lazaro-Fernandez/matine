@@ -166,6 +166,10 @@ def migrate(conn):
     conn.execute("""CREATE INDEX IF NOT EXISTS idx_current_window ON current_showtime (chain, city_id, date,
                     datetime_utc, datetime_local, cinema_id, title_norm, movie_title, movie_id, language, format,
                     experience, premium_tier, screen)""")
+    # Búsqueda de una película por su nombre original (`analytics.queries.original_titles`). Parcial: solo Cinépolis lo
+    # publica. Va aquí y no en SCHEMA porque `original_title` llega por migración.
+    conn.execute("""CREATE INDEX IF NOT EXISTS idx_current_original ON current_showtime (title_norm, original_title)
+                    WHERE original_title IS NOT NULL""")
     conn.commit()
 
 

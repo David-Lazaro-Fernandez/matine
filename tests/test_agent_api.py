@@ -1,6 +1,7 @@
 """Endpoints del asistente (`api/pages/agente.py`) con `TestClient`: acceso por rol y módulo, límites y la clave de
 proveedor, con un proveedor falso."""
 import hashlib
+import json
 
 import pytest
 
@@ -116,3 +117,42 @@ def test_only_staff_sets_the_provider_and_the_key_never_comes_back(client, conn)
         "actor_id": staff["id"], "action": "set_agent_provider"}
     assert client.put("/api/agente/proveedores/1", json={}).status_code == 204
     assert client.get("/api/agente/proveedores").json()[0]["provider"] is None
+
+
+def test_deepseek_dev_needs_no_key_and_never_reaches_prod(client, conn, monkeypatch):
+    _account(conn, "s@test.mx", "staff")
+    _login(client, "s@test.mx")
+    assert client.put("/api/agente/proveedores/1", json={"provider": providers.DEV}).status_code == 204
+    assert client.get("/api/agente/proveedores").json()[0]["provider"] == providers.DEV
+    monkeypatch.setenv("AC_ENV", "prod")
+    assert client.put("/api/agente/proveedores/1", json={"provider": providers.DEV}).status_code == 422
+    monkeypatch.delenv(config.DEV_KEY_ENV, raising=False)
+    with pytest.raises(ValueError):
+        providers.CHAT[providers.DEV]("marcador", [], [])
+
+
+def test_the_stream_reports_each_step_and_ends_with_the_answer(client, conn):
+    analyst = _account(conn, "a@test.mx", "analyst")
+    orgs.set_agent_provider(conn, analyst["org_id"], "deepseek", "sk-1")
+    _login(client, "a@test.mx")
+    lines = client.post("/api/agente/preguntar/flujo", json={"question": "¿Qué cine vende más?"}).text.splitlines()
+    events = [json.loads(line) for line in lines]
+    assert [e.get("step") for e in events[:-1]] == ["scope", "review"]
+    assert events[-1]["event"] == "answer" and events[-1]["answer"] == "Respuesta."
+
+
+def test_the_stream_reports_a_failure_as_an_event(client, conn):
+    _account(conn, "a@test.mx", "analyst")
+    _login(client, "a@test.mx")
+    events = [json.loads(line) for line in client.post("/api/agente/preguntar/flujo", json={"question": "hola"}).text.splitlines()]
+    assert events[-1]["event"] == "error" and events[-1]["status"] == 502
+
+
+def test_bedrock_needs_no_key_and_is_allowed_in_prod(client, conn, monkeypatch):
+    _account(conn, "s@test.mx", "staff")
+    _login(client, "s@test.mx")
+    monkeypatch.setenv("AC_ENV", "prod")
+    assert client.put("/api/agente/proveedores/1", json={"provider": "bedrock"}).status_code == 204
+    assert client.get("/api/agente/proveedores").json()[0]["provider"] == "bedrock"
+    # El marcador no se cifra: en prod, leerlo no debe llamar a KMS en cada pregunta.
+    assert orgs.agent_provider(conn, 1) == ("bedrock", "bedrock")

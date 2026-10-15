@@ -14,7 +14,7 @@ from typing_extensions import TypedDict
 import analytics
 import auth
 from analytics import datasets
-from analytics.labels import AUTH_TEXT, CHAIN_LABEL, DAY_TYPE_LABEL, FORMAT_BUCKETS, PLATFORM_LABEL
+from analytics.labels import AUTH_TEXT, CHAIN_LABEL, DAY_TYPE_LABEL, FORMAT_BUCKETS, PLATFORM_LABEL, PLAZA_LABEL
 
 from .. import session
 from . import read
@@ -51,6 +51,7 @@ class Datos(TypedDict):
 def datos(user: Annotated[dict, Depends(session.current_user)],
           dataset: Literal[tuple(datasets.DATASETS)] = "cinemas",
           d0: date | None = None, d1: date | None = None,
+          plaza: Literal[(*PLAZA_LABEL, "nacional")] | None = None,
           chain: Literal[tuple(CHAIN_LABEL)] | None = None,
           cinema_ids: Annotated[list[str] | None, Query(max_length=500)] = None,
           platform: Literal[tuple(PLATFORM_LABEL)] | None = None,
@@ -58,7 +59,7 @@ def datos(user: Annotated[dict, Depends(session.current_user)],
           day_type: Literal[tuple(DAY_TYPE_LABEL)] | None = None,
           category: Annotated[str | None, Query(max_length=120)] = None,
           search: Annotated[str | None, Query(max_length=200)] = None,
-          only_open: bool = False, latest_only: bool = True,
+          only_open: bool = False, from_now: bool = False, latest_only: bool = True,
           sort: Annotated[str | None, Query(max_length=64)] = None, desc: bool = False,
           limit: Annotated[int, Query(ge=1, le=datasets.MAX_ROWS)] = 50,
           offset: Annotated[int, Query(ge=0)] = 0) -> Datos:
@@ -68,9 +69,9 @@ def datos(user: Annotated[dict, Depends(session.current_user)],
     if limit > max(datasets.PAGE_SIZES) and not auth.can_download(user):
         raise HTTPException(403, AUTH_TEXT["download_locked"])
     filters = datasets.DATASETS[dataset]["filters"]
-    given = {"chain": chain, "cinema_ids": tuple(cinema_ids or ()) or None, "platform": platform,
+    given = {"plaza": plaza, "chain": chain, "cinema_ids": tuple(cinema_ids or ()) or None, "platform": platform,
              "format_bucket": format_bucket, "day_type": day_type, "category": category, "search": search or None,
-             "only_open": only_open, "latest_only": latest_only}
+             "only_open": only_open, "from_now": from_now, "latest_only": latest_only}
     kwargs = {k: v for k, v in given.items() if k in filters}
     if "dates" in filters:
         w0, w1 = analytics.cinema_week(analytics.today())

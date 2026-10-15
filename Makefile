@@ -118,7 +118,7 @@ org-billing:        ## asientos pagados y próximo cobro: ORG= SEATS=5 NEXT_BILL
 org-list:           ## todas las organizaciones con sus módulos
 	$(VENV)/python -m auth.cli org-list
 
-auth-prune:         ## borra sesiones y enlaces vencidos hace más de 90 días (trabajo `auth-prune`)
+auth-prune:         ## borra sesiones y enlaces vencidos hace más de 90 días y conversaciones del asistente sin actividad en 12 meses (trabajo `auth-prune`)
 	$(PY) -m jobs.run auth-prune
 
 backup:             ## respaldo, requiere BACKUP_BUCKET en el entorno (trabajo `backup`)

@@ -33,6 +33,7 @@ const useStyles = makeStyles({
     },
   },
   brand: { display: 'flex', alignItems: 'center', minWidth: 0 },
+  home: { display: 'flex', minWidth: 0 },
   logo: { height: '48px', maxWidth: 'min(240px, 100%)', objectFit: 'contain' },
   search: { display: 'flex', justifyContent: 'center', minWidth: 0 },
   end: { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: tokens.spacingHorizontalXS },
@@ -63,7 +64,7 @@ export function Topbar<K extends string>({
   const s = useStyles();
   return (
     <header className={s.bar}>
-      <div className={s.brand}>{user.logo && <img src={user.logo} alt="" className={s.logo} />}</div>
+      <div className={s.brand}>{user.logo && <a href="/" aria-label={user.org} className={s.home}><img src={user.logo} alt="" className={s.logo} /></a>}</div>
       <div className={s.search}>
         <CommandPalette entries={entries} onPick={onPick} />
       </div>

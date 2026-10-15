@@ -731,7 +731,7 @@ ruta del clon al correr `make launchd-load`, así que si el repo se mueve basta 
   escritores. Desde el 2026-09-25 cada cadena se descarga por unidades que fallan por separado (ver "Captura por
   unidades"); antes una captura era todo o nada por cadena, porque un snapshot parcial producía miles de `removed` falsos.
 - `scraper/normalize.py`: esquema común por función (`chain, show_id, cinema_id, city_id, state_id, movie_id,
-  title_norm, date, datetime_local, datetime_utc, screen, language ∈ spanish|subtitled|original|other,
+  title_norm, original_title, date, datetime_local, datetime_utc, screen, language ∈ spanish|subtitled|original|other,
   format, experience, premium_tier, availability, …`) y la dimensión de cines (`cinemas`: `city_id`, `state_id`,
   `timezone`, `vista_id`). Acepta los crudos del piloto (Cinemex por `areas`, Cinépolis con `city_id` a nivel captura)
   y los nacionales (`states`, `cityId` por cine), porque el archivo se reconstruye desde los crudos viejos.
@@ -895,6 +895,15 @@ Decisión clave: **datos reales, nunca sintéticos**. Lo que no existe no se mue
 pendiente lo dice en su propio apéndice de la Capa 3.
 
 ### Emparejamiento de títulos entre cadenas (`scraper/titles.py`, 2026-09-25)
+
+**Nombre original (2026-10-14).** Cada función guarda `original_title`: Cinépolis lo publica en `movies.originalName`
+y Cinemex en `info.original_title` (verificado 2026-10-14 contra el crudo: 66 películas de Cinépolis, 25 con un nombre
+original distinto del de cartelera, y todas las de Cinemex con valor). Es una columna aditiva, vacía en los
+independientes. Sirve para buscar una película por el nombre con que se conoce ("Your Name" frente a "Tu Nombre"):
+`analytics.queries.original_titles` la devuelve por llave de título y la búsqueda de las herramientas del agente y del
+explorador de Datos la compara junto al nombre de cartelera. Una función existente la recibe en la siguiente captura de
+su cadena. El índice parcial `idx_current_original` lo crea `store.migrate`, así que la captura debe correr una vez antes
+de que `analytics/` (solo lectura) consulte la columna.
 
 Todo lo que compara películas entre cadenas (shares por película, Resumen general, concentración, butacas por título,
 demanda, movimientos, preventas) agrupa por `title_key(title_norm)`, no por `title_norm`. La llave se registra como

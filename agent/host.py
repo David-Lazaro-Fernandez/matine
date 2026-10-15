@@ -48,8 +48,10 @@ async def _call_tool(client, call):
         result = await client.call_tool(call["name"], call["arguments"], raise_on_error=False)
         data = result.data if not result.is_error else {"error": AGENT_TEXT["tool_failed"]}
         rows = data.get("row_count") if isinstance(data, dict) else None
+    # Los enlaces son para la pantalla: el modelo no debe nombrar tablas internas.
+    sources = data.pop("sources", []) if isinstance(data, dict) else []
     summary = {"name": call["name"], "arguments": call["arguments"], "rows": rows,
-               "ms": round(1000 * (time.monotonic() - started))}
+               "ms": round(1000 * (time.monotonic() - started)), "sources": sources}
     return json.dumps(data, ensure_ascii=False, default=str), summary
 
 
@@ -113,10 +115,11 @@ async def _in_scope(chat, api_key, specs, messages):
     return _scope_verdict(reply["content"]), reply["tokens_in"], reply["tokens_out"]
 
 
-async def _converse(user, chat, api_key, messages):
+async def _converse(user, chat, api_key, messages, on_step):
     used, tokens_in, tokens_out = [], 0, 0
     async with Client(server.build(user)) as client:
         specs = _tool_specs(await client.list_tools())
+        on_step("scope")
         fits, tokens_in, tokens_out = await _in_scope(chat, api_key, specs, messages)
         if not fits:
             return AGENT_TEXT["out_of_scope"], used, tokens_in, tokens_out, True
@@ -126,6 +129,7 @@ async def _converse(user, chat, api_key, messages):
             tokens_out += reply["tokens_out"]
             if not reply["tool_calls"]:
                 # Un dato con instrucciones (un título de película) no debe sacar a la respuesta del tema.
+                on_step("review")
                 fits, spent_in, spent_out = await _answer_fits(chat, api_key, reply["content"] or "")
                 tokens_in += spent_in
                 tokens_out += spent_out
@@ -134,10 +138,16 @@ async def _converse(user, chat, api_key, messages):
                 return reply["content"], used, tokens_in, tokens_out, False
             messages.append(reply["message"])
             for call in reply["tool_calls"]:
+                on_step("tool", name=call["name"])
                 content, summary = await _call_tool(client, call)
                 used.append(summary)
                 messages.append({"role": "tool", "tool_call_id": call["id"], "content": content})
     raise AgentError(AGENT_TEXT["too_many_steps"])
+
+
+def _without_em_dash(text):
+    """Las respuestas no llevan raya larga: entre palabras es una coma y suelta pasa a guion."""
+    return re.sub("—", "-", re.sub(r"(?<=\w)\s*—\s*(?=\w)", ", ", text))
 
 
 def _open_conversation(app, user, conversation_id):
@@ -149,27 +159,30 @@ def _open_conversation(app, user, conversation_id):
     return conversation_id, [{"role": m["role"], "content": m["content"]} for m in past]
 
 
-def ask(app, user, question, conversation_id=None):
+def ask(app, user, question, conversation_id=None, on_step=lambda step, **detail: None):
     """Responde `question` de la cuenta `user`. Devuelve `conversation_id`, `message_id`, `answer` y `tools`.
-    Levanta `tools.AccessDenied` sin acceso y `AgentError` si no hay respuesta."""
+    Levanta `tools.AccessDenied` sin acceso y `AgentError` si no hay respuesta. `on_step(paso, **detalle)` avisa el
+    avance: `scope` (entiende la pregunta), `tool` con `name` (consulta datos) y `review` (revisa la respuesta)."""
     tools.require_access(user)
     _check_limits(app, user)
     started = time.monotonic()
-    audit = {"provider": None, "tools": [], "tokens_in": None, "tokens_out": None}
+    audit = {"provider": None, "model": None, "tools": [], "tokens_in": None, "tokens_out": None}
     error = None
     try:
         configured = orgs.agent_provider(app, user["org_id"])
         if not configured:
             raise AgentError(AGENT_TEXT["no_provider"])
         audit["provider"], api_key = configured
+        audit["model"] = providers.model_of(audit["provider"])
         conversation_id, past = _open_conversation(app, user, conversation_id)
         conversations.add_message(app, conversation_id, "user", question)
         messages = [{"role": "system", "content": server.INSTRUCTIONS}, *past, {"role": "user", "content": question}]
         answer, audit["tools"], audit["tokens_in"], audit["tokens_out"], refused = asyncio.run(
-            _converse(user, providers.CHAT[audit["provider"]], api_key, messages))
+            _converse(user, providers.CHAT[audit["provider"]], api_key, messages, on_step))
         if not answer:
             raise AgentError(AGENT_TEXT["empty_answer"])
-        message_id = conversations.add_message(app, conversation_id, "assistant", answer)
+        answer = _without_em_dash(answer)
+        message_id = conversations.add_message(app, conversation_id, "assistant", answer, tools=audit["tools"])
         # Queda en la auditoría para la revisión semanal de lo que se pide fuera de alcance.
         error = "out_of_scope" if refused else None
     except AgentError as e:

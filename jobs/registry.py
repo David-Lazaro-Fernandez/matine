@@ -130,11 +130,11 @@ REGISTRY = {
         "writes": ("data/logs/health.log",),
     },
     keys.AUTH_PRUNE: {
-        "description": "Borra sesiones y enlaces de acceso vencidos hace más de 90 días",
+        "description": "Borra sesiones y enlaces de acceso vencidos hace más de 90 días y conversaciones del asistente sin actividad en 12 meses",
         "steps": (("venv", "auth.cli", "prune"),),
         "schedule": ("Sun 04:07",),
         "timeout_min": 10,
-        "writes": ("app.db: session", "token"),
+        "writes": ("app.db: session", "token", "agent_conversation", "agent_message", "agent_feedback"),
     },
     # S3 falla de vez en cuando por red; un reintento a los 10 min basta y el respaldo del día no se pierde.
     # Lee la base de análisis y escribe `app.db` solo por `auth/`. Cada hora, para que un aviso salga como mucho una hora

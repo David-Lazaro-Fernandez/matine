@@ -131,6 +131,12 @@ _ACCOUNT_COLUMNS = {"avatar": "TEXT", "theme": "TEXT NOT NULL DEFAULT 'system'",
 # `agent_provider` y `agent_key` (cifrada por `auth/secrets.py`) son el proveedor de IA de la organización.
 _ORG_COLUMNS = {"integrations": "TEXT NOT NULL DEFAULT '{}'", "seats": "INTEGER", "next_billing_at": "TEXT",
                 "agent_provider": "TEXT", "agent_key": "TEXT"}
+# `model` es el id del modelo que respondió: con él se calcula el costo estimado de cada pregunta.
+_AUDIT_COLUMNS = {"model": "TEXT"}
+# Historial de conversaciones: `title` es la primera pregunta recortada, `updated_at` ordena la lista y `tools` guarda,
+# en la respuesta, lo que consultó (para reabrir una conversación con sus enlaces de origen).
+_CONVERSATION_COLUMNS = {"title": "TEXT", "updated_at": "TEXT"}
+_MESSAGE_COLUMNS = {"tools": "TEXT"}
 _OLD_ROLE_CHECK = "CHECK (role IN ('admin', 'viewer'))"
 _ROLE_CHECK = "CHECK (role IN ('staff', 'admin', 'analyst', 'viewer'))"
 # Lo que se contrata por separado. "Completo" son todos.
@@ -171,9 +177,22 @@ def connect(path=None):
     conn.executescript(SCHEMA)
     _widen_roles(conn)
     _add_columns(conn)
+    _index_conversations(conn)
     _default_org(conn)
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
+
+
+def _index_conversations(conn):
+    # `updated_at` llega por migración, así que su índice y el relleno de las conversaciones anteriores van aquí.
+    conn.execute("CREATE INDEX IF NOT EXISTS agent_conversation_recent ON agent_conversation (account_id, updated_at)")
+    conn.execute("""UPDATE agent_conversation SET
+                      title = coalesce(title, (SELECT substr(replace(m.content, char(10), ' '), 1, 60) FROM agent_message m
+                                               WHERE m.conversation_id = agent_conversation.id AND m.role = 'user'
+                                               ORDER BY m.id LIMIT 1)),
+                      updated_at = coalesce((SELECT max(m.created_at) FROM agent_message m
+                                             WHERE m.conversation_id = agent_conversation.id), created_at)
+                    WHERE updated_at IS NULL""")
 
 
 def _widen_roles(conn):
@@ -208,7 +227,8 @@ def _default_org(conn):
 
 
 def _add_columns(conn):
-    for table, columns in (("account", _ACCOUNT_COLUMNS), ("organization", _ORG_COLUMNS)):
+    for table, columns in (("account", _ACCOUNT_COLUMNS), ("organization", _ORG_COLUMNS), ("agent_audit", _AUDIT_COLUMNS),
+                           ("agent_conversation", _CONVERSATION_COLUMNS), ("agent_message", _MESSAGE_COLUMNS)):
         present = {column["name"] for column in conn.execute(f"PRAGMA table_info({table})")}
         for name, declaration in columns.items():
             if name in present:

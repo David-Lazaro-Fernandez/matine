@@ -1,0 +1,2 @@
+model,input_per_mtok,output_per_mtok,peak,valid_from,verified_at,source,note
+deepseek-flash,0.15,0.6,deepseek,2026-10-14,2026-10-14,https://api-docs.deepseek.com/quick_start/pricing,"Dólares por millón de tokens. Entrada sin caché; con caché cuesta 0.003. En hora pico cuesta el doble."

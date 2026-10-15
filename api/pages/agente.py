@@ -3,13 +3,19 @@
 Cada pregunta pasa por `agent.host.ask`; aquí solo se traducen sus errores a códigos HTTP. Sin lógica de negocio.
 Staff además elige el proveedor y la clave de cada organización; la clave nunca vuelve en una respuesta.
 """
+import json
+import os
+import queue
+import threading
+from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, StringConstraints
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
-from agent import host, providers, tools
+from agent import host, providers, tools, usage
 from auth import conversations, orgs
 
 from .. import session
@@ -19,6 +25,7 @@ router = APIRouter(prefix="/agente", dependencies=[Depends(session.require_modul
 Question = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
 User = Annotated[dict, Depends(session.current_user)]
 Staff = Annotated[dict, Depends(session.require_staff)]
+Admin = Annotated[dict, Depends(session.require_admin)]
 
 
 class Ask(BaseModel):
@@ -31,6 +38,7 @@ class ToolUse(TypedDict):
     arguments: dict | None
     rows: int | None
     ms: int
+    sources: list[dict[str, str]]
 
 
 class Answer(TypedDict):
@@ -44,6 +52,53 @@ class Message(TypedDict):
     id: int
     role: str
     content: str
+    tools: list[ToolUse] | None
+    useful: bool | None
+
+
+class ConversationItem(TypedDict):
+    id: int
+    title: str
+    updated_at: datetime
+
+
+class Spend(TypedDict):
+    questions: int
+    errors: int
+    tokens_in: int
+    tokens_out: int
+    tokens: int
+    cost_usd: float | None
+    unpriced_tokens: int
+
+
+class PersonUsage(Spend):
+    name: str
+    email: str
+
+
+class DayUsage(Spend):
+    day: str
+
+
+class ModelUsage(Spend):
+    provider: str | None
+    model: str | None
+
+
+class OrgUsage(Spend):
+    org_id: int | None
+    name: str | None
+
+
+class Usage(TypedDict):
+    days: int
+    since: str
+    totals: Spend
+    people: list[PersonUsage]
+    by_day: list[DayUsage]
+    models: list[ModelUsage]
+    organizations: NotRequired[list[OrgUsage]]
 
 
 class Thumb(BaseModel):
@@ -61,16 +116,66 @@ class OrgProvider(TypedDict):
     provider: str | None
 
 
+def _failure(error):
+    """(estado HTTP, texto para el usuario) de un error de `host.ask`."""
+    if isinstance(error, tools.AccessDenied):
+        return 403, str(error)
+    if isinstance(error, host.OverLimit):
+        return 429, str(error)
+    return 502, str(error)
+
+
 @router.post("/preguntar")
 def ask(body: Ask, user: User) -> Answer:
     try:
         return session.with_conn(lambda conn: host.ask(conn, user, body.question, body.conversation_id))
+    except (tools.AccessDenied, host.AgentError) as e:
+        raise HTTPException(*_failure(e)) from None
+
+
+@router.post("/preguntar/flujo")
+def ask_stream(body: Ask, user: User):
+    """Lo mismo que `/preguntar`, en líneas JSON: `step` por cada paso, y al final `answer` o `error`."""
+    try:
+        tools.require_access(user)
     except tools.AccessDenied as e:
-        raise HTTPException(403, str(e)) from None
-    except host.OverLimit as e:
-        raise HTTPException(429, str(e)) from None
-    except host.AgentError as e:
-        raise HTTPException(502, str(e)) from None
+        raise HTTPException(*_failure(e)) from None
+    events = queue.Queue()
+
+    def work():
+        try:
+            answer = session.with_conn(lambda conn: host.ask(
+                conn, user, body.question, body.conversation_id,
+                on_step=lambda step, **detail: events.put({"event": "step", "step": step, **detail})))
+            events.put({"event": "answer", **answer})
+        except (tools.AccessDenied, host.AgentError) as e:
+            status, detail = _failure(e)
+            events.put({"event": "error", "status": status, "detail": detail})
+        finally:
+            events.put(None)
+
+    threading.Thread(target=work, daemon=True).start()
+
+    def lines():
+        while (event := events.get()) is not None:
+            yield json.dumps(event, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+
+@router.get("/conversaciones")
+def conversation_list(user: User) -> list[ConversationItem]:
+    try:
+        tools.require_access(user)
+    except tools.AccessDenied as e:
+        raise HTTPException(*_failure(e)) from None
+    return session.with_conn(lambda conn: conversations.recent(conn, user["id"]))
+
+
+@router.delete("/conversaciones/{conversation_id}", status_code=204)
+def conversation_delete(conversation_id: int, user: User):
+    if not session.with_conn(lambda conn: conversations.delete(conn, user["id"], conversation_id)):
+        raise HTTPException(404)
 
 
 @router.get("/conversaciones/{conversation_id}")
@@ -80,7 +185,8 @@ def conversation(conversation_id: int, user: User) -> list[Message]:
     except tools.AccessDenied as e:
         raise HTTPException(403, str(e)) from None
     found = session.with_conn(lambda conn: conversations.history(conn, user["id"], conversation_id))
-    return [{"id": m["id"], "role": m["role"], "content": m["content"]} for m in found]
+    return [{"id": m["id"], "role": m["role"], "content": m["content"], "tools": m["tools"], "useful": m["useful"]}
+            for m in found]
 
 
 @router.post("/mensajes/{message_id}/pulgar", status_code=204)
@@ -96,7 +202,20 @@ def providers_status(_: Staff) -> list[OrgProvider]:
 
 @router.put("/proveedores/{org_id}", status_code=204)
 def set_provider(org_id: int, body: ProviderIn, staff: Staff):
+    if body.provider == providers.DEV and os.environ.get("AC_ENV") == "prod":
+        raise HTTPException(422, f"{providers.DEV} no está disponible en prod")
+    if body.provider in providers.KEYLESS:
+        # Marcador: la clave real no se guarda (sale del entorno o del rol IAM), pero la organización necesita una fila.
+        body.api_key = body.provider
     if body.api_key and body.provider not in providers.CHAT:
         raise HTTPException(422, f"proveedores: {', '.join(providers.CHAT)}")
-    if not session.with_conn(lambda conn: orgs.set_agent_provider(conn, org_id, body.provider, body.api_key, actor_id=staff["id"])):
+    if not session.with_conn(lambda conn: orgs.set_agent_provider(conn, org_id, body.provider, body.api_key, actor_id=staff["id"],
+                                                           secret=body.provider not in providers.KEYLESS)):
         raise HTTPException(404)
+
+
+@router.get("/uso")
+def usage_stats(admin: Admin, org_id: int | None = None, days: Annotated[int, Query(ge=1, le=365)] = 30) -> Usage:
+    """Uso de IA de la organización del admin. Staff ve todas, o una con `org_id`."""
+    scope = org_id if admin["role"] == "staff" else admin["org_id"]
+    return session.with_conn(lambda conn: usage.summary(conn, org_id=scope, days=days))

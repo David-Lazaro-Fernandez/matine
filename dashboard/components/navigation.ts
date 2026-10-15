@@ -2,6 +2,7 @@
 // de Configuración.
 import type * as React from 'react';
 import {
+  Bot20Regular,
   BuildingMultiple20Regular,
   Chat20Regular,
   Chat24Filled,
@@ -9,6 +10,7 @@ import {
   BuildingShop20Regular,
   DataBarVertical20Regular,
   Database20Regular,
+  DataUsage20Regular,
   Database24Filled,
   Database24Regular,
   Food24Filled,
@@ -34,12 +36,13 @@ import {
   VideoClip20Regular,
 } from '@fluentui/react-icons';
 import type { Module, Profile } from '@/lib/api';
-import { AUTH_TEXT, MODULE_LABEL, NAV_LABEL } from '@/lib/labels.generated';
+import { AGENT_UI, AGENT_USAGE, AUTH_TEXT, MODULE_LABEL, NAV_LABEL } from '@/lib/labels.generated';
 
 export type PageKey = keyof typeof NAV_LABEL;
 export type ModuleKey = keyof typeof MODULE_LABEL;
 export type Icon = React.ComponentType<{ className?: string }>;
-type SettingsSection = { path: string; label: string; icon: Icon };
+// `module`: la sección solo aplica a organizaciones que lo contrataron (staff las ve siempre).
+type SettingsSection = { path: string; label: string; icon: Icon; staff?: boolean; module?: Module };
 
 // Cada módulo se contrata aparte: Cartelera trae las páginas de películas, Dulcería las de precios de dulcería.
 // Las páginas van por valor para el negocio: primero lo que decide la programación de la semana, al final las consultas.
@@ -61,6 +64,8 @@ const SETTINGS: { title: string; admin: boolean; sections: SettingsSection[] }[]
       { path: '/configuracion/general', label: AUTH_TEXT.workspace_general, icon: Building20Regular },
       { path: '/configuracion/personas', label: AUTH_TEXT.people, icon: People20Regular },
       { path: '/configuracion/integraciones', label: AUTH_TEXT.integrations, icon: PlugConnected20Regular },
+      { path: '/configuracion/uso-ia', label: AGENT_USAGE.title, icon: DataUsage20Regular, module: 'agente' },
+      { path: '/configuracion/asistente', label: AGENT_UI.keys_section, icon: Bot20Regular, staff: true },
     ],
   },
 ];
@@ -120,5 +125,6 @@ export function pageLink(key: PageKey, current: PageKey, search: URLSearchParams
 
 // Las secciones de Configuración que ve la cuenta, agrupadas.
 export function settingsGroups(user: Profile) {
-  return SETTINGS.filter((g) => !g.admin || user.can_manage);
+  return SETTINGS.filter((g) => !g.admin || user.can_manage)
+    .map((g) => ({ ...g, sections: g.sections.filter((section) => (!section.staff || user.role === 'staff') && (!section.module || user.role === 'staff' || user.modules.includes(section.module))) }));
 }
