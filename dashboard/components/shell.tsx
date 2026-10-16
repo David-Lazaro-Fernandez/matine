@@ -10,7 +10,7 @@ import { SkeletonCapas, SkeletonLines } from '@/components/common';
 import { useSetTheme } from '@/app/providers';
 import { type Entry } from '@/components/command-palette';
 import { useFrameStyles } from '@/components/frame-styles';
-import { MODULES, canSee, isLocked, pageAt, pageLink, settingsGroups, type PageKey } from '@/components/navigation';
+import { MODULES, PAGE_ICON, canSee, isLocked, pageAt, pageLink, settingsGroups, type PageKey } from '@/components/navigation';
 import { Topbar, TopbarSkeleton } from '@/components/topbar';
 import { UpgradeDialog } from '@/components/upgrade';
 import { LOGIN_PATH, api, isPublicPath, type Module, type Profile } from '@/lib/api';
@@ -95,8 +95,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // La búsqueda lista las páginas de los módulos contratados y Configuración, que no está en ningún módulo.
   const entries: Entry<PageKey>[] = [
     ...modules.filter((m) => !isLocked(user, m.key))
-      .flatMap((m) => m.pages.map((key) => ({ key, label: NAV_LABEL[key], group: MODULE_LABEL[m.key] }))),
-    { key: 'configuracion', label: NAV_LABEL.configuracion, group: AUTH_TEXT.settings_title },
+      .flatMap((m) => m.pages.map((key) => ({ key, label: NAV_LABEL[key], group: MODULE_LABEL[m.key], icon: PAGE_ICON[key] }))),
+    { key: 'configuracion', label: NAV_LABEL.configuracion, group: AUTH_TEXT.settings_title, icon: PAGE_ICON.configuracion },
   ];
   return (
     <SessionContext.Provider value={session}>

@@ -22,7 +22,7 @@ import {
   QuestionCircle24Regular,
   Search20Regular,
 } from '@fluentui/react-icons';
-import { normalize } from '@/components/command-palette';
+import { HELP_EVENT, normalize } from '@/components/command-palette';
 import { HELP_TEXT, HELP_TOPICS } from '@/lib/labels.generated';
 
 type Guide = { key: string; title: string; summary: string; steps?: readonly string[] };
@@ -77,6 +77,19 @@ export function HelpDrawer() {
   const [query, setQuery] = React.useState('');
   const [topic, setTopic] = React.useState<Topic | null>(null);
   const [guide, setGuide] = React.useState<Guide | null>(null);
+
+  // La paleta de búsqueda abre una guía por su llave.
+  React.useEffect(() => {
+    const show = (e: Event) => {
+      const found = TOPICS.flatMap((t) => t.guides).find((g) => g.key === (e as CustomEvent<string>).detail);
+      if (!found) return;
+      setQuery('');
+      setGuide(found);
+      setOpen(true);
+    };
+    window.addEventListener(HELP_EVENT, show);
+    return () => window.removeEventListener(HELP_EVENT, show);
+  }, []);
 
   const back = () => (guide ? setGuide(null) : setTopic(null));
   const pickGuide = (g: Guide) => { setGuide(g); setQuery(''); };

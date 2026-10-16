@@ -5,7 +5,7 @@ dominio y Caddy pasa `/api/*` a esta app en 127.0.0.1:8501. La cookie la maneja 
 de las páginas viven en `api/pages/`, un módulo por página; aquí solo se registran, todos detrás de `current_user`.
 Lee `snapshots.db` en solo lectura y escribe solo `app.db`, a través de `auth/`.
 
-Local: `.venv/bin/uvicorn api.internal:app --port 8501`; la documentación queda en http://localhost:8501/api/docs.
+Local: `make dashboard` (puerto 8500 en main); la documentación queda en http://localhost:8500/api/docs.
 """
 from datetime import datetime
 from typing import Annotated, Literal

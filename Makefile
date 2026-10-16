@@ -10,6 +10,12 @@ VENV ?= .venv/bin
         user-create user-list user-reset user-deactivate user-activate user-role org-create org-modules org-billing org-list auth-prune deploy restart check lint test test-live test-ui test-eval fixtures hooks \
         marketing-dev dashboard-dev marketing-build export-places
 
+# Puertos de desarrollo: main usa 3000, 8500 y 4000; el worktree número N suma N a cada uno (`scripts/wt slot`).
+SLOT := $(shell scripts/wt slot)
+DASHBOARD_PORT := $(shell expr 3000 + $(SLOT))
+API_PORT := $(shell expr 8500 + $(SLOT))
+MARKETING_PORT := $(shell expr 4000 + $(SLOT))
+
 # Mata lo que escucha en el puerto antes de levantar un servidor de desarrollo. Solo LISTEN, para no cortar navegadores.
 define free-port
 	@pids=$$(lsof -ti tcp:$(1) -sTCP:LISTEN); if [ -n "$$pids" ]; then echo "liberando :$(1) (pid $$pids)"; kill $$pids; sleep 1; fi
@@ -81,19 +87,19 @@ capacity-cinemex:   ## aforo de Cinemex con el plano público; PLAZAS=all para l
 calibrate-cinemex:  ## calibración del semáforo de Cinemex, 100 funciones por nivel (trabajo `calibrate-cinemex`)
 	$(PY) -m scraper.sample --occupancy --chain cinemex --per-level $(or $(PER_LEVEL),100) --lead 60 --tolerance 45 --limit $(or $(LIMIT),60)
 
-dashboard:          ## API interna del dashboard en local (:8501), sin respuestas precalculadas; el frontend va aparte con `make dashboard-dev`
-	AC_PRECALC=0 $(VENV)/uvicorn api.internal:app --port 8501 --reload
+dashboard:          ## API interna del dashboard en local (:8500 + worktree), sin respuestas precalculadas; el frontend va aparte con `make dashboard-dev`
+	AC_PRECALC=0 $(VENV)/uvicorn api.internal:app --port $(API_PORT) --reload
 
 api:                ## API pública en local (http://localhost:8000/docs); requiere requirements.txt en el venv
 	$(VENV)/uvicorn api.main:app --port 8000 --reload
 
-dashboard-dev:      ## frontend del dashboard en local en :3000 (Next.js, dashboard/); libera el puerto antes
-	$(call free-port,3000)
-	cd dashboard && pnpm run dev
+dashboard-dev:      ## frontend del dashboard en local en :3000 + worktree (Next.js, dashboard/); libera el puerto antes
+	$(call free-port,$(DASHBOARD_PORT))
+	cd dashboard && PORT=$(DASHBOARD_PORT) AC_API_PORT=$(API_PORT) pnpm run dev
 
-marketing-dev:      ## landing page pública en local en :3001 (Next.js, marketing/); requiere `pnpm install` una vez ahí
-	$(call free-port,3001)
-	cd marketing && pnpm run dev
+marketing-dev:      ## landing page pública en local en :4000 + worktree (Next.js, marketing/); requiere `pnpm install` una vez ahí
+	$(call free-port,$(MARKETING_PORT))
+	cd marketing && PORT=$(MARKETING_PORT) pnpm run dev
 
 marketing-build: ## exporta la landing page pública como sitio estático a marketing/out
 	cd marketing && pnpm run build
