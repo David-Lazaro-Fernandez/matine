@@ -123,6 +123,7 @@ línea por corrida en `data/logs/jobs.jsonl` con la duración, el resultado y el
 | `backup` | operación | Copia consistente de snapshots.db y del crudo al bucket | 05:07 | 30 min; 1 reintento a los 10 min | servidor | `bucket de respaldo` |
 | `deploy` | operación | Trae origin/stable si se movió, reinstala si cambió requirements, sincroniza unidades y reinicia el dashboard y la API | cada hora a :02 y :17 y :32 y :47 | 10 min | servidor | `código en /opt/absolut-cinema`, `data/logs/deploy.log` |
 | `integrations` | avisos | Avisos de Slack tras cada captura y resumen del lunes por correo, a las organizaciones que lo configuraron | cada hora a :20 | 10 min | servidor | `data/app.db`, `Slack`, `correo` |
+| `listening` | escucha | Escucha social: comentarios nuevos de los tráilers de la cartelera, su clasificación con el modelo propio y la muestra semanal para etiquetar | lunes 09:37 | 60 min | Mac | `listening.db`, `data/listening` |
 <!-- jobs:end -->
 
 Fuera del registro, siempre encendidos en el servidor: `absolut-cinema-dashboard.service` (API interna del dashboard en
@@ -143,6 +144,7 @@ cuando pasan las pruebas y el trabajo `deploy` la trae. A mano, con `!` en la se
 | `scraper.delivery` (`make delivery`) | dulcería a domicilio, ambas cadenas, Rappi y DiDi Food | diario 15:07; cada tienda a los 7 días | `delivery_price` | trabajo `delivery` |
 | `sample --capacity` | aforo por sala, Cinépolis, en `AC_SEATS_PLAZAS`; `PLAZAS=all` = pasada nacional única a mano (hecha 2026-09-12, también Cinemex) | mensual | `auditorium` | trabajo `capacity`; Cinemex a mano |
 | `sample --occupancy --chain cinemex --per-level` | calibración del semáforo con el plano público, hasta 100 muestras por nivel | diario 19:07 | `occupancy_sample` | trabajo `calibrate-cinemex` |
+| `listening.capture`, `listening.classify`, `listening.sample` (`make listening`) | escucha social: el tráiler de cada película vigente en YouTube, sus vistas y comentarios nuevos; su clasificación con el modelo propio (`opinion`: pos, neu, neg, otro; `quiere_verla`) en `.venv-ml`; la muestra de 200 comentarios más 100 de control para etiquetar a mano. `listening.compare` (`make listening-compare FILE=…`) mide al modelo con la muestra etiquetada | semanal, lunes 09:37 (Mac) | `listening.db`: `video`, `video_stat`, `comment`, `prediction`, `sample`, `review`, `evaluation`; `data/listening/` | trabajo `listening` |
 | `scripts/title_pairs.py` | candidatos de títulos entre cadenas para `scraper/title_pairs.csv`; `--accept` / `--reject` | a mano, cuando `scraper.health` avisa | `scraper/title_pairs.csv` (versionado) | manual |
 | `jobs.run` (`make job KEY=…`) | ejecuta un trabajo del registro: candado por llave, tope, reintentos; genera las unidades con `jobs.units` | lo lanza cada timer | `logs/jobs.jsonl` (duración, resultado, pico de memoria), `data/locks/` | systemd / launchd / a mano |
 | `scraper.health` (`make health`) | salud de la captura: capturas programadas, fallos, muestreos; las mismas funciones alimentan en vivo la página Operaciones | diario | `logs/health.log` | trabajo `health` |

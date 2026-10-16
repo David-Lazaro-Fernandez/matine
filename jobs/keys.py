@@ -17,8 +17,9 @@ AUTH_PRUNE = "auth-prune"
 BACKUP = "backup"
 DEPLOY = "deploy"
 INTEGRATIONS = "integrations"
+LISTENING = "listening"
 
-CAPTURE, ACCESS, OPERATIONS, NOTIFY = "captura", "acceso", "operación", "avisos"
+CAPTURE, ACCESS, OPERATIONS, NOTIFY, LISTEN = "captura", "acceso", "operación", "avisos", "escucha"
 
 AREA = {
     SNAPSHOT: CAPTURE,
@@ -33,6 +34,7 @@ AREA = {
     BACKUP: OPERATIONS,
     DEPLOY: OPERATIONS,
     INTEGRATIONS: NOTIFY,
+    LISTENING: LISTEN,
 }
 
 ALL = tuple(AREA)

@@ -26,6 +26,7 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
 | Acceso | `auth/` | `.venv` (`hashlib.scrypt`; boto3 solo para SES) | `data/app.db` (organizaciones, cuentas, perfil, sesiones, enlaces, auditoría, logo), **nada más** |
 | Agente | `agent/` | `.venv` (fastmcp 4.1.0) | nada directo: conversaciones, auditoría y pulgares van por `auth/conversations.py` a `data/app.db` |
 | Programación | `jobs/` | **solo stdlib**, `/usr/bin/python3` | `data/logs/jobs.jsonl`, `data/locks/`; genera `deploy/systemd/` |
+| Escucha | `listening/` | captura, muestra y medición: **solo stdlib**; `classify` y `train`: `.venv-ml` (torch, solo Mac) | `data/listening.db`, `data/listening/` |
 | Avisos | `integrations/` | `.venv` (`analytics/` en solo lectura; `auth/` para config y estado) | nada directo: el estado de envío va por `auth/orgs.py` a `data/app.db` |
 | API pública | `api/` | `.venv` (fastapi, uvicorn) | nada (lee `snapshots.db` con `analytics.connect()`, `mode=ro`) |
 | Sitio público | `marketing/` | Node/Next.js, **proyecto independiente** (su propio `package.json`) | nada (sitio estático, `output: 'export'`) |
@@ -62,7 +63,7 @@ defecto, la del piloto) o a nivel nacional. Tres capas, sin mezclarse:
 - **Solo SQLite, un escritor por archivo** (decisión 2026-09-25: sin Postgres ni RDS, por costo y por los 2 GB del
   servidor; el código anterior vive en el tag `pre-sqlite-only`). `data/snapshots.db` la escribe solo la captura
   (`scraper/`); `data/app.db` la escribe solo `auth/`; `data/precalc.db` la escribe solo `api.precalc` (decisión
-  2026-10-11), que guarda las respuestas por defecto de la Cartelera al final de los trabajos `snapshot` y `seats`. Esa
+  2026-10-11); `data/listening.db` la escribe solo `listening/` (decisión 2026-10-16), que guarda las respuestas por defecto de la Cartelera al final de los trabajos `snapshot` y `seats`. Esa
   es una caché que se puede borrar: sin ella, la API calcula en vivo. No agregues otro escritor a ninguna sin ubicarlo
   aquí.
 - **El dashboard nunca escribe datos.** `analytics.connect()` abre `snapshots.db` en `mode=ro`, a propósito. Lo único

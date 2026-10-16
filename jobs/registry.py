@@ -7,6 +7,7 @@ documentación). Lo que no se declara toma el valor de `DEFAULTS`. Se leen con `
 Un paso es una tupla `(intérprete, módulo o script, *argumentos)`:
   - `"python"`: el Python del sistema (`python3 -m módulo`), para `scraper/` y todo lo que es solo stdlib;
   - `"venv"`: `.venv/bin/python -m módulo`, para lo que necesita el venv (`auth/`: `hashlib.scrypt` y boto3);
+  - `"ml"`: `.venv-ml/bin/python -m módulo`, el venv con torch (`make ml-env`); solo existe en la Mac;
   - `"bash"`: un script del repo.
 Los pasos de un trabajo corren en orden y todos, aunque uno falle (igual que `make -k`); el trabajo falla si alguno falló.
 
@@ -147,6 +148,16 @@ REGISTRY = {
         "nice": 10,
         "writes": ("data/app.db", "Slack", "correo"),
     },
+    # Los comentarios nuevos se clasifican con el modelo guardado (torch, solo Mac) y se aparta la muestra de la semana,
+    # que se manda a etiquetar a mano con `make listening-compare`.
+    keys.LISTENING: {
+        "description": "Escucha social: comentarios nuevos de los tráilers de la cartelera, su clasificación con el modelo propio y la muestra semanal para etiquetar",
+        "steps": (("python", "listening.capture"), ("ml", "listening.classify"), ("python", "listening.sample")),
+        "schedule": ("Mon 09:37",),
+        "timeout_min": 60,
+        "hosts": ("mac",),
+        "writes": ("listening.db", "data/listening"),
+    },
     keys.BACKUP: {
         "description": "Copia consistente de snapshots.db y del crudo al bucket",
         "steps": (("bash", "deploy/backup.sh"),),
@@ -170,7 +181,7 @@ REGISTRY = {
     },
 }
 
-INTERPRETERS = ("python", "venv", "bash")
+INTERPRETERS = ("python", "venv", "ml", "bash")
 HOSTS = ("server", "mac")
 WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 DAY_NAMES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábados", "domingos")
@@ -242,6 +253,8 @@ def validate():
         e = entry(key)
         if not e["steps"] or any(s[0] not in INTERPRETERS or len(s) < 2 for s in e["steps"]):
             raise RegistryError(f"{key}: pasos vacíos o con intérprete desconocido")
+        if any(s[0] == "ml" for s in e["steps"]) and e["hosts"] != ("mac",):
+            raise RegistryError(f"{key}: un paso `ml` solo corre en la Mac")
         if not e["schedule"] or not set(e["hosts"]) <= set(HOSTS):
             raise RegistryError(f"{key}: sin horario o con un host desconocido")
         for spec in e["schedule"]:

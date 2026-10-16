@@ -1612,6 +1612,45 @@ servicio de Google Cloud que aún no existe. Teams, OneDrive, SharePoint y Power
   umbral para los cambios de horario de pocos minutos. Una corrida real encontró 123 cambios en una pasada, la mayoría
   de 5 a 10 minutos; sin umbral el canal se llena.
 
+## Escucha social (`listening/`, 2026-10-16)
+
+Qué dice la gente de las películas en cartelera y preventa. Es una señal secundaria: la principal es el ritmo de preventa
+(`analytics/presale.py`). **Atención** (vistas y comentarios del tráiler) y **opinión** (qué dicen) son preguntas
+separadas, sin puntuación combinada, y no hay predicción hasta que exista historia.
+
+**Fuente.** Solo comentarios del tráiler en YouTube (YouTube Data API v3, gratis, cuota de 10,000 unidades al día:
+`search` 100, `videos` y `commentThreads` 1 por llamada). Descartadas por costo o términos: X, Reddit, Letterboxd, Google
+Maps y la API de hashtags de Instagram. Pendiente: la búsqueda por palabra clave de Threads (`threads_keyword_search`,
+2,200 consultas al día) requiere revisión de la app en Meta. Sin verificar: los términos de YouTube sobre guardar el texto
+de los comentarios y la licencia de los modelos base.
+
+**Flujo** (trabajo `listening`, lunes 09:37, solo Mac porque necesita torch; `make listening`):
+1. `listening.capture` busca el tráiler una sola vez por película y después baja las vistas y los comentarios nuevos
+   hasta topar con uno ya guardado. Cuesta unas 6,000 unidades la primera vez y muy pocas después.
+2. `listening.classify` clasifica lo que el modelo vigente no ha visto: `opinion` (pos, neu, neg, otro: lo que la persona
+   piensa de la película, no el tono) y `quiere_verla` (binaria: intención clara de verla). Unos 100 comentarios por
+   segundo por modelo en una Mac con MPS.
+3. `listening.sample` aparta 200 comentarios al azar, repartidos entre películas, y mezcla 100 etiquetas manuales de
+   control (`training/etiquetas_manuales.csv`). Nunca entran comentarios del entrenamiento ni de muestras anteriores.
+4. A mano: la muestra se etiqueta fuera del repo con las reglas de `training/` y `make listening-compare FILE=…` calcula
+   la coincidencia del modelo. Si quien etiquetó coincide menos de 85% con el control, la semana no es confiable.
+
+**Modelos.** `robertuito-base-uncased` ajustado con 10,300 comentarios de 67 películas (`training/etiquetas_v3.csv`,
+etiquetados por una sola persona con reglas fijas) y guardado en `data/modelos/`; se reentrena a mano con
+`make listening-train`. Medido el 2026-10-16: `opinion` acierta 72% en 12 películas que no vio (F1 por clase: pos 0.84,
+neu 0.61, neg 0.73, otro 0.59) y 74% en 80 etiquetas manuales; los modelos ya hechos (`robertuito-sentiment`,
+`xlmr-sentiment`) daban 53–56%. `quiere_verla` tiene F1 de 0.86 en la clase positiva con 12 películas nuevas; `no` explícito
+tiene solo 65 ejemplos y por eso no es una clase. `xlm-roberta-base` quedó atrás (69% y 66%). Las clases `neu` y `otro`
+son las más subjetivas y marcan el techo.
+
+**Reentrenar.** El modelo queda fijo los primeros meses. Cada semana solo se mide; se reentrena si la coincidencia baja
+de forma sostenida (propuesta: dos semanas seguidas bajo 65% en `opinión`, sin datos aún). Con 200 comentarios el margen
+es de ±6 puntos: una semana sola no dice nada.
+
+**Datos.** `data/listening.db`, solo la escribe el trabajo `listening` (`video`, `video_stat`, `comment`, `prediction`,
+`sample`, `review`, `evaluation`). Vive en la Mac. Pendiente: llevarla al servidor, las funciones de `analytics/`, el
+endpoint y la pantalla (con un mínimo de menciones por película) y el cruce con el ritmo de preventa por `title_key`.
+
 ## Consideraciones
 
 - La key es pública pero puede rotar con cada despliegue del sitio. Si la API
