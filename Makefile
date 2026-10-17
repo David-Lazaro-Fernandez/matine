@@ -6,7 +6,7 @@ PY ?= /usr/bin/python3
 VENV ?= .venv/bin
 
 .PHONY: help job units units-check labels tick snapshot seats occupancy post-start health prices concessions delivery capacity capacity-cinemex presale \
-        calibrate-cinemex dashboard api backup launchd-load launchd-unload \
+        calibrate-cinemex listening listening-compare listening-train ml-env dashboard api backup launchd-load launchd-unload \
         user-create user-list user-reset user-deactivate user-activate user-role org-create org-modules org-billing org-list auth-prune deploy restart check lint test test-live test-ui test-eval fixtures hooks \
         marketing-dev dashboard-dev marketing-build export-places
 
@@ -64,6 +64,19 @@ delivery:           ## dulcería a domicilio en Rappi y DiDi Food, tiendas renov
 
 presale:            ## preventas de ambas cadenas: títulos en preventa y butacas vendidas de su panel (trabajo `presale`)
 	$(PY) -m jobs.run presale
+
+listening:          ## escucha social: comentarios nuevos de tráilers, su clasificación y la muestra semanal (trabajo `listening`, solo Mac)
+	$(PY) -m jobs.run listening
+
+listening-compare:  ## mide al modelo con la muestra ya etiquetada: FILE=data/listening/muestra_AAAA-MM-DD_etiquetada.csv
+	$(PY) -m listening.compare $(FILE)
+
+listening-train:    ## reentrena un modelo de la escucha social: TASK=opinion|quiere_verla [EPOCHS=2]
+	.venv-ml/bin/python -m listening.train $(TASK) --epochs $(or $(EPOCHS),2)
+
+ml-env:             ## Mac: crea .venv-ml con torch y transformers, para clasificar y entrenar la escucha social
+	python3 -m venv .venv-ml
+	.venv-ml/bin/pip install -r requirements-ml.txt
 
 capacity:           ## aforo por sala de Cinépolis en AC_SEATS_PLAZAS; REFRESH=1 vuelve a medir; PLAZAS=all (o gdl,mty) cambia el alcance
 	$(PY) -m scraper.sample --capacity $(if $(REFRESH),--refresh,) $(if $(PLAZAS),--plazas $(PLAZAS),) $(if $(WORKERS),--workers $(WORKERS),)
@@ -144,8 +157,8 @@ check: lint test    ## lo que corre el pre-push y CI: lint, imports sin dependen
 
 lint:               ## ruff, que scraper/ y analytics/ importan con el Python del sistema y que el lockfile usa npmjs
 	$(VENV)/ruff check .
-	$(PY) -m compileall -q scraper analytics jobs
-	$(PY) -c "import analytics, scraper.run, scraper.sample, scraper.health, scraper.delivery, jobs.run, jobs.units"
+	$(PY) -m compileall -q scraper analytics jobs listening
+	$(PY) -c "import analytics, scraper.run, scraper.sample, scraper.health, scraper.delivery, jobs.run, jobs.units, listening.capture, listening.sample, listening.compare"
 	@test ! -e marketing/package-lock.json || { echo "marketing/package-lock.json no debe existir: el proyecto usa pnpm"; exit 1; }
 	@! grep -n 'tarball: ' marketing/pnpm-lock.yaml | grep -v 'tarball: https://registry.npmjs.org/' \
 		|| { echo "marketing/pnpm-lock.yaml apunta a un registro privado: borra el lockfile y corre \`pnpm install\` en marketing/ (marketing/.npmrc fija npmjs)"; exit 1; }

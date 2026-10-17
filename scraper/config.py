@@ -265,3 +265,29 @@ BASE_URL = os.environ.get("AC_BASE_URL", "http://localhost:3000").rstrip("/")
 MAIL_LOG_PATH = LOG_DIR / "mail.log"
 # A quién avisar cuando una cuenta pide un módulo que su organización no contrató. Sin valor, solo queda en `audit`.
 SALES_EMAIL = os.environ.get("AC_SALES_EMAIL") or None
+
+# Escucha social (listening/): comentarios de YouTube clasificados con un modelo propio. La clave sale del entorno o,
+# si falta, de `.env` en la raíz del repo. `YOUTUBE_DATA_API_KEY_DEV` es el nombre que usa el desarrollo local.
+LISTENING_DB_PATH = DATA_DIR / "listening.db"
+LISTENING_DIR = DATA_DIR / "listening"
+MODEL_DIR = DATA_DIR / "modelos"
+TRAINING_DIR = ROOT / "training"
+YOUTUBE_API_URL = os.environ.get("YOUTUBE_API_URL", "https://www.googleapis.com/youtube/v3")
+# Películas por corrida. Buscar un tráiler cuesta 100 de las 10,000 unidades diarias de cuota; leer un video, 1.
+LISTENING_TITLES = int(os.environ.get("AC_LISTENING_TITLES", "60"))
+# Comentarios por semana que se mandan a etiquetar, además de las etiquetas manuales de control.
+LISTENING_SAMPLE_SIZE = int(os.environ.get("AC_LISTENING_SAMPLE_SIZE", "200"))
+
+
+def youtube_api_key():
+    names = ("YOUTUBE_DATA_API_KEY", "YOUTUBE_DATA_API_KEY_DEV")
+    for name in names:
+        if os.environ.get(name):
+            return os.environ[name]
+    env_file = ROOT / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            name, _, value = line.partition("=")
+            if name.strip() in names and value.strip():
+                return value.strip().strip("\"'")
+    return ""

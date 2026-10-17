@@ -1,0 +1,4 @@
+# Dependencias de .venv-ml (`make ml-env`): clasificar y entrenar la escucha social (listening/). Solo en la Mac; el
+# servidor no las instala. Versiones con las que se entrenaron y midieron los modelos.
+torch==2.14.1
+transformers==5.19.0

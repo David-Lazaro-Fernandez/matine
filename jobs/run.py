@@ -32,6 +32,7 @@ from . import keys, registry
 LOCK_DIR = config.DATA_DIR / "locks"
 LOG_PATH = config.LOG_DIR / "jobs.jsonl"
 VENV_PYTHON = config.ROOT / ".venv" / "bin" / "python"
+ML_PYTHON = config.ROOT / ".venv-ml" / "bin" / "python"
 # La misma convención que `timeout(1)`
 TIMEOUT_EXIT = 124
 # Tras SIGTERM, cuánto se espera antes de SIGKILL.
@@ -57,6 +58,8 @@ def argv(step):
         return [sys.executable, "-m", target, *args]
     if interpreter == "venv":
         return [str(VENV_PYTHON), "-m", target, *args]
+    if interpreter == "ml":
+        return [str(ML_PYTHON), "-m", target, *args]
     return ["bash", str(config.ROOT / target), *args]
 
 

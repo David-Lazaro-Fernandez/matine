@@ -6,3 +6,8 @@ __pycache__/
 *.pyc
 .venv/
 uv.lock
+/.venv-ml
+
+# Comentarios de terceros para entrenar la escucha social; no se versionan.
+/training/*.csv
+/training/*.json
